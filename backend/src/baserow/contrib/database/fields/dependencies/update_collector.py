@@ -7,6 +7,7 @@ from baserow.contrib.database.fields.dependencies.exceptions import InvalidViaPa
 from baserow.contrib.database.fields.field_cache import FieldCache
 from baserow.contrib.database.fields.models import Field, LinkRowField
 from baserow.contrib.database.fields.signals import field_updated
+from baserow.contrib.database.rows.signals import before_rows_update, rows_updated
 from baserow.contrib.database.table.models import Table
 
 StartingRowIdsType = Optional[List[int]]
@@ -30,6 +31,7 @@ class PathBasedUpdateStatementCollector:
         """
 
         self.update_statements: Dict[str, Expression] = {}
+        self.updated_field_ids: Set[int] = set()
         self.table = table
         self.sub_paths: Dict[str, PathBasedUpdateStatementCollector] = {}
         self.connection_here: Optional[LinkRowField] = connection_here
@@ -42,6 +44,7 @@ class PathBasedUpdateStatementCollector:
         path_from_starting_table: Optional[List[LinkRowField]] = None,
     ):
         if not path_from_starting_table:
+            self.updated_field_ids.add(field.id)
             if self.table != field.table:
                 # We have been given an update statement for a different table, but
                 # we don't have a path back to the starting table. This only occurs
@@ -130,7 +133,34 @@ class PathBasedUpdateStatementCollector:
             )
 
             qs = qs.filter(filter_for_rows_connected_to_starting_row)
+        self._update_cells_and_send_row_update_signals(model, qs)
+
+    def _update_cells_and_send_row_update_signals(self, model, qs):
+        from baserow.contrib.database.rows.handler import RowHandler
+
+        rows_ids_to_update = qs.values_list("id", flat=True)
+        rows_for_update = RowHandler().get_rows_for_update(model, rows_ids_to_update)
+        before_return = before_rows_update.send(
+            self,
+            rows=list(rows_for_update),
+            user=None,
+            table=self.table,
+            model=model,
+            updated_field_ids=self.updated_field_ids,
+        )
         qs.update(**self.update_statements)
+        rows_to_return = list(
+            model.objects.all().enhance_by_fields().filter(id__in=rows_ids_to_update)
+        )
+        rows_updated.send(
+            self,
+            rows=rows_to_return,
+            user=None,
+            table=self.table,
+            model=model,
+            before_return=before_return,
+            updated_field_ids=self.updated_field_ids,
+        )
 
     def _include_rows_connected_to_deleted_m2m_relationships(
         self,
