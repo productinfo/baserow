@@ -18,6 +18,7 @@ from django.db import models as django_models
 from rest_framework.fields import CharField
 from rest_framework.serializers import Serializer
 
+from baserow.contrib.database.fields.field_filters import OptionallyAnnotatedQ
 from baserow.core.registry import (
     Instance,
     Registry,
@@ -30,8 +31,6 @@ from baserow.core.registry import (
     ImportExportMixin,
     MapAPIExceptionsInstanceMixin,
 )
-from baserow.contrib.database.fields.field_filters import OptionallyAnnotatedQ
-
 from .exceptions import (
     ViewTypeAlreadyRegistered,
     ViewTypeDoesNotExist,
@@ -44,7 +43,6 @@ from .exceptions import (
     DecoratorTypeDoesNotExist,
     DecoratorTypeAlreadyRegistered,
 )
-
 
 if TYPE_CHECKING:
     from baserow.contrib.database.fields.models import Field
@@ -747,7 +745,7 @@ class ViewAggregationType(Instance):
         )
 
 
-class ViewAggregationTypeRegistry(Registry):
+class ViewAggregationTypeRegistry(Registry[ViewAggregationType]):
     """
     This registry contains all the available field aggregation operators. A field
     aggregation allow to summarize all the values for a specific field of a table.
