@@ -1,4 +1,4 @@
-import {DatabaseApplicationType} from '@baserow/modules/database/applicationTypes'
+import { DatabaseApplicationType } from '@baserow/modules/database/applicationTypes'
 import {
   FormViewType,
   GalleryViewType,
@@ -70,7 +70,7 @@ import {
   PDFBrowserFilePreview,
   VideoFilePreview,
 } from '@baserow/modules/database/filePreviewTypes'
-import {APITokenSettingsType} from '@baserow/modules/database/settingsTypes'
+import { APITokenSettingsType } from '@baserow/modules/database/settingsTypes'
 
 import tableStore from '@baserow/modules/database/store/table'
 import viewStore from '@baserow/modules/database/store/view'
@@ -81,8 +81,8 @@ import formStore from '@baserow/modules/database/store/view/form'
 import rowModal from '@baserow/modules/database/store/rowModal'
 import publicStore from '@baserow/modules/database/store/view/public'
 
-import {registerRealtimeEvents} from '@baserow/modules/database/realtime'
-import {CSVTableExporterType} from '@baserow/modules/database/exporterTypes'
+import { registerRealtimeEvents } from '@baserow/modules/database/realtime'
+import { CSVTableExporterType } from '@baserow/modules/database/exporterTypes'
 import {
   BaserowAdd,
   BaserowAnd,

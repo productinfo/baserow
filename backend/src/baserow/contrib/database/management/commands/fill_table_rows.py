@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Max
 from django.db.models.fields.related import ForeignKey
 from faker import Faker
+from tqdm import tqdm
 
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.contrib.database.table.models import Table
@@ -50,7 +51,7 @@ def fill_table_rows(limit, table, fake=None):
     order = ceil(model.objects.aggregate(max=Max("order")).get("max") or Decimal("0"))
 
     rows = []
-    for i in range(0, limit):
+    for i in tqdm(range(0, limit), desc="Creating random rows"):
         # Based on the random_value function we have for each type we can
         # build a dict with a random value for each field.
         values = {

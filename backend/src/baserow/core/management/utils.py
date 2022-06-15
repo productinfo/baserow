@@ -2,6 +2,8 @@ import curses
 
 # Using subprocess for a debug manual command is safe and poses no security risk.
 import subprocess  # nosec
+from collections import defaultdict
+
 import sys
 from typing import List, Optional
 
@@ -42,6 +44,7 @@ def run_command_concurrently(
 
     scr = curses.initscr()
 
+    per_process_stderr = defaultdict(list)
     try:
         while child_processes:
             scr.addstr(0, 0, header)
@@ -49,7 +52,8 @@ def run_command_concurrently(
             for i, cp in enumerate(child_processes):
                 if cp.poll() is None:
                     out = cp.stderr.readline().strip().replace("\r", "")
-                    scr.addstr(i + 1, 0, out)
+                    per_process_stderr[cp.pid].append(out)
+                    scr.addstr(i + 1, 0, f"Process {i}: " + out)
                     new_child_processes.append(cp)
                 else:
                     if cp.returncode != 0:
@@ -65,7 +69,13 @@ def run_command_concurrently(
                 f"concurrency):"
             )
             for error_process in error_processes:
-                print(error_process.stderr.read(), file=sys.stderr)
+                per_process_stderr[error_process.pid].append(
+                    error_process.stderr.read()
+                )
+                per_process_stderr[error_process.pid].append(
+                    error_process.stdout.read()
+                )
+                print(per_process_stderr[error_process.pid])
             raise CommandError(
                 "The following child processes exited with a non-zero "
                 f"error code: {[cp.pid for cp in error_processes]}. See above for their "
