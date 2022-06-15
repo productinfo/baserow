@@ -59,15 +59,15 @@ def run_command_concurrently(
     finally:
         curses.endwin()
 
-    if error_processes:
-        print(
-            f"Errors from subprocesses were (they will be mixed due to "
-            f"concurrency):"
-        )
-        for error_process in error_processes:
-            print(error_process.stderr.read(), file=sys.stderr)
-        raise CommandError(
-            "The following child processes exited with a non-zero "
-            f"error code: {[cp.pid for cp in error_processes]}. See above for their "
-            f"reported errors."
-        )
+        if error_processes:
+            print(
+                f"Errors from subprocesses were (they will be mixed due to "
+                f"concurrency):"
+            )
+            for error_process in error_processes:
+                print(error_process.stderr.read(), file=sys.stderr)
+            raise CommandError(
+                "The following child processes exited with a non-zero "
+                f"error code: {[cp.pid for cp in error_processes]}. See above for their "
+                f"reported errors."
+            )

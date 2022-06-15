@@ -40,8 +40,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"{limit} rows have been inserted."))
 
 
-def fill_table_rows(limit, table):
-    fake = Faker()
+def fill_table_rows(limit, table, fake=None):
+    if fake is None:
+        fake = Faker()
     row_handler = RowHandler()
     cache = {}
     model = table.get_model()
