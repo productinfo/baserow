@@ -140,14 +140,15 @@ class PathBasedUpdateStatementCollector:
 
         rows_ids_to_update = qs.values_list("id", flat=True)
         rows_for_update = RowHandler().get_rows_for_update(model, rows_ids_to_update)
-        before_return = before_rows_update.send(
-            self,
-            rows=list(rows_for_update),
-            user=None,
-            table=self.table,
-            model=model,
-            updated_field_ids=self.updated_field_ids,
-        )
+        with transaction.atomic():
+            before_return = before_rows_update.send(
+                self,
+                rows=list(rows_for_update),
+                user=None,
+                table=self.table,
+                model=model,
+                updated_field_ids=self.updated_field_ids,
+            )
         qs.update(**self.update_statements)
         rows_to_return = list(
             model.objects.all().enhance_by_fields().filter(id__in=rows_ids_to_update)
