@@ -12,6 +12,7 @@ For example:
 ### New Features
 
 * Added prefill query parameters for forms. [#852](https://gitlab.com/bramw/baserow/-/issues/852)
+* Added support for text file previews. [#1003](https://gitlab.com/bramw/baserow/-/issues/1003)
 
 ### Bug Fixes
 
