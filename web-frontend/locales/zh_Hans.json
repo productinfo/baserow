@@ -242,7 +242,8 @@
         "videoBrowser": "",
         "AudioBrowser": "",
         "pdfBrowser": "",
-        "googleDocs": ""
+        "googleDocs": "",
+        "textBrowser": ""
     },
     "humanDateFormat": {
         "dd/mm/yyyy": "",

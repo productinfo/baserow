@@ -244,7 +244,8 @@
         "videoBrowser": "Ouvrir dans le navigateur",
         "AudioBrowser": "Ouvrer dans le navigateur",
         "pdfBrowser": "Ouvrir dans le navigateur",
-        "googleDocs": "Ouvrir dans Google Docs"
+        "googleDocs": "Ouvrir dans Google Docs",
+        "textBrowser": "Ouvrir dans le navigateur"
     },
     "humanDateFormat": {
         "dd/mm/yyyy": "jj/mm/aaaa",

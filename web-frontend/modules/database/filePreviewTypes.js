@@ -4,6 +4,7 @@ import PreviewVideo from '@baserow/modules/database/components/preview/PreviewVi
 import PreviewAudio from '@baserow/modules/database/components/preview/PreviewAudio'
 import PreviewPDFBrowser from '@baserow/modules/database/components/preview/PreviewPDFBrowser'
 import PreviewGoogleDocs from '@baserow/modules/database/components/preview/PreviewGoogleDocs'
+import PreviewText from '@baserow/modules/database/components/preview/PreviewText'
 
 export class FilePreviewType extends Registerable {
   /**
@@ -154,5 +155,24 @@ export class GoogleDocFilePreview extends FilePreviewType {
 
   isExternal() {
     return true
+  }
+}
+
+export class TextFilePreview extends FilePreviewType {
+  static getType() {
+    return 'text'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('previewType.textBrowser')
+  }
+
+  isCompatible(mimeType, fileName) {
+    return mimeType === 'text/plain'
+  }
+
+  getPreviewComponent() {
+    return PreviewText
   }
 }

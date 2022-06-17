@@ -69,6 +69,7 @@ import {
   VideoFilePreview,
   PDFBrowserFilePreview,
   GoogleDocFilePreview,
+  TextFilePreview,
 } from '@baserow/modules/database/filePreviewTypes'
 import { APITokenSettingsType } from '@baserow/modules/database/settingsTypes'
 
@@ -402,6 +403,7 @@ export default (context) => {
   app.$registry.register('preview', new VideoFilePreview(context))
   app.$registry.register('preview', new PDFBrowserFilePreview(context))
   app.$registry.register('preview', new GoogleDocFilePreview(context))
+  app.$registry.register('preview', new TextFilePreview(context))
 
   app.$registry.register('viewAggregation', new MinViewAggregationType(context))
   app.$registry.register('viewAggregation', new MaxViewAggregationType(context))
