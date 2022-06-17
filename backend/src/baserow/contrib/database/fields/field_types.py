@@ -1621,8 +1621,8 @@ class LinkRowFieldType(FieldType):
     def row_of_dependency_updated(
         self,
         field: LinkRowField,
-        starting_row: "StartingRowType",
-        update_collector: "FieldUpdateCollector",
+        starting_row,
+        update_collector: CachingFieldUpdateCollector,
         via_path_to_starting_table: Optional[List[LinkRowField]],
     ):
         update_collector.add_field_with_pending_update_statement(
