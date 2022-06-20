@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <object :width="500" :height="500" :data="url"></object>
+  <div class="preview__text-wrapper">
+    <object class="preview__text" :data="url"></object>
   </div>
 </template>
 
