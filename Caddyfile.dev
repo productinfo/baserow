@@ -11,6 +11,13 @@
 		}
 		header @downloads Content-disposition "attachment; filename={query.dl}"
 
+        header {
+            Access-Control-Allow-Origin http://localhost:3000
+            Access-Control-Allow-Methods *
+            Access-Control-Allow-Headers *
+            defer
+        }
+
 		file_server {
 			root {$MEDIA_ROOT:/baserow/media/}
 		}
