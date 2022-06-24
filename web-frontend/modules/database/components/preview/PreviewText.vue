@@ -1,10 +1,12 @@
 <template>
   <div class="preview__text-wrapper">
-    <object class="preview__text" :data="url"></object>
+    {{ text }}
   </div>
 </template>
 
 <script>
+import { notifyIf } from '@baserow/modules/core/utils/error'
+
 export default {
   name: 'PreviewText',
   props: {
@@ -12,6 +14,18 @@ export default {
       type: String,
       required: true,
     },
+  },
+  data() {
+    return {
+      text: null,
+    }
+  },
+  async created() {
+    try {
+      this.text = (await this.$client.get(this.url)).data
+    } catch (error) {
+      notifyIf(error)
+    }
   },
 }
 </script>

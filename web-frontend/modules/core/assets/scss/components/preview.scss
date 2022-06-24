@@ -31,9 +31,18 @@
 
 .preview__image-wrapper,
 .preview__video-wrapper,
-.preview__text-wrapper,
 .preview__iframe-wrapper {
   display: contents;
+}
+
+.preview__text-wrapper {
+  min-width: 70%;
+  min-height: 70%;
+  background-color: $white;
+  overflow: auto;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  padding: 0 20px;
 }
 
 .preview__loading {
