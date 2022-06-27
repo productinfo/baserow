@@ -1,5 +1,5 @@
 <template>
-  <div class="preview__text-wrapper">
+  <div class="preview__text">
     {{ text }}
   </div>
 </template>

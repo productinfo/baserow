@@ -35,7 +35,7 @@
   display: contents;
 }
 
-.preview__text-wrapper {
+.preview__text {
   min-width: 70%;
   min-height: 70%;
   background-color: $white;
@@ -73,12 +73,6 @@
 
     @include absolute(-99999px, -99999px);
   }
-}
-
-.preview__text {
-  display: block;
-  height: 100%;
-  width: 100%;
 }
 
 .preview__iframe {
