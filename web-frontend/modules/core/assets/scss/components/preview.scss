@@ -36,8 +36,9 @@
 }
 
 .preview__text {
-  min-width: 70%;
-  min-height: 70%;
+  width: 60%;
+  height: 70%;
+  font-family: monospace;
   background-color: $white;
   overflow: auto;
   word-wrap: break-word;
