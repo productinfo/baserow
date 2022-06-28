@@ -6,7 +6,7 @@ import traceback
 from decimal import Decimal
 from hashlib import sha1
 from random import randint
-from typing import List, Optional, cast, Dict, Any
+from typing import List, Optional, cast, Dict, Any, Callable
 
 import pytz
 import sys
@@ -98,10 +98,23 @@ from baserow.core.management.utils import (
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.user.handler import UserHandler
 from baserow.core.user_files.models import UserFile
-from baserow.core.utils import random_string
 from baserow.test_utils.fixtures import UserFixtures
 
 User = get_user_model()
+
+
+class FuzzOptions:
+    def __init__(self, randomizer):
+        self.randomizer = randomizer
+
+    def get_num_tables(self) -> int:
+        pass
+
+    def get_random_table_name(self):
+        return self.randomizer.random_string(randint(1, 255))
+
+    def to_command_list(self):
+        pass
 
 
 class Command(BaseCommand):
@@ -153,18 +166,27 @@ class Command(BaseCommand):
         recreate_seed = options["recreate_seed"]
         user_email = options["user_email"]
         debug = options["debug"]
+
+        fuzz_options = FuzzOptions(Randomizer())
         if recreate_seed:
-            _recreate_seed(recreate_seed, user_email, debug)
+            _recreate_seed(recreate_seed, user_email, debug, fuzz_options)
         else:
-            _run_fuzzer(concurrency, num_runs, report_folder, debug)
+            _run_fuzzer(concurrency, num_runs, report_folder, debug, fuzz_options)
         self.stdout.write(
             self.style.SUCCESS(
-                f"{num_runs} runs of fuzzing have been run with concurrency {concurrency}!."
+                f"{num_runs} runs of fuzzing have been run with "
+                f"concurrency {concurrency}!. "
             )
         )
 
 
-def _run_fuzzer(concurrency: int, num_runs: int, report_folder_name: str, debug: bool):
+def _run_fuzzer(
+    concurrency: int,
+    num_runs: int,
+    report_folder_name: str,
+    debug: bool,
+    fuzz_options: FuzzOptions,
+):
     if not report_folder_name:
         now = timezone.now().strftime("%Y-%m-%d_%H-%M-%S")
         report_folder_name = f"fuzz_reports_{now}"
@@ -172,7 +194,7 @@ def _run_fuzzer(concurrency: int, num_runs: int, report_folder_name: str, debug:
     if not os.path.exists(report_folder_path):
         os.makedirs(report_folder_path)
     if concurrency == 1:
-        run_many_fuzz_tests_and_report(report_folder_name, num_runs)
+        run_many_fuzz_tests_and_report(report_folder_name, num_runs, fuzz_options)
     else:
         command = [
             "./baserow",
@@ -185,6 +207,7 @@ def _run_fuzzer(concurrency: int, num_runs: int, report_folder_name: str, debug:
         ]
         if debug:
             command.append("--debug")
+        command += fuzz_options.to_command_list()
         run_command_concurrently(
             command,
             concurrency,
@@ -192,15 +215,17 @@ def _run_fuzzer(concurrency: int, num_runs: int, report_folder_name: str, debug:
     print(f"Successfully fuzzed! Check {report_folder_path} for results.")
 
 
-def _recreate_seed(recreate_seed, user_email, debug):
+def _recreate_seed(
+    recreate_seed: int, user_email: str, debug: bool, fuzz_options: FuzzOptions
+):
     if not user_email:
         raise CommandError("--user-email must be set when using --recreate-seed")
     else:
         print(f"Recreating seed {recreate_seed} for {user_email}")
         user = User.objects.get(email=user_email)
-        database = Fuzzer(seed=recreate_seed, user=user, debug=debug).fuzz(
-            run_checks=True
-        )
+        database = Fuzzer(
+            seed=recreate_seed, user=user, debug=debug, fuzz_options=fuzz_options
+        ).fuzz(run_checks=True)
 
         # noinspection PyUnresolvedReferences
         print(
@@ -214,7 +239,9 @@ def pid():
     return os.getpid()
 
 
-def run_many_fuzz_tests_and_report(report_folder: str, num_runs: int):
+def run_many_fuzz_tests_and_report(
+    report_folder: str, num_runs: int, fuzz_options: FuzzOptions
+):
     print(f"Fuzzing into {report_folder} on pid: {pid()}")
 
     for i in tqdm(range(num_runs), desc=f"{pid()} running..."):
@@ -233,7 +260,9 @@ def run_many_fuzz_tests_and_report(report_folder: str, num_runs: int):
         with open(os.path.join(os.getcwd(), report_folder, "runs.txt"), "a") as file:
             file.write("run_user_email=" + email + " - seed=" + str(chosen_seed) + "\n")
         try:
-            Fuzzer(chosen_seed, user).fuzz(delete_at_end=True)
+            Fuzzer(chosen_seed, user, debug=False, fuzz_options=fuzz_options).fuzz(
+                delete_at_end=True
+            )
         except Exception as e:
             with open(
                 os.path.join(os.getcwd(), report_folder, "fails.csv"), "a"
@@ -251,14 +280,129 @@ def run_many_fuzz_tests_and_report(report_folder: str, num_runs: int):
 
 
 # noinspection PyMethodMayBeStatic
+class Randomizer:
+    def __init__(self):
+        self.fake = Faker()
+
+    def seed_instance(self, seed):
+        self.fake.seed_instance(seed)
+        random.seed(seed)
+
+    def random_substr(self, random_value):
+        start = randint(0, len(random_value) - 1)
+        length = randint(1, len(random_value) - start - 1)
+        random_value = random_value[start : start + length]
+        return random_value
+
+    def random_tz(self):
+        choice = random.choice(pytz.all_timezones)
+        return choice
+
+    def shuffle_dupe_and_slice_fields_randomly(
+        self, fields: List[Field]
+    ) -> List[Field]:
+        random_slice_length_chooser = (
+            lambda _: randint(0, len(fields) * 2)
+            if randint(0, 5) == 0
+            else randint(0, 5)
+        )
+
+        # noinspection PyUnusedLocal
+        def num_times_to_duplicate_chooser(duped_list_length_so_far, field_idz):
+            return randint(0, 4)
+
+        return self.shuffle_dupe_and_slice_list_randomly(
+            fields, random_slice_length_chooser, num_times_to_duplicate_chooser
+        )
+
+    def shuffle_dupe_and_slice_list_randomly(
+        self,
+        source_list: List,
+        random_slice_length_chooser: Callable[[int], int],
+        num_times_to_duplicate_chooser: Callable[[int, int], int],
+    ):
+        shuffled_copied_list = list(source_list)
+        random.shuffle(shuffled_copied_list)
+        list_with_elements_randomly_repeated = []
+        for field_idx, field in enumerate(shuffled_copied_list):
+            for i in range(
+                num_times_to_duplicate_chooser(
+                    len(list_with_elements_randomly_repeated), field_idx
+                )
+            ):
+                list_with_elements_randomly_repeated.append(field)
+        random.shuffle(list_with_elements_randomly_repeated)
+
+        return list_with_elements_randomly_repeated[
+            0 : random_slice_length_chooser(len(list_with_elements_randomly_repeated))
+        ]
+
+    def random_string(self, length: int, simple=False):
+        r = randint(0, 10)
+        if r < 1 and not simple:
+            # Update this to include code point ranges to be sampled
+            include_ranges = [
+                (0x0021, 0x0021),
+                (0x0023, 0x0026),
+                (0x0028, 0x007E),
+                (0x00A1, 0x00AC),
+                (0x00AE, 0x00FF),
+                (0x0100, 0x017F),
+                (0x0180, 0x024F),
+                (0x2C60, 0x2C7F),
+                (0x16A0, 0x16F0),
+                (0x0370, 0x0377),
+                (0x037A, 0x037E),
+                (0x0384, 0x038A),
+                (0x038C, 0x038C),
+            ]
+
+            alphabet = [
+                chr(code_point)
+                for current_range in include_ranges
+                for code_point in range(current_range[0], current_range[1] + 1)
+            ]
+            return "".join(random.choice(alphabet) for _ in range(length))
+        elif r < 7 and not simple:
+            return self.fake.name()
+        else:
+            return "".join(
+                random.choice(string.ascii_letters + string.digits)
+                for _ in range(length)
+            )
+
+    def randomize(self, key, field_type, value):
+        if type(value) is str:
+            return self.random_string(randint(1, 255))
+        elif type(value) is int:
+            return randint(0, sys.maxsize)
+        elif type(value) is bool:
+            return self.randbool()
+        else:
+            raise Exception(
+                f"Unknown key {key}, {field_type.type}, {value}, {type(value)}"
+            )
+
+    # noinspection SpellCheckingInspection
+    def randbool(self):
+        return bool(random.getrandbits(1))
+
+    def random_maxsize_int(self) -> int:
+        return randint(-sys.maxsize, sys.maxsize)
+
+    def random_date(self):
+        return self.fake.date_time()
+
+
+# noinspection PyMethodMayBeStatic
 class Fuzzer:
-    def __init__(self, seed: int, user: User, debug: bool):
+    def __init__(self, seed: int, user: User, debug: bool, fuzz_options: FuzzOptions):
         self.seed = seed
         self.user = user
-        self.fake = Faker()
         self.debug = debug
-        random.seed(seed)
-        self.fake.seed_instance(seed)
+        self.options = fuzz_options
+        self.randomizer = fuzz_options.randomizer
+        self.randomizer.seed_instance(self.seed)
 
     def fuzz(
         self,
@@ -282,6 +426,65 @@ class Fuzzer:
                 trash_entry.save()
                 TrashHandler().permanently_delete_marked_trash()
         return database
+
+    def _setup_database(self) -> Database:
+        unique_run_id = str(self.seed)
+        group_user = CoreHandler().create_group(self.user, unique_run_id)
+        group = group_user.group
+        return cast(
+            Database,
+            CoreHandler().create_application(
+                self.user, group, "database", unique_run_id
+            ),
+        )
+
+    def _setup_tables(self, database: Database) -> List[Table]:
+        num_tables = self.options.get_num_tables()
+        tables = []
+        for i in tqdm(range(num_tables), desc=f"{pid()}: Creating tables"):
+            table = TableHandler().create_table(
+                self.user,
+                database,
+                self.options.get_random_table_name(),
+                fill_example=False,
+            )
+            fields = self._create_random_fields(table, tables)
+            views = self._create_random_views(table)
+            self._create_view_options(fields, views)
+            tables.append(table)
+
+            fill_table_rows(options randint(0, 1000), table, fake=self.randomizer.fake)
+            self._create_random_view_filters(views, fields)
+        return tables
+
+    def _create_random_fields(self, table: Table, tables: List[Table]) -> List[Field]:
+        num_fields = randint(1, 25)
+        ran_field_types = []
+        for i in range(num_fields):
+            ran_field_types.append(random.choice(list(field_type_registry.get_all())))
+        # 25% chance we always have a link row
+        if randint(0, 4) == 0:
+            ran_field_types.append(field_type_registry.get(LinkRowFieldType.type))
+        primary_made = False
+        fields = []
+        for field_type in tqdm(
+            ran_field_types, desc=f"{pid()}: Creating fields in table {table.id}"
+        ):
+            if not primary_made and field_type.can_be_primary_field:
+                primary_made = True
+                primary = True
+            else:
+                primary = False
+            field = self.create_random_field(
+                field_type,
+                table,
+                tables,
+                fields,
+                primary,
+            )
+            if field is not None:
+                fields.append(field)
+        return fields
 
     def _create_view_options(self, fields: List[Field], views: List[View]):
         for view in tqdm(views, desc=f"{pid()}: Setting view options"):
@@ -349,7 +552,9 @@ class Fuzzer:
         for view in tqdm(views, desc=f"{pid()}: Creating random filters sorts"):
             view_type = view_type_registry.get_by_model(view)
             if view_type.can_filter:
-                for field in self._shuffle_dupe_and_slice_fields_randomly(fields):
+                for field in self.randomizer.shuffle_dupe_and_slice_fields_randomly(
+                    fields
+                ):
                     cache = {}
                     num_filters = randint(0, 4)
                     valid_view_filters = []
@@ -370,22 +575,6 @@ class Fuzzer:
                         )
             return view_filters
 
-    def _shuffle_dupe_and_slice_fields_randomly(
-        self, fields: List[Field]
-    ) -> List[Field]:
-        max_filters = (
-            randint(0, len(fields) * 2) if randint(0, 5) == 0 else randint(0, 5)
-        )
-        shuffled_fields = list(fields)
-        random.shuffle(shuffled_fields)
-        repeated_fields = []
-        for field in shuffled_fields:
-            for i in range(randint(0, 4)):
-                repeated_fields.append(field)
-        random.shuffle(repeated_fields)
-        repeated_fields = repeated_fields[0:max_filters]
-        return repeated_fields
-
     def _make_random_view_filter(
         self,
         cache: Dict[str, Any],
@@ -404,18 +593,18 @@ class Fuzzer:
             ContainsNotViewFilterType.type,
             SingleSelectEqualViewFilterType.type,
         ]:
-            random_value = field_type.random_value(field, self.fake, cache)
+            random_value = field_type.random_value(field, self.randomizer.fake, cache)
             if isinstance(random_value, str):
                 if randint(0, 2) == 0:
-                    random_value = random_string(1)
+                    random_value = self.randomizer.random_string(1, simple=True)
                 elif randint(0, 4) == 0:
-                    random_value = self.random_substr(random_value)
+                    random_value = self.randomizer.random_substr(random_value)
         elif view_filter_type.type == FilenameContainsViewFilterType.type:
             if randint(0, 2) == 0:
-                random_value = self.random_string(1)
+                random_value = self.randomizer.random_string(1, simple=True)
             else:
-                random_value = self.random_substr(
-                    UserFile.objects.order("?").first().original_name
+                random_value = self.randomizer.random_substr(
+                    UserFile.objects.order_by("?").first().original_name
                 )
         elif view_filter_type.type == HasFileTypeViewFilterType.type:
             if randint(0, 1) == 0:
@@ -428,7 +617,9 @@ class Fuzzer:
             random_value = randint(0, sys.maxsize)
         elif view_filter_type.type in [DateEqualsDaysAgoViewFilterType.type]:
             random_value = (
-                self.random_tz() + "?" + str(randint(-sys.maxsize, sys.maxsize))
+                self.randomizer.random_tz()
+                + "?"
+                + str(self.randomizer.random_maxsize_int())
             )
         elif view_filter_type.type in [
             HigherThanViewFilterType.type,
@@ -446,7 +637,7 @@ class Fuzzer:
             DateBeforeViewFilterType.type,
             DateAfterViewFilterType.type,
         ]:
-            random_value = self.fake.date_time()
+            random_value = self.randomizer.random_date()
         elif view_filter_type.type in [
             DateEqualsTodayViewFilterType.type,
             DateEqualsCurrentMonthViewFilterType.type,
@@ -454,7 +645,7 @@ class Fuzzer:
             random_value = ""
         elif view_filter_type.type in [BooleanViewFilterType.type]:
             if randint(0, 5) == 1:
-                random_value = self.random_string(255)
+                random_value = self.randomizer.random_string(255)
             elif randint(0, 1) == 1:
                 random_value = "t"
             else:
@@ -476,71 +667,6 @@ class Fuzzer:
             random_value = ""
         return ViewHandler().create_filter(
             self.user, view, field, view_filter_type.type, value=str(random_value)
-        )
-
-    def random_substr(self, random_value):
-        start = randint(0, len(random_value) - 1)
-        length = randint(1, len(random_value) - start - 1)
-        random_value = random_value[start : start + length]
-        return random_value
-
-    def _setup_tables(self, database: Database) -> List[Table]:
-        num_tables = randint(1, 5)
-        tables = []
-        for _ in tqdm(range(num_tables), desc=f"{pid()}: Creating tables"):
-            table = TableHandler().create_table(
-                self.user,
-                database,
-                self.random_string(randint(1, 255)),
-                fill_example=False,
-            )
-            fields = self._create_random_fields(table, tables)
-            views = self._create_random_views(table)
-            self._create_view_options(fields, views)
-            tables.append(table)
-
-            fill_table_rows(randint(0, 1000), table, fake=self.fake)
-            self._create_random_view_filters(views, fields)
-        return tables
-
-    def _create_random_fields(self, table: Table, tables: List[Table]) -> List[Field]:
-        num_fields = randint(1, 25)
-        ran_field_types = []
-        for i in range(num_fields):
-            ran_field_types.append(random.choice(list(field_type_registry.get_all())))
-        # 25% chance we always have a link row
-        if randint(0, 4) == 0:
-            ran_field_types.append(field_type_registry.get(LinkRowFieldType.type))
-        primary_made = False
-        fields = []
-        for field_type in tqdm(
-            ran_field_types, desc=f"{pid()}: Creating fields in table {table.id}"
-        ):
-            if not primary_made and field_type.can_be_primary_field:
-                primary_made = True
-                primary = True
-            else:
-                primary = False
-            field = self.create_random_field(
-                field_type,
-                table,
-                tables,
-                fields,
-                primary,
-            )
-            if field is not None:
-                fields.append(field)
-        return fields
-
-    def _setup_database(self) -> Database:
-        unique_run_id = str(self.seed)
-        group_user = CoreHandler().create_group(self.user, unique_run_id)
-        group = group_user.group
-        return cast(
-            Database,
-            CoreHandler().create_application(
-                self.user, group, "database", unique_run_id
-            ),
         )
 
     def get_rows(self, table, user):
@@ -574,8 +700,8 @@ class Fuzzer:
             kwargs = {
                 "filter_type": random.choice([x for x, _ in FILTER_TYPES]),
                 "filters_disabled": randint(0, 5) == 0,
-                "public": self.randbool(),
-                "public_view_password": self.random_string(randint(1, 128)),
+                "public": self.randomizer.randbool(),
+                "public_view_password": self.randomizer.random_string(randint(1, 128)),
             }
             if view_type.type == GridViewType.type:
                 pass
@@ -590,7 +716,7 @@ class Fuzzer:
                     self.user,
                     table,
                     type_name=view_type.type,
-                    name=self.random_string(randint(1, 255)),
+                    name=self.randomizer.random_string(randint(1, 255)),
                     **kwargs,
                 )
             )
@@ -626,7 +752,9 @@ class Fuzzer:
 
         for key, value in field_kwargs.items():
             if key == "name":
-                new_field_kwargs["name"] = self.random_string(randint(1, 255))
+                new_field_kwargs["name"] = self.randomizer.random_string(
+                    randint(1, 255)
+                )
             elif key == "style":
                 new_field_kwargs[key] = random.choice(
                     [x for x, _ in RATING_STYLE_CHOICES]
@@ -642,7 +770,7 @@ class Fuzzer:
             elif key == "date_format":
                 new_field_kwargs[key] = random.choice(list(DATE_FORMAT.keys()))
             elif key == "timezone":
-                new_field_kwargs[key] = self.random_tz()
+                new_field_kwargs[key] = self.randomizer.random_tz()
             elif key == "formula":
                 new_field_kwargs[key] = "1"
             elif key == "through_field_name":
@@ -664,7 +792,7 @@ class Fuzzer:
                     options.append(
                         {
                             "id": i,
-                            "value": self.random_string(randint(1, 255)),
+                            "value": self.randomizer.random_string(randint(1, 255)),
                             "color": random.choice(
                                 list(AIRTABLE_BASEROW_COLOR_MAPPING.values())
                             ),
@@ -674,7 +802,9 @@ class Fuzzer:
             elif key == "link_row_table":
                 new_field_kwargs[key] = random.choice(tables)
             else:
-                new_field_kwargs[key] = self.randomize(key, field_type, value)
+                new_field_kwargs[key] = self.randomizer.randomize(
+                    key, field_type, value
+                )
             new_field_kwargs["primary"] = primary
 
         if primary:
@@ -688,60 +818,6 @@ class Fuzzer:
             return FieldHandler().create_field(
                 self.user, table, field_type.type, **new_field_kwargs
             )
-
-    def random_tz(self):
-        choice = random.choice(pytz.all_timezones)
-        return choice
-
-    def random_string(self, length: int):
-        r = randint(0, 10)
-        if r < 1:
-            # Update this to include code point ranges to be sampled
-            include_ranges = [
-                (0x0021, 0x0021),
-                (0x0023, 0x0026),
-                (0x0028, 0x007E),
-                (0x00A1, 0x00AC),
-                (0x00AE, 0x00FF),
-                (0x0100, 0x017F),
-                (0x0180, 0x024F),
-                (0x2C60, 0x2C7F),
-                (0x16A0, 0x16F0),
-                (0x0370, 0x0377),
-                (0x037A, 0x037E),
-                (0x0384, 0x038A),
-                (0x038C, 0x038C),
-            ]
-
-            alphabet = [
-                chr(code_point)
-                for current_range in include_ranges
-                for code_point in range(current_range[0], current_range[1] + 1)
-            ]
-            return "".join(random.choice(alphabet) for _ in range(length))
-        elif r < 7:
-            return self.fake.name()
-        else:
-            return "".join(
-                random.choice(string.ascii_letters + string.digits)
-                for _ in range(length)
-            )
-
-    def randomize(self, key, field_type, value):
-        if type(value) is str:
-            return self.random_string(randint(1, 255))
-        elif type(value) is int:
-            return randint(0, sys.maxsize)
-        elif type(value) is bool:
-            return self.randbool()
-        else:
-            raise Exception(
-                f"Unknown key {key}, {field_type.type}, {value}, {type(value)}"
-            )
-
-    # noinspection SpellCheckingInspection
-    def randbool(self):
-        return bool(random.getrandbits(1))
 
     def check_can_serialize_all_rows(self, view_id: int):
         search = None
