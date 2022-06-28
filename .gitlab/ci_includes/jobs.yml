@@ -6,7 +6,7 @@
 #
 # To extend this stage set the DOCKERFILE_PATH and IMAGE_NAME variables.
 .build-baserow-image:
-  image: docker:20.10.12
+  image: $CI_UTIL_IMAGE
   stage: build
   interruptible: true
   # We can't use the newer rules: syntax due to https://gitlab.com/gitlab-org/gitlab/-/issues/34756
@@ -42,6 +42,9 @@
   script:
     - |
       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      docker context create multiarch
+      docker buildx create --driver docker-container --use multiarch
+
       echo "$CI_REGISTRY_PASSWORD" | \
         docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
       if [[ -z "$DOCKERFILE_PATH" ]]; then
@@ -121,7 +124,7 @@
       # * Target the dev image as we want to run tests and linting in this image.
       # * Tag as both the ci image for use in later stages and the latest ci image to
       #   cache any future ci pipeline runs.
-      docker buildx \
+      docker buildx build \
         --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         $CACHE_FROM_BUILD_ARGS \
@@ -186,6 +189,9 @@
   script:
     - |
       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      docker context create multiarch
+      docker buildx create --driver docker-container --use multiarch
+
       echo "$CI_REGISTRY_PASSWORD" | \
         docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
       if [[ -z "$DOCKERFILE_PATH" ]]; then
@@ -301,7 +307,7 @@
       setup_build_from_image WEBFRONTEND
 
       # Build the normal non-dev image with all the tags and labels.
-      docker buildx \
+      docker buildx build \
         --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
         $CACHE_FROM_BUILD_ARGS \
         $EXTRA_BUILD_ARGS \
@@ -315,7 +321,7 @@
       # image above to reduce its size.
       # We don't do this for master as master always caches from develop.
       if [[ "$CI_COMMIT_BRANCH" != "$MASTER_BRANCH_NAME" ]]; then
-        docker buildx \
+        docker buildx build \
           --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
           $CACHE_FROM_BUILD_ARGS \
           $EXTRA_BUILD_ARGS \
