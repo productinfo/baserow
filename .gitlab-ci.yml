@@ -199,6 +199,9 @@ variables:
   ENABLE_RELEASES:
     value: "false"
     description: "If true then on master and develop release images will be pushed automatically"
+  BASEROW_DOCKER_TARGET_PLATFORMS:
+    value: ""
+    description: "Passed to docker `buildx --platform HERE` when building, should be a list of valid buildx docker target architectures to build multiarch images for. When not specified defaults to linux/amd64 on feature branches and linux/arm/v7,linux/arm64/v8,linux/amd64 on master and develop."
   # An image repo which is used for storing and passing images between ci pipeline jobs
   # and also speeding up ci builds by caching from the latest ci image when building.
   CI_IMAGE_REPO: $CI_REGISTRY_IMAGE/ci

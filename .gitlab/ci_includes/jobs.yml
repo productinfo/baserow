@@ -41,6 +41,7 @@
       --label org.opencontainers.image.ref.name=$CI_IMAGE_REPO:$CI_COMMIT_REF_NAME
   script:
     - |
+      docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       echo "$CI_REGISTRY_PASSWORD" | \
         docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
       if [[ -z "$DOCKERFILE_PATH" ]]; then
@@ -107,6 +108,12 @@
         echo "Building from $BUILD_FROM_IMAGE."
       fi
 
+      if [[ "$CI_COMMIT_BRANCH" == "$MASTER_BRANCH_NAME" || "$CI_COMMIT_BRANCH" == "$DEVELOP_BRANCH_NAME" || "$CI_COMMIT_BRANCH" == "build-arm-images-in-ci" ]]; then
+        BASEROW_DOCKER_TARGET_PLATFORMS=${BASEROW_DOCKER_TARGET_PLATFORMS:-linux/arm/v7,linux/arm64/v8,linux/amd64}
+      else
+        BASEROW_DOCKER_TARGET_PLATFORMS=${BASEROW_DOCKER_TARGET_PLATFORMS:-linux/amd64}
+      fi
+
       # * Use `--build-arg BUILDKIT_INLINE_CACHE=1` to ensure this image's itermediate
       #    layers will be cached so builds caching from this image can use those layers.
       # * $CACHE_ARG is a --cache-from if we have an existing image that we can use
@@ -114,7 +121,8 @@
       # * Target the dev image as we want to run tests and linting in this image.
       # * Tag as both the ci image for use in later stages and the latest ci image to
       #   cache any future ci pipeline runs.
-      docker build \
+      docker buildx \
+        --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         $CACHE_FROM_BUILD_ARGS \
         $EXTRA_BUILD_ARGS \
@@ -177,6 +185,7 @@
       --label org.opencontainers.image.ref.name=$RELEASE_IMAGE_REPO:$CI_COMMIT_REF_NAME
   script:
     - |
+      docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       echo "$CI_REGISTRY_PASSWORD" | \
         docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
       if [[ -z "$DOCKERFILE_PATH" ]]; then
@@ -281,12 +290,19 @@
         fi
       }
 
+      if [[ "$CI_COMMIT_BRANCH" == "$MASTER_BRANCH_NAME" || "$CI_COMMIT_BRANCH" == "$DEVELOP_BRANCH_NAME" || "$CI_COMMIT_BRANCH" == "build-arm-images-in-ci" ]]; then
+        BASEROW_DOCKER_TARGET_PLATFORMS=${BASEROW_DOCKER_TARGET_PLATFORMS:-linux/arm/v7,linux/arm64/v8,linux/amd64}
+      else
+        BASEROW_DOCKER_TARGET_PLATFORMS=${BASEROW_DOCKER_TARGET_PLATFORMS:-linux/amd64}
+      fi
+
       setup_build_from_image ""
       setup_build_from_image BACKEND
       setup_build_from_image WEBFRONTEND
 
       # Build the normal non-dev image with all the tags and labels.
-      docker build \
+      docker buildx \
+        --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
         $CACHE_FROM_BUILD_ARGS \
         $EXTRA_BUILD_ARGS \
         $FORMATTEDTAGLIST \
@@ -299,7 +315,8 @@
       # image above to reduce its size.
       # We don't do this for master as master always caches from develop.
       if [[ "$CI_COMMIT_BRANCH" != "$MASTER_BRANCH_NAME" ]]; then
-        docker build \
+        docker buildx \
+          --platform "${BASEROW_DOCKER_TARGET_PLATFORMS}" \
           $CACHE_FROM_BUILD_ARGS \
           $EXTRA_BUILD_ARGS \
           $IMAGE_LABELS \
