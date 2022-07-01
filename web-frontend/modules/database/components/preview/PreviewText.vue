@@ -22,7 +22,7 @@ export default {
   },
   async created() {
     try {
-      this.text = (await this.$client.get(this.url)).data
+      this.text = (await (await fetch(this.url)).text()) || ''
     } catch (error) {
       notifyIf(error)
     }
