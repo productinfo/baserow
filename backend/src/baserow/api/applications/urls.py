@@ -5,6 +5,7 @@ from .views import (
     AllApplicationsView,
     ApplicationView,
     OrderApplicationsView,
+    DuplicateApplicationView,
 )
 
 
@@ -19,5 +20,10 @@ urlpatterns = [
         name="order",
     ),
     re_path(r"(?P<application_id>[0-9]+)/$", ApplicationView.as_view(), name="item"),
+    re_path(
+        r"(?P<application_id>[0-9]+)/duplicate/$",
+        DuplicateApplicationView.as_view(),
+        name="duplicate",
+    ),
     re_path(r"$", AllApplicationsView.as_view(), name="list"),
 ]

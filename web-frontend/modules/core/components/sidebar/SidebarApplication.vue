@@ -41,6 +41,16 @@
             </a>
           </li>
           <li>
+            <a @click="duplicateApplication()">
+              <i class="context__menu-icon fas fa-fw fa-copy"></i>
+              {{
+                $t('sidebarApplication.duplicateApplication', {
+                  type: application._.type.name.toLowerCase(),
+                })
+              }}
+            </a>
+          </li>
+          <li>
             <a @click="showApplicationTrashModal">
               <i class="context__menu-icon fas fa-fw fa-recycle"></i>
               {{ $t('sidebarApplication.viewTrash') }}
@@ -121,6 +131,25 @@ export default {
       }
 
       this.setLoading(application, false)
+    },
+    async duplicateApplication() {
+      const application = this.application
+      this.setLoading(application, true)
+
+      let newApplication
+      try {
+        newApplication = await this.$store.dispatch('application/duplicate', {
+          application,
+        })
+      } catch (error) {
+        notifyIf(error, 'application')
+      }
+
+      this.$refs.context.hide()
+      this.setLoading(application, false)
+      if (newApplication) {
+        this.$emit('selected', newApplication)
+      }
     },
     async deleteApplication() {
       this.deleteLoading = true

@@ -167,6 +167,16 @@ export const actions = {
     dispatch('forceCreate', data)
   },
   /**
+   * Duplicate an existent application.
+   */
+  async duplicate({ dispatch }, { application }) {
+    const { data } = await ApplicationService(this.$client).duplicate(
+      application.id
+    )
+    dispatch('forceCreate', data)
+    return data
+  },
+  /**
    * Forcefully create an item in the store without making a call to the server.
    */
   forceCreate({ commit }, data) {

@@ -27,6 +27,7 @@ class CoreConfig(AppConfig):
             UpdateApplicationActionType,
             DeleteApplicationActionType,
             OrderApplicationsActionType,
+            DuplicateApplicationActionType,
         )
 
         action_type_registry.register(CreateGroupActionType())
@@ -37,6 +38,7 @@ class CoreConfig(AppConfig):
         action_type_registry.register(UpdateApplicationActionType())
         action_type_registry.register(DeleteApplicationActionType())
         action_type_registry.register(OrderApplicationsActionType())
+        action_type_registry.register(DuplicateApplicationActionType())
 
         from baserow.core.action.scopes import (
             RootActionScopeType,

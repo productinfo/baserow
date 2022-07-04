@@ -1,6 +1,8 @@
 import hashlib
 import json
 import os
+import re
+
 from io import BytesIO
 from pathlib import Path
 from typing import NewType, cast, List
@@ -10,7 +12,9 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
+from django.core.files import File
 from django.core.files.storage import default_storage
+from django.core.files.temp import NamedTemporaryFile
 from django.db import transaction
 from django.db.models import Q, Count
 from django.utils import translation
@@ -66,7 +70,7 @@ from .signals import (
     groups_reordered,
 )
 from .trash.handler import TrashHandler
-from .utils import set_allowed_attrs
+from .utils import find_unused_name, set_allowed_attrs
 
 User = get_user_model()
 
@@ -759,6 +763,57 @@ class CoreHandler:
         application_updated.send(self, application=application, user=user)
 
         return application
+
+    def duplicate_application(
+        self, user: AbstractUser, application: Application
+    ) -> Application:
+        """
+        Duplicates an existing application instance.
+
+        :param user: The user on whose behalf the application is duplicated.
+        :param application: The application instance that needs to be duplicated.
+        :return: The new (duplicated) application instance.
+        """
+
+        group = application.group
+        group.has_user(user, raise_error=True)
+
+        storage = default_storage
+        files_buffer = File(NamedTemporaryFile(delete=True))
+
+        # export the application
+        with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
+            application_type = application_type_registry.get_by_model(application)
+            serialized = application_type.export_serialized(
+                application, files_zip, storage
+            )
+
+        # Set a new unique name for the new application
+        existing_applications_names = Application.objects.filter(
+            group__users__in=[user], group__trashed=False
+        ).values_list("name", flat=True)
+        name = serialized["name"]
+        ending_number_regex = re.compile(r"(.+) (\d+)$")
+        match = ending_number_regex.match(name)
+        if match:
+            name, _ = match.groups()
+        serialized["name"] = find_unused_name(
+            [name], existing_applications_names, max_length=255
+        )
+
+        # import back as a new application
+        with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
+            id_mapping = {}
+            application_type = application_type_registry.get(serialized["type"])
+            new_application_clone = application_type.import_serialized(
+                group,
+                serialized,
+                id_mapping,
+                files_zip,
+                storage,
+            )
+
+        return new_application_clone
 
     def order_applications(
         self, user: User, group: Group, order: List[int]
