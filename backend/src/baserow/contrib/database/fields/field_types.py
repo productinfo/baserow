@@ -1622,8 +1622,9 @@ class LinkRowFieldType(FieldType):
         self,
         field: LinkRowField,
         starting_row,
-        update_collector: CachingFieldUpdateCollector,
+        update_collector: "FieldUpdateCollector",
         via_path_to_starting_table: Optional[List[LinkRowField]],
+        field_cache: "FieldCache",
     ):
         update_collector.add_field_with_pending_update_statement(
             field, None, via_path_to_starting_table
@@ -1633,6 +1634,7 @@ class LinkRowFieldType(FieldType):
             field,
             starting_row,
             update_collector,
+            field_cache,
             via_path_to_starting_table,
         )
 

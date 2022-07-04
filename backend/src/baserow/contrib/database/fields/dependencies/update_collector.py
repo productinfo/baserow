@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Optional, Dict, List, Tuple, Set, cast
 
+from django.db import transaction
 from django.db.models import Expression, Q
 
 from baserow.contrib.database.fields.dependencies.exceptions import InvalidViaPath
