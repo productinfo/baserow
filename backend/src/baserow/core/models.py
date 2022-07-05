@@ -423,12 +423,14 @@ class DuplicateApplicationJob(Job):
     original_application = models.ForeignKey(
         Application,
         null=True,
+        related_name="duplicate_application_jobs_from",
         on_delete=models.SET_NULL,
         help_text="The Baserow application to duplicate.",
     )
     duplicated_application = models.ForeignKey(
         Application,
         null=True,
+        related_name="duplicate_application_jobs_to",
         on_delete=models.SET_NULL,
         help_text="The duplicated Baserow application.",
     )
@@ -437,4 +439,11 @@ class DuplicateApplicationJob(Job):
         default="",
         null=True,
         help_text="The user session id needed for undo/redo functionality.",
+    )
+
+    user_websocket_id = models.CharField(
+        max_length=255,
+        default="",
+        null=True,
+        help_text="The user websocket id needed to manage signals sent correctly.",
     )

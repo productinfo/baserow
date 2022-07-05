@@ -57,7 +57,7 @@ export default {
      */
     startJobPoller(job) {
       this.job = job
-      this.pollInterval = setInterval(this.getLatestJobInfo, 1000)
+      this.pollInterval = setInterval(this.getLatestJobInfo.bind(this), 1000)
     },
     async getLatestJobInfo() {
       try {

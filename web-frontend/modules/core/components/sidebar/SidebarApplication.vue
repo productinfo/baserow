@@ -41,7 +41,13 @@
             </a>
           </li>
           <li>
-            <a @click="duplicateApplication()">
+            <a
+              :class="{
+                'context__menu-item--loading': duplicateLoading,
+                disabled: duplicateLoading,
+              }"
+              @click="duplicateApplication()"
+            >
               <i class="context__menu-icon fas fa-fw fa-copy"></i>
               {{
                 $t('sidebarApplication.duplicateApplication', {
@@ -83,12 +89,17 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { notifyIf } from '@baserow/modules/core/utils/error'
+import jobProgress from '@baserow/modules/core/mixins/jobProgress'
+
+// import { ResponseErrorMessage } from '@baserow/modules/core/plugins/clientHandler'
 import TrashModal from '@baserow/modules/core/components/trash/TrashModal'
 
 export default {
   name: 'SidebarApplication',
   components: { TrashModal },
+  mixins: [jobProgress],
   props: {
     application: {
       type: Object,
@@ -102,7 +113,16 @@ export default {
   data() {
     return {
       deleteLoading: false,
+      duplicateLoading: false,
     }
+  },
+  computed: {
+    ...mapGetters({
+      getApplication: 'application/get',
+    }),
+  },
+  beforeDestroy() {
+    this.stopPollIfRunning()
   },
   methods: {
     setLoading(application, value) {
@@ -132,26 +152,70 @@ export default {
 
       this.setLoading(application, false)
     },
-    async duplicateApplication() {
-      const application = this.application
-      this.setLoading(application, true)
-
+    showNotificationErrorIfJobFails() {
+      this.$store.dispatch(
+        'notification/error',
+        {
+          title: this.$t('clientHandler.notCompletedTitle'),
+          message: this.$t('clientHandler.notCompletedDescription'),
+        },
+        { root: true }
+      )
+    },
+    hideAndStopDuplicating() {
+      this.$refs.context.hide()
+      this.duplicateLoading = false
+    },
+    // eslint-disable-next-line require-await
+    async onJobFailure() {
+      this.hideAndStopDuplicating()
+      this.showNotificationErrorIfJobFails()
+    },
+    // eslint-disable-next-line require-await
+    async onJobError() {
+      this.hideAndStopDuplicating()
+      this.showNotificationErrorIfJobFails()
+    },
+    async onJobDone() {
+      const newApplicationId = this.job.duplicated_application.id
       let newApplication
       try {
-        newApplication = await this.$store.dispatch('application/duplicate', {
-          application,
+        newApplication = await this.$store.dispatch('application/fetch', {
+          applicationId: newApplicationId,
         })
       } catch (error) {
         notifyIf(error, 'application')
       }
-
-      this.$refs.context.hide()
-      this.setLoading(application, false)
+      this.hideAndStopDuplicating()
       if (newApplication) {
         this.$emit('selected', newApplication)
       }
     },
+    async duplicateApplication() {
+      if (this.duplicateLoading) {
+        return
+      }
+
+      const application = this.application
+      this.duplicateLoading = true
+
+      try {
+        const job = await this.$store.dispatch('application/asyncDuplicate', {
+          application,
+        })
+        this.startJobPoller(job)
+      } catch (error) {
+        this.stopPollIfRunning()
+        this.setLoading(application, false)
+        this.duplicateLoading = false
+        notifyIf(error, 'application')
+      }
+    },
     async deleteApplication() {
+      if (this.deleteLoading) {
+        return
+      }
+
       this.deleteLoading = true
 
       try {

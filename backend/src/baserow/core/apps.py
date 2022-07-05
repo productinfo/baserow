@@ -52,6 +52,11 @@ class CoreConfig(AppConfig):
         action_scope_registry.register(ApplicationActionScopeType())
         action_scope_registry.register(ViewActionScopeType())
 
+        from baserow.core.jobs.registries import job_type_registry
+        from .job_type import DuplicateApplicationJobType
+
+        job_type_registry.register(DuplicateApplicationJobType())
+
         # Clear the key after migration so we will trigger a new template sync.
         post_migrate.connect(start_sync_templates_task_after_migrate, sender=self)
 

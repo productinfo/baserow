@@ -813,6 +813,14 @@ class CoreHandler:
                 storage,
             )
 
+        application_type = application_type_registry.get_by_model(new_application_clone)
+        application_created.send(
+            self,
+            application=new_application_clone,
+            user=user,
+            type_name=application_type.type,
+        )
+
         return new_application_clone
 
     def order_applications(

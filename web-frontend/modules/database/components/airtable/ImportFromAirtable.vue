@@ -104,7 +104,6 @@ export default {
             this.$t('importFromAirtable.errorJobAlreadyRunningDescription')
           ),
         })
-        this.loading = false
       }
     },
     stopPollAndHandleError(error, specificErrorMap = null) {

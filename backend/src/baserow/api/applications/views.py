@@ -12,6 +12,7 @@ from baserow.api.applications.errors import (
 )
 from baserow.api.decorators import validate_body, map_exceptions
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP, ERROR_GROUP_DOES_NOT_EXIST
+from baserow.api.jobs.serializers import JobSerializer
 from baserow.api.schemas import get_error_schema, CLIENT_SESSION_ID_SCHEMA_PARAMETER
 from baserow.api.sessions import get_untrusted_client_session_id
 from baserow.api.utils import DiscriminatorMappingSerializer
@@ -24,6 +25,7 @@ from baserow.core.exceptions import (
 )
 from baserow.core.db import specific_iterator
 from baserow.core.handler import CoreHandler
+from baserow.core.job_type import DuplicateApplicationJobType
 from baserow.core.jobs.handler import JobHandler
 from baserow.core.models import Application
 from baserow.core.registries import application_type_registry
@@ -40,7 +42,6 @@ from baserow.core.actions import (
     DeleteApplicationActionType,
     UpdateApplicationActionType,
     OrderApplicationsActionType,
-    DuplicateApplicationActionType,
 )
 from baserow.core.action.registries import action_type_registry
 
@@ -394,7 +395,7 @@ class OrderApplicationsView(APIView):
         return Response(status=204)
 
 
-class DuplicateApplicationView(APIView):
+class DuplicateApplicationJobView(APIView):
     permission_classes = (IsAuthenticated,)
 
     @extend_schema(
@@ -416,11 +417,7 @@ class DuplicateApplicationView(APIView):
             "views and rows are going to be duplicated."
         ),
         responses={
-            200: {
-                "type": "integer",
-                "description": "Id of the application duplication job started.",
-                "example": 1,
-            },
+            200: JobSerializer,
             400: get_error_schema(
                 ["ERROR_USER_NOT_IN_GROUP", "ERROR_CANNOT_DELETE_ALREADY_DELETED_ITEM"]
             ),
@@ -440,13 +437,12 @@ class DuplicateApplicationView(APIView):
         user = request.user
         session = get_untrusted_client_session_id(user)
 
-        application = CoreHandler().get_application(application_id).specific
-
         job = JobHandler().create_and_start_job(
             user,
-            "duplicate_application",
-            original_application=application,
+            DuplicateApplicationJobType.type,
+            application_id=application_id,
             user_session_id=session,
+            user_websocket_id=user.web_socket_id,
         )
 
-        return Response(job.id)
+        return Response(JobSerializer(job).data)

@@ -1,11 +1,11 @@
 from rest_framework import serializers
+from baserow.api.applications.serializers import ApplicationSerializer
 from baserow.api.sessions import set_untrusted_client_session_id
 from baserow.core.actions import DuplicateApplicationActionType
 
 from baserow.core.exceptions import UserNotInGroup, GroupDoesNotExist
 from baserow.core.handler import CoreHandler
 from baserow.core.models import DuplicateApplicationJob
-from baserow.core.signals import application_created
 from baserow.core.jobs.registries import JobType
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP, ERROR_GROUP_DOES_NOT_EXIST
 
@@ -30,11 +30,10 @@ class DuplicateApplicationJobType(JobType):
         ),
     }
 
-    serializer_field_names = ["application_id"]
+    serializer_field_names = ["original_application", "duplicated_application"]
     serializer_field_overrides = {
-        "application_id": serializers.IntegerField(
-            help_text="The application ID to duplicate.",
-        ),
+        "original_application": ApplicationSerializer(read_only=True),
+        "duplicated_application": ApplicationSerializer(read_only=True),
     }
 
     def prepare_values(self, values, user):
@@ -42,20 +41,28 @@ class DuplicateApplicationJobType(JobType):
         application = CoreHandler().get_application(values.pop("application_id"))
         application.group.has_user(user, raise_error=True)
 
-        return {"original_application": application}
+        return {
+            "original_application": application,
+            "user_session_id": values.get("user_session_id", None),
+            "user_websocket_id": values.get("user_websocket_id", None),
+        }
 
     def run(self, job, progress):
+
+        user = job.user
         if job.user_session_id:
-            set_untrusted_client_session_id(job.user, job.user_session_id)
+            set_untrusted_client_session_id(user, job.user_session_id)
+
+        user.web_socket_id = job.user_websocket_id
 
         new_application_clone = action_type_registry.get_by_type(
             DuplicateApplicationActionType
-        ).do(job.user, job.application)
+        ).do(user, job.original_application.specific)
+
+        progress.increment(100)
 
         # update the job with the new duplicated application
         job.duplicated_application = new_application_clone
         job.save(update_fields=("duplicated_application",))
 
-        application_created.send(self, application=new_application_clone, user=None)
-
-        return new_application_clone
+        return new_application_clone.specific

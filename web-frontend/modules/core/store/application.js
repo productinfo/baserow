@@ -108,6 +108,24 @@ export const actions = {
       throw error
     }
   },
+  /**
+   * Fetches one application for the authenticated user.
+   */
+  async fetch({ commit, dispatch }, { applicationId }) {
+    commit('SET_LOADING', true)
+
+    try {
+      const { data } = await ApplicationService(this.$client).fetch(
+        applicationId
+      )
+      dispatch('forceCreate', data)
+      commit('SET_LOADING', false)
+      return data
+    } catch (error) {
+      commit('SET_LOADING', false)
+      throw error
+    }
+  },
   forceSetAll({ commit }, { applications }) {
     applications.forEach((part, index) => {
       populateApplication(applications[index], this.$registry)
@@ -167,13 +185,13 @@ export const actions = {
     dispatch('forceCreate', data)
   },
   /**
-   * Duplicate an existent application.
+   * Duplicate an existent application. This function submit a new 'duplicate_applicaiton' job
+   * so 'data' will contains info about the job and not the duplicated application.
    */
-  async duplicate({ dispatch }, { application }) {
-    const { data } = await ApplicationService(this.$client).duplicate(
+  async asyncDuplicate({ dispatch }, { application }) {
+    const { data } = await ApplicationService(this.$client).asyncDuplicate(
       application.id
     )
-    dispatch('forceCreate', data)
     return data
   },
   /**

@@ -136,10 +136,6 @@ class TableHandler:
             user_session_id=session,
             sync=sync,
         )
-
-        if sync:
-            job.refresh_from_db()
-
         return job
 
     def create_minimal_table(
@@ -203,9 +199,6 @@ class TableHandler:
             user_session_id=session,
             sync=sync,
         )
-
-        if sync:
-            job.refresh_from_db()
 
         return job
 

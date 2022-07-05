@@ -135,6 +135,7 @@ class JobHandler:
 
         if sync:
             run_async_job(job.id)
+            job.refresh_from_db()
         else:
             transaction.on_commit(lambda: run_async_job.delay(job.id))
 
