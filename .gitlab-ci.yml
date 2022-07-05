@@ -828,3 +828,22 @@ mjml-compiled-check:
     - |
       git diff --exit-code || \
         (echo "Uncompiled changes found to mjml email templates, run the compiler in backend/email_compiler/ and committed the changes" && exit 1)
+
+docs-tester:
+  extends:
+    - .docker-image-test-stage
+    - .skippable-job
+  services:
+    - docker:20.10.12-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    RUN_WHEN_CHANGES_MADE_IN: "*.py *.js *.vue *.md *.env *.yml"
+  needs:
+    - job: build-backend-image
+  script:
+    - |
+      docker run \
+        --rm \
+        -v $PWD:/baserow_full_repo \
+        $BACKEND_CI_DEV_IMAGE bash -c "cd /baserow_full_repo && python ./repo_tests/doc_tester.py"
