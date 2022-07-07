@@ -404,7 +404,7 @@ class DuplicateApplicationJobView(APIView):
                 name="application_id",
                 location=OpenApiParameter.PATH,
                 type=OpenApiTypes.INT,
-                description="Deletes the application related to the provided value.",
+                description="The id of the application to duplicate.",
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
         ],

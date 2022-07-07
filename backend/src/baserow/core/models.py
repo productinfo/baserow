@@ -423,14 +423,14 @@ class DuplicateApplicationJob(Job):
     original_application = models.ForeignKey(
         Application,
         null=True,
-        related_name="duplicate_application_jobs_from",
+        related_name="duplicated_by_jobs",
         on_delete=models.SET_NULL,
         help_text="The Baserow application to duplicate.",
     )
     duplicated_application = models.ForeignKey(
         Application,
         null=True,
-        related_name="duplicate_application_jobs_to",
+        related_name="duplicated_from_jobs",
         on_delete=models.SET_NULL,
         help_text="The duplicated Baserow application.",
     )
