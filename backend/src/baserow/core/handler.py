@@ -1,11 +1,10 @@
 import hashlib
 import json
 import os
-import re
 
 from io import BytesIO
 from pathlib import Path
-from typing import NewType, cast, List
+from typing import NewType, Optional, cast, List
 from urllib.parse import urlparse, urljoin
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -16,7 +15,7 @@ from django.core.files import File
 from django.core.files.storage import default_storage
 from django.core.files.temp import NamedTemporaryFile
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Q, Count, QuerySet
 from django.utils import translation
 from itsdangerous import URLSafeSerializer
 from tqdm import tqdm
@@ -70,7 +69,7 @@ from .signals import (
     groups_reordered,
 )
 from .trash.handler import TrashHandler
-from .utils import find_unused_name, set_allowed_attrs
+from .utils import find_unused_name, set_allowed_attrs, split_ending_number
 
 User = get_user_model()
 
@@ -715,6 +714,22 @@ class CoreHandler:
 
         return application
 
+    def list_applications_in_group(
+        self, group: Group, base_queryset: Optional[QuerySet] = None
+    ) -> QuerySet:
+        """
+        Return a list of applications in a group.
+
+        :param group: The group to list the applications from.
+        :param base_queryset: The base queryset from where to select the application
+        :return: A list of applications in the group.
+        """
+
+        if base_queryset is None:
+            base_queryset = Application.objects
+
+        return base_queryset.filter(group_id=group.id, group__trashed=False)
+
     def create_application(
         self, user: AbstractUser, group: Group, type_name: str, name: str
     ) -> Application:
@@ -789,19 +804,15 @@ class CoreHandler:
             )
 
         # Set a new unique name for the new application
-        existing_applications_names = Application.objects.filter(
-            group__users__in=[user], group__trashed=False
+        existing_applications_names = self.list_applications_in_group(
+            group
         ).values_list("name", flat=True)
-        name = serialized["name"]
-        ending_number_regex = re.compile(r"(.+) (\d+)$")
-        match = ending_number_regex.match(name)
-        if match:
-            name, _ = match.groups()
+        name, _ = split_ending_number(serialized["name"])
         serialized["name"] = find_unused_name(
             [name], existing_applications_names, max_length=255
         )
 
-        # import back as a new application
+        # import it back as a new application
         with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
             id_mapping = {}
             application_type = application_type_registry.get(serialized["type"])
@@ -813,6 +824,7 @@ class CoreHandler:
                 storage,
             )
 
+        # broadcast the application_created signal
         application_type = application_type_registry.get_by_model(new_application_clone)
         application_created.send(
             self,

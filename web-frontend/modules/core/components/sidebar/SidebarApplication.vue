@@ -89,7 +89,6 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import jobProgress from '@baserow/modules/core/mixins/jobProgress'
 
@@ -115,11 +114,6 @@ export default {
       deleteLoading: false,
       duplicateLoading: false,
     }
-  },
-  computed: {
-    ...mapGetters({
-      getApplication: 'application/get',
-    }),
   },
   beforeDestroy() {
     this.stopPollIfRunning()
@@ -152,7 +146,7 @@ export default {
 
       this.setLoading(application, false)
     },
-    showNotificationErrorIfJobFails() {
+    showErrorNotificationIfJobFails() {
       this.$store.dispatch(
         'notification/error',
         {
@@ -169,12 +163,12 @@ export default {
     // eslint-disable-next-line require-await
     async onJobFailure() {
       this.hideAndStopDuplicating()
-      this.showNotificationErrorIfJobFails()
+      this.showErrorNotificationIfJobFails()
     },
     // eslint-disable-next-line require-await
     async onJobError() {
       this.hideAndStopDuplicating()
-      this.showNotificationErrorIfJobFails()
+      this.showErrorNotificationIfJobFails()
     },
     async onJobDone() {
       const newApplicationId = this.job.duplicated_application.id
@@ -206,7 +200,6 @@ export default {
         this.startJobPoller(job)
       } catch (error) {
         this.stopPollIfRunning()
-        this.setLoading(application, false)
         this.duplicateLoading = false
         notifyIf(error, 'application')
       }

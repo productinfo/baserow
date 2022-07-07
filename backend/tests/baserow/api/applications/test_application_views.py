@@ -11,6 +11,7 @@ from rest_framework.status import (
 )
 
 from baserow.contrib.database.models import Database
+from baserow.core.jobs.tasks import run_async_job
 
 
 @pytest.mark.django_db
@@ -293,7 +294,7 @@ def test_delete_application(api_client, data_fixture):
 
 
 @pytest.mark.django_db
-def test_order_tables(api_client, data_fixture):
+def test_order_applications(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -353,3 +354,96 @@ def test_order_tables(api_client, data_fixture):
     assert application_1.order == 3
     assert application_2.order == 2
     assert application_3.order == 1
+
+
+@pytest.mark.django_db
+def test_duplicate_application(api_client, data_fixture):
+    user_1, token_1 = data_fixture.create_user_and_token(
+        email="test_1@test.nl", password="password", first_name="Test1"
+    )
+    group_1 = data_fixture.create_group(user=user_1)
+    _, token_2 = data_fixture.create_user_and_token(
+        email="test_2@test.nl", password="password", first_name="Test2"
+    )
+    _, token_3 = data_fixture.create_user_and_token(
+        email="test_3@test.nl",
+        password="password",
+        first_name="Test3",
+        group=group_1,
+    )
+
+    application_1 = data_fixture.create_database_application(group=group_1, order=1)
+
+    # user_2 cannot duplicate a table of other groups
+    response = api_client.post(
+        reverse(
+            "api:applications:async_duplicate",
+            kwargs={"application_id": application_1.id},
+        ),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token_2}",
+    )
+    assert response.status_code == HTTP_400_BAD_REQUEST
+    assert response.json()["error"] == "ERROR_USER_NOT_IN_GROUP"
+
+    # cannot duplicate non-existent application
+    response = api_client.post(
+        reverse("api:applications:async_duplicate", kwargs={"application_id": 99999}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token_1}",
+    )
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert response.json()["error"] == "ERROR_APPLICATION_DOES_NOT_EXIST"
+
+    # user can duplicate an application created by other in the same group
+    response = api_client.post(
+        reverse(
+            "api:applications:async_duplicate",
+            kwargs={"application_id": application_1.id},
+        ),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token_3}",
+    )
+    assert response.status_code == HTTP_200_OK
+    job = response.json()
+    assert job["id"] == 1
+    assert job["state"] == "pending"
+    assert job["type"] == "duplicate_application"
+
+    # check that the job is in the queue
+    response = api_client.get(
+        reverse(
+            "api:jobs:item",
+            kwargs={"job_id": job["id"]},
+        ),
+        HTTP_AUTHORIZATION=f"JWT {token_3}",
+    )
+    assert response.status_code == HTTP_200_OK
+    job = response.json()
+    assert job["state"] == "pending"
+    assert job["type"] == "duplicate_application"
+    assert job["original_application"]["id"] == application_1.id
+    assert job["original_application"]["name"] == application_1.name
+    assert job["original_application"]["type"] == "database"
+    assert job["duplicated_application"] is None
+
+    run_async_job(job["id"])
+
+    # check that now the job ended correctly and the application was duplicated
+    response = api_client.get(
+        reverse(
+            "api:jobs:item",
+            kwargs={"job_id": job["id"]},
+        ),
+        HTTP_AUTHORIZATION=f"JWT {token_3}",
+    )
+    assert response.status_code == HTTP_200_OK
+    job = response.json()
+    assert job["state"] == "finished"
+    assert job["type"] == "duplicate_application"
+    assert job["original_application"]["id"] == application_1.id
+    assert job["original_application"]["name"] == application_1.name
+    assert job["original_application"]["type"] == "database"
+    assert job["duplicated_application"]["id"] != application_1.id
+    assert job["duplicated_application"]["name"] == f"{application_1.name} 2"
+    assert job["duplicated_application"]["type"] == "database"

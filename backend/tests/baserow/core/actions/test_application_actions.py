@@ -197,11 +197,10 @@ def test_can_undo_duplicate_application(data_fixture, django_assert_num_queries)
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
-    application_type = "database"
     application_name = "My Application"
 
-    application = action_type_registry.get_by_type(CreateApplicationActionType).do(
-        user, group, application_type, name=application_name
+    application = data_fixture.create_database_application(
+        user, group=group, name=application_name
     )
 
     new_application = action_type_registry.get_by_type(
@@ -225,11 +224,10 @@ def test_can_undo_redo_duplicate_application(data_fixture, django_assert_num_que
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
-    application_type = "database"
     application_name = "My Application"
 
-    application = action_type_registry.get_by_type(CreateApplicationActionType).do(
-        user, group, application_type, name=application_name
+    application = data_fixture.create_database_application(
+        user, group=group, name=application_name
     )
 
     new_application = action_type_registry.get_by_type(

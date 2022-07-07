@@ -53,7 +53,7 @@ class CoreConfig(AppConfig):
         action_scope_registry.register(ViewActionScopeType())
 
         from baserow.core.jobs.registries import job_type_registry
-        from .job_type import DuplicateApplicationJobType
+        from .job_types import DuplicateApplicationJobType
 
         job_type_registry.register(DuplicateApplicationJobType())
 

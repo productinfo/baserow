@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 
 from rest_framework_jwt.settings import api_settings
 
-from baserow.core.models import UserProfile
+from baserow.core.models import GROUP_USER_PERMISSION_ADMIN, GroupUser, UserProfile
 from baserow.api.sessions import set_untrusted_client_session_id
 
 User = get_user_model()
@@ -45,6 +45,15 @@ class UserFixtures:
         UserProfile.objects.create(**profile_data)
 
         set_untrusted_client_session_id(user, session_id)
+
+        # add it to a specific group if it is given
+        if "group" in kwargs:
+            GroupUser.objects.create(
+                group=kwargs["group"],
+                user=user,
+                order=0,
+                permissions=GROUP_USER_PERMISSION_ADMIN,
+            )
 
         return user
 

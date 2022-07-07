@@ -1,8 +1,5 @@
 export default (client) => {
   return {
-    fetch(applicationId) {
-      return client.get(`/applications/${applicationId}/`)
-    },
     fetchAll(groupId = null) {
       const groupUrl = groupId !== null ? `group/${groupId}/` : ''
       return client.get(`/applications/${groupUrl}`)
@@ -11,7 +8,7 @@ export default (client) => {
       return client.post(`/applications/group/${groupId}/`, values)
     },
     asyncDuplicate(applicationId) {
-      return client.post(`/applications/${applicationId}/async_duplicate/`)
+      return client.post(`/applications/${applicationId}/duplicate/async/`)
     },
     get(applicationId) {
       return client.get(`/applications/${applicationId}/`)

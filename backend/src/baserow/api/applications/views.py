@@ -25,7 +25,7 @@ from baserow.core.exceptions import (
 )
 from baserow.core.db import specific_iterator
 from baserow.core.handler import CoreHandler
-from baserow.core.job_type import DuplicateApplicationJobType
+from baserow.core.job_types import DuplicateApplicationJobType
 from baserow.core.jobs.handler import JobHandler
 from baserow.core.models import Application
 from baserow.core.registries import application_type_registry
@@ -395,7 +395,7 @@ class OrderApplicationsView(APIView):
         return Response(status=204)
 
 
-class DuplicateApplicationJobView(APIView):
+class AsyncDuplicateApplicationView(APIView):
     permission_classes = (IsAuthenticated,)
 
     @extend_schema(
@@ -419,7 +419,7 @@ class DuplicateApplicationJobView(APIView):
         responses={
             200: JobSerializer,
             400: get_error_schema(
-                ["ERROR_USER_NOT_IN_GROUP", "ERROR_CANNOT_DELETE_ALREADY_DELETED_ITEM"]
+                ["ERROR_USER_NOT_IN_GROUP", "ERROR_APPLICATION_NOT_IN_GROUP"]
             ),
             404: get_error_schema(["ERROR_APPLICATION_DOES_NOT_EXIST"]),
         },
@@ -432,7 +432,9 @@ class DuplicateApplicationJobView(APIView):
         }
     )
     def post(self, request: Request, application_id: int) -> Response:
-        """duplicates an existing application if the user belongs to the group."""
+        """
+        Duplicates an existing application if the user belongs to the group.
+        """
 
         user = request.user
         session = get_untrusted_client_session_id(user)

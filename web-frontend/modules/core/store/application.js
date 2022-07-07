@@ -115,9 +115,7 @@ export const actions = {
     commit('SET_LOADING', true)
 
     try {
-      const { data } = await ApplicationService(this.$client).fetch(
-        applicationId
-      )
+      const { data } = await ApplicationService(this.$client).get(applicationId)
       dispatch('forceCreate', data)
       commit('SET_LOADING', false)
       return data

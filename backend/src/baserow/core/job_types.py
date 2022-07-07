@@ -65,4 +65,4 @@ class DuplicateApplicationJobType(JobType):
         job.duplicated_application = new_application_clone
         job.save(update_fields=("duplicated_application",))
 
-        return new_application_clone.specific
+        return new_application_clone

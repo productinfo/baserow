@@ -5,7 +5,7 @@ from .views import (
     AllApplicationsView,
     ApplicationView,
     OrderApplicationsView,
-    DuplicateApplicationJobView,
+    AsyncDuplicateApplicationView,
 )
 
 
@@ -21,9 +21,9 @@ urlpatterns = [
     ),
     re_path(r"(?P<application_id>[0-9]+)/$", ApplicationView.as_view(), name="item"),
     re_path(
-        r"(?P<application_id>[0-9]+)/async_duplicate/$",
-        DuplicateApplicationJobView.as_view(),
-        name="duplicate",
+        r"(?P<application_id>[0-9]+)/duplicate/async/$",
+        AsyncDuplicateApplicationView.as_view(),
+        name="async_duplicate",
     ),
     re_path(r"$", AllApplicationsView.as_view(), name="list"),
 ]

@@ -427,7 +427,7 @@ class DuplicateApplicationJob(Job):
         on_delete=models.SET_NULL,
         help_text="The Baserow application to duplicate.",
     )
-    duplicated_application = models.ForeignKey(
+    duplicated_application = models.OneToOneField(
         Application,
         null=True,
         related_name="duplicated_from_jobs",
