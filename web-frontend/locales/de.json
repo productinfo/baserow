@@ -169,6 +169,10 @@
         "request": "Anfrage",
         "response": "Antwort",
         "successfullyUpdated": "Webhook erfolgreich aktualisiert.",
+        "form": {
+            "invalidURLTitle": "",
+            "invalidURLDescription": ""
+        },
         "status": {
             "noStatus": "KEIN STATUS",
             "statusOK": "OK",

@@ -160,7 +160,14 @@ export class ErrorHandler {
    * @return {boolean}
    */
   hasError() {
-    return this.response !== undefined && this.response.code !== null
+    return this.response !== undefined && this.response.code != null
+  }
+
+  hasRequestBodyValidationError() {
+    return (
+      this.response !== undefined &&
+      this.response?.data?.error === 'ERROR_REQUEST_BODY_VALIDATION'
+    )
   }
 
   /**
@@ -203,10 +210,66 @@ export class ErrorHandler {
       return this.errorMap[this.code]
     }
 
-    return new ResponseErrorMessage(
-      this.app.i18n.t('clientHandler.notCompletedTitle'),
-      this.app.i18n.t('clientHandler.notCompletedDescription')
-    )
+    return this.genericDefaultError()
+  }
+
+  /**
+   * Given a "ERROR_REQUEST_BODY_VALIDATION" error has occurred this function matches
+   * a provided error map against the machine readable error codes in the "detail"
+   * key in the response.
+   *
+   * For example if the response contains an error looking like:
+   *
+   * {
+   *   "error": "ERROR_REQUEST_BODY_VALIDATION",
+   *   "detail": {
+   *     "url": [
+   *       {
+   *         "error": "Enter a valid URL.",
+   *         "code": "invalid"
+   *       }
+   *     ]
+   *   }
+   * }
+   *
+   * Then you would call this function like so to match the above error and get your
+   * ResponseErrorMessage returned:
+   *
+   * getRequestBodyErrorMessage({"url":{"invalid": new ResponseErrorMessage('a','b')}})
+   *
+   * @param requestBodyErrorMap An object where it's keys are the names of the
+   * request body attribute that can fail with a value being another sub object. This
+   * sub object should be keyed by the "code" returned in the error detail with the
+   * value being a ResponseErrorMessage that should be returned if the API returned an
+   * error for that attribute and code.
+   * @return Any The first ResponseErrorMessage which is found in the error map that
+   * matches an error in the response body, or null if no match is found.
+   */
+  getRequestBodyErrorMessage(requestBodyErrorMap) {
+    const detail = this.response?.data?.detail
+    if (detail != null && typeof detail === 'object') {
+      for (const failedAttrName of Object.keys(detail)) {
+        const listOfDetailErrors = detail[failedAttrName]
+        const mapOfDetailCodeToResponseError =
+          requestBodyErrorMap[failedAttrName]
+
+        if (
+          listOfDetailErrors != null &&
+          Array.isArray(listOfDetailErrors) &&
+          mapOfDetailCodeToResponseError
+        ) {
+          for (const detailError of listOfDetailErrors) {
+            const handledError =
+              mapOfDetailCodeToResponseError[detailError.code]
+            if (handledError) {
+              return handledError
+            }
+          }
+        }
+      }
+    }
+
+    return this.genericDefaultError()
   }
 
   /**
@@ -252,7 +315,7 @@ export class ErrorHandler {
    * If there is an error or the requested detail is not found an error
    * message related to the problem is returned.
    */
-  getMessage(name = null, specificErrorMap = null) {
+  getMessage(name = null, specificErrorMap = null, requestBodyErrorMap = null) {
     if (this.isTooManyRequests()) {
       return this.getTooManyRequestsError()
     }
@@ -265,7 +328,17 @@ export class ErrorHandler {
     if (this.isNotFound()) {
       return this.getNotFoundMessage(name)
     }
-    return null
+    if (this.hasRequestBodyValidationError() && requestBodyErrorMap) {
+      return this.getRequestBodyErrorMessage(requestBodyErrorMap)
+    }
+    return this.genericDefaultError()
+  }
+
+  genericDefaultError() {
+    return new ResponseErrorMessage(
+      this.app.i18n.t('clientHandler.notCompletedTitle'),
+      this.app.i18n.t('clientHandler.notCompletedDescription')
+    )
   }
 
   /**

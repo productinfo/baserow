@@ -20,6 +20,7 @@ from .models import (
     TableWebhookHeader,
 )
 from .registries import webhook_event_type_registry
+from .validators import get_webhook_request_function
 
 
 class WebhookHandler:
@@ -298,10 +299,7 @@ class WebhookHandler:
         :return: The request and response as the tuple (request, response)
         """
 
-        if settings.DEBUG is True:
-            from requests import request
-        else:
-            from advocate import request
+        request = get_webhook_request_function()
 
         response = request(
             method,

@@ -156,6 +156,7 @@ For example:
 
 * Added prefill query parameters for forms. [#852](https://gitlab.com/bramw/baserow/-/issues/852)
 * Added Link Row contains filter. [874](https://gitlab.com/bramw/baserow/-/issues/874)
+* Add env vars for controlling which URLs and IPs webhooks are allowed to use. [#931](https://gitlab.com/bramw/baserow/-/issues/931)
 * Made the styling of the dashboard cleaner and more efficient.
   [#1023](https://gitlab.com/bramw/baserow/-/issues/1023)
 * Added possibility to delete own user account [#880](https://gitlab.com/bramw/baserow/-/issues/880)

@@ -45,6 +45,16 @@ export const isValidURL = (str) => {
   return !!pattern.test(str)
 }
 
+/**
+ * A slightly stricter URL validator than requires any url begins with a http:// or
+ * https:// and that it also passes the isValidURL validator above.
+ */
+export const isValidURLWithHttpScheme = (str) => {
+  const trimmedStr = str.trim()
+  const pattern = /^https?:\/\//gi
+  return !!pattern.test(trimmedStr) && isValidURL(trimmedStr)
+}
+
 export const isValidEmail = (str) => {
   // Please keep these regex in sync with the backend
   // See baserow.contrib.database.fields.field_types.EmailFieldType

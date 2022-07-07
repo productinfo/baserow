@@ -160,6 +160,10 @@
         "request": "",
         "response": "",
         "successfullyUpdated": "",
+        "form": {
+            "invalidURLTitle": "",
+            "invalidURLDescription": ""
+        },
         "status": {
             "noStatus": "",
             "statusOK": "",
