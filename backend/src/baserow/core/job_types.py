@@ -1,6 +1,7 @@
+from typing import Any, Dict
+from django.contrib.auth.models import AbstractUser
 from rest_framework import serializers
 from baserow.api.applications.serializers import ApplicationSerializer
-from baserow.api.sessions import set_untrusted_client_session_id
 from baserow.core.actions import DuplicateApplicationActionType
 
 from baserow.core.exceptions import UserNotInGroup, GroupDoesNotExist
@@ -36,24 +37,20 @@ class DuplicateApplicationJobType(JobType):
         "duplicated_application": ApplicationSerializer(read_only=True),
     }
 
-    def prepare_values(self, values, user):
+    def prepare_values(
+        self, values: Dict[str, Any], user: AbstractUser
+    ) -> Dict[str, Any]:
 
         application = CoreHandler().get_application(values.pop("application_id"))
         application.group.has_user(user, raise_error=True)
 
         return {
             "original_application": application,
-            "user_session_id": values.get("user_session_id", None),
-            "user_websocket_id": values.get("user_websocket_id", None),
         }
 
     def run(self, job, progress):
 
-        user = job.user
-        if job.user_session_id:
-            set_untrusted_client_session_id(user, job.user_session_id)
-
-        user.web_socket_id = job.user_websocket_id
+        user = job.restore_user_session()
 
         new_application_clone = action_type_registry.get_by_type(
             DuplicateApplicationActionType

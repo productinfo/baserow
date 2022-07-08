@@ -146,7 +146,7 @@ export default {
 
       this.setLoading(application, false)
     },
-    showErrorNotificationIfJobFails() {
+    notifyGenericError() {
       this.$store.dispatch(
         'notification/error',
         {
@@ -156,19 +156,20 @@ export default {
         { root: true }
       )
     },
-    hideAndStopDuplicating() {
+    stopDuplicating() {
+      this.stopPollIfRunning()
       this.$refs.context.hide()
       this.duplicateLoading = false
     },
     // eslint-disable-next-line require-await
     async onJobFailure() {
-      this.hideAndStopDuplicating()
-      this.showErrorNotificationIfJobFails()
+      this.stopDuplicating()
+      this.notifyGenericError()
     },
     // eslint-disable-next-line require-await
-    async onJobError() {
-      this.hideAndStopDuplicating()
-      this.showErrorNotificationIfJobFails()
+    async onJobError(error) {
+      this.stopDuplicating()
+      notifyIf(error, 'application')
     },
     async onJobDone() {
       const newApplicationId = this.job.duplicated_application.id
@@ -180,7 +181,7 @@ export default {
       } catch (error) {
         notifyIf(error, 'application')
       }
-      this.hideAndStopDuplicating()
+      this.stopDuplicating()
       if (newApplication) {
         this.$emit('selected', newApplication)
       }
@@ -199,8 +200,7 @@ export default {
         })
         this.startJobPoller(job)
       } catch (error) {
-        this.stopPollIfRunning()
-        this.duplicateLoading = false
+        this.stopDuplicating()
         notifyIf(error, 'application')
       }
     },

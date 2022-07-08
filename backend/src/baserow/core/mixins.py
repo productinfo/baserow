@@ -1,9 +1,14 @@
+from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Case, When, Value, Manager
 from django.db.models.fields import NOT_PROVIDED
 from django.db.models.fields.mixins import FieldCacheMixin
 from django.utils.functional import cached_property
+from baserow.api.sessions import (
+    get_untrusted_client_session_id,
+    set_untrusted_client_session_id,
+)
 
 from baserow.core.managers import (
     make_trash_manager,
@@ -260,6 +265,55 @@ class TrashableModelMixin(models.Model):
     objects = NoTrashManager()
     trash = TrashOnlyManager()
     objects_and_trash = Manager()
+
+    class Meta:
+        abstract = True
+
+
+class ActionableJobMixin(models.Model):
+    """
+    This mixin permits to add information about the user session to the job
+    in order to handle correctly the undo/redo functionality and the signals updates.
+    NOTE: it only works used in subclasses of Job.
+    """
+
+    user_session_id = models.CharField(
+        max_length=255,
+        default="",
+        null=True,
+        help_text="The user session id needed for undo/redo functionality.",
+    )
+
+    user_websocket_id = models.CharField(
+        max_length=255,
+        default="",
+        null=True,
+        help_text="The user websocket id needed to manage signals sent correctly.",
+    )
+
+    # TODO: add check for this mixin to be used only in subclasses of Job.
+
+    def save_user_session(self) -> None:
+        """
+        Save the user session id in the job.
+        """
+
+        self.user_session_id = get_untrusted_client_session_id(self.user)
+        self.user_websocket_id = self.user.web_socket_id
+
+    def save(self, *args, **kwargs):
+        self.save_user_session()
+        return super().save(*args, **kwargs)
+
+    def restore_user_session(self) -> AbstractUser:
+        """
+        Restore the user session id in the job.
+        """
+
+        if self.user_session_id:
+            set_untrusted_client_session_id(self.user, self.user_session_id)
+        self.user.web_socket_id = self.user_websocket_id
+        return self.user
 
     class Meta:
         abstract = True

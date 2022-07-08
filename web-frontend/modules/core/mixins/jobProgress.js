@@ -1,4 +1,5 @@
 import JobService from '@baserow/modules/core/services/job'
+import { ResponseErrorMessage } from '@baserow/modules/core/plugins/clientHandler'
 
 /**
  * To use this mixin you need to create the following methods on your component:
@@ -66,6 +67,7 @@ export default {
         if (this.jobHasFailed) {
           this.stopPollIfRunning()
           if (this.onJobFailure) {
+            const error = new ResponseErrorMessage()
             await this.onJobFailure()
           }
         } else if (!this.jobIsRunning) {

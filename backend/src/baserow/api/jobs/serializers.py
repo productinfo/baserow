@@ -1,3 +1,4 @@
+from typing import Type
 from django.utils.functional import lazy
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
@@ -54,3 +55,17 @@ class CreateJobSerializer(serializers.Serializer):
     class Meta:
         model = Job
         fields = ("user_id", "type")
+
+
+def get_job_serializer(instance: Job, **kwargs) -> Type[JobSerializer]:
+    """
+    Returns an instantiated serializer based on the instance class type. Custom
+    serializers can be defined per job type. This function will return the one
+    that is set else it will return the default one.
+
+    :param instance: The instance where a serializer is needed for.
+    :return: An instantiated serializer for the instance.
+    """
+
+    job_type = job_type_registry.get_by_model(instance.specific_class)
+    return job_type.get_serializer(instance, JobSerializer)

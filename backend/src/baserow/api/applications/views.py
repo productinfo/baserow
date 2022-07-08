@@ -12,9 +12,8 @@ from baserow.api.applications.errors import (
 )
 from baserow.api.decorators import validate_body, map_exceptions
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP, ERROR_GROUP_DOES_NOT_EXIST
-from baserow.api.jobs.serializers import JobSerializer
+from baserow.api.jobs.serializers import JobSerializer, get_job_serializer
 from baserow.api.schemas import get_error_schema, CLIENT_SESSION_ID_SCHEMA_PARAMETER
-from baserow.api.sessions import get_untrusted_client_session_id
 from baserow.api.utils import DiscriminatorMappingSerializer
 from baserow.api.trash.errors import ERROR_CANNOT_DELETE_ALREADY_DELETED_ITEM
 from baserow.core.exceptions import (
@@ -437,14 +436,9 @@ class AsyncDuplicateApplicationView(APIView):
         """
 
         user = request.user
-        session = get_untrusted_client_session_id(user)
 
         job = JobHandler().create_and_start_job(
-            user,
-            DuplicateApplicationJobType.type,
-            application_id=application_id,
-            user_session_id=session,
-            user_websocket_id=user.web_socket_id,
+            user, DuplicateApplicationJobType.type, application_id=application_id, sync=True
         )
 
-        return Response(JobSerializer(job).data)
+        return Response(get_job_serializer(job).data)

@@ -13,6 +13,7 @@ from baserow.core.jobs.models import Job
 from baserow.core.user_files.models import UserFile
 
 from .mixins import (
+    ActionableJobMixin,
     OrderableMixin,
     PolymorphicContentTypeMixin,
     CreatedAndUpdatedOnMixin,
@@ -419,7 +420,7 @@ class TrashEntry(models.Model):
         ]
 
 
-class DuplicateApplicationJob(Job):
+class DuplicateApplicationJob(Job, ActionableJobMixin):
     original_application = models.ForeignKey(
         Application,
         null=True,
@@ -433,17 +434,4 @@ class DuplicateApplicationJob(Job):
         related_name="duplicated_from_jobs",
         on_delete=models.SET_NULL,
         help_text="The duplicated Baserow application.",
-    )
-    user_session_id = models.CharField(
-        max_length=255,
-        default="",
-        null=True,
-        help_text="The user session id needed for undo/redo functionality.",
-    )
-
-    user_websocket_id = models.CharField(
-        max_length=255,
-        default="",
-        null=True,
-        help_text="The user websocket id needed to manage signals sent correctly.",
     )
