@@ -4,6 +4,7 @@ from django.db import connection
 from django.shortcuts import reverse
 from rest_framework.status import (
     HTTP_200_OK,
+    HTTP_202_ACCEPTED,
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
@@ -404,7 +405,7 @@ def test_duplicate_application(api_client, data_fixture):
         format="json",
         HTTP_AUTHORIZATION=f"JWT {token_3}",
     )
-    assert response.status_code == HTTP_200_OK
+    assert response.status_code == HTTP_202_ACCEPTED
     job = response.json()
     assert job["id"] == 1
     assert job["state"] == "pending"
@@ -418,7 +419,7 @@ def test_duplicate_application(api_client, data_fixture):
         ),
         HTTP_AUTHORIZATION=f"JWT {token_3}",
     )
-    assert response.status_code == HTTP_200_OK
+    assert response.status_code == HTTP_202_ACCEPTED
     job = response.json()
     assert job["state"] == "pending"
     assert job["type"] == "duplicate_application"
@@ -437,7 +438,7 @@ def test_duplicate_application(api_client, data_fixture):
         ),
         HTTP_AUTHORIZATION=f"JWT {token_3}",
     )
-    assert response.status_code == HTTP_200_OK
+    assert response.status_code == HTTP_202_ACCEPTED
     job = response.json()
     assert job["state"] == "finished"
     assert job["type"] == "duplicate_application"

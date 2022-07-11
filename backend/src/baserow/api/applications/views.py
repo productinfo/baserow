@@ -1,6 +1,7 @@
 from django.db import transaction
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -416,7 +417,7 @@ class AsyncDuplicateApplicationView(APIView):
             "views and rows are going to be duplicated."
         ),
         responses={
-            200: JobSerializer,
+            202: JobSerializer,
             400: get_error_schema(
                 ["ERROR_USER_NOT_IN_GROUP", "ERROR_APPLICATION_NOT_IN_GROUP"]
             ),
@@ -435,10 +436,13 @@ class AsyncDuplicateApplicationView(APIView):
         Duplicates an existing application if the user belongs to the group.
         """
 
-        user = request.user
-
         job = JobHandler().create_and_start_job(
-            user, DuplicateApplicationJobType.type, application_id=application_id, sync=True
+            request.user,
+            DuplicateApplicationJobType.type,
+            application_id=application_id,
         )
 
-        return Response(get_job_serializer(job).data)
+        return Response(
+            get_job_serializer(job).data,
+            status=status.HTTP_202_ACCEPTED,
+        )
