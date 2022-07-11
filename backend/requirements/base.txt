@@ -75,6 +75,8 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
+conditional==1.4
+    # via django-clone
 constantly==15.1.0
     # via twisted
 cryptography==36.0.1
@@ -97,6 +99,7 @@ django==3.2.13
     #   django-appconf
     #   django-celery-beat
     #   django-celery-email
+    #   django-clone
     #   django-cors-headers
     #   django-health-check
     #   django-redis
@@ -110,6 +113,8 @@ django-appconf==1.0.5
 django-celery-beat==2.2.1
     # via -r base.in
 django-celery-email==3.0.0
+    # via -r base.in
+django-clone==3.0.3
     # via -r base.in
 django-cors-headers==3.8.0
     # via -r base.in
@@ -132,6 +137,8 @@ drf-spectacular==0.21.2
     # via -r base.in
 faker==8.11.0
     # via -r base.in
+future==0.18.2
+    # via django-clone
 gunicorn==20.1.0
     # via -r base.in
 h11==0.13.0
@@ -251,6 +258,7 @@ six==1.16.0
     #   advocate
     #   automat
     #   click-repl
+    #   django-clone
     #   python-dateutil
     #   service-identity
 sqlparse==0.4.2

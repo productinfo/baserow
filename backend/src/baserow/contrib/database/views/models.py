@@ -4,6 +4,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q
+from model_clone import CloneMixin
 
 from baserow.core.utils import get_model_reference_field_name
 from baserow.core.models import UserFile
@@ -47,6 +48,7 @@ class View(
     CreatedAndUpdatedOnMixin,
     OrderableMixin,
     PolymorphicContentTypeMixin,
+    CloneMixin,
     models.Model,
 ):
     table = models.ForeignKey("database.Table", on_delete=models.CASCADE)
@@ -251,7 +253,7 @@ class ViewFilterManager(models.Manager):
         return super().get_queryset().filter(~trashed_Q)
 
 
-class ViewFilter(models.Model):
+class ViewFilter(CloneMixin, models.Model):
     objects = ViewFilterManager()
 
     view = models.ForeignKey(
@@ -297,7 +299,7 @@ class ViewDecorationManager(models.Manager):
         return super().get_queryset().filter(~trashed_Q)
 
 
-class ViewDecoration(OrderableMixin, models.Model):
+class ViewDecoration(OrderableMixin, CloneMixin, models.Model):
     objects = ViewDecorationManager()
 
     view = models.ForeignKey(
@@ -353,7 +355,7 @@ class ViewSortManager(models.Manager):
         return super().get_queryset().filter(~trashed_Q)
 
 
-class ViewSort(models.Model):
+class ViewSort(CloneMixin, models.Model):
     objects = ViewSortManager()
 
     view = models.ForeignKey(

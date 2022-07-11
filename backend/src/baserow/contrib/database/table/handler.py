@@ -1,13 +1,18 @@
-from typing import Any, cast, NewType, List, Tuple, Optional, Dict
+from typing import Any, Type, cast, NewType, List, Tuple, Optional, Dict
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.db import connection
 from django.db.models import QuerySet, Sum
 from django.utils import timezone
 from django.utils import translation
 from django.utils.translation import gettext as _
+from psycopg2 import sql
 
-from baserow.contrib.database.db.schema import safe_django_schema_editor
+from baserow.contrib.database.db.schema import (
+    create_model_and_related_tables_without_duplicates,
+    safe_django_schema_editor,
+)
 from baserow.contrib.database.fields.constants import RESERVED_BASEROW_FIELD_NAMES
 from baserow.contrib.database.fields.exceptions import (
     MaxFieldLimitExceeded,
@@ -31,7 +36,7 @@ from .exceptions import (
     InitialSyncTableDataLimitExceeded,
     InitialTableDataDuplicateName,
 )
-from .models import Table
+from .models import GeneratedTableModel, Table
 from .signals import table_updated, table_deleted, tables_reordered
 
 TableForUpdate = NewType("TableForUpdate", Table)
@@ -420,6 +425,158 @@ class TableHandler:
         table_updated.send(self, table=table, user=user)
 
         return table
+
+    def _duplicate_table_data(
+        self,
+        src_table_model: Type[GeneratedTableModel],
+        dst_table_model: Type[GeneratedTableModel],
+    ) -> None:
+        """
+        Duplicates the data of a table.
+        """
+
+        src_table_name = src_table_model._meta.db_table
+        dst_table_name = dst_table_model._meta.db_table
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                sql.SQL(
+                    """
+                INSERT INTO {target_table} SELECT * FROM {source_table}
+                """
+                ).format(
+                    source_table=sql.Identifier(src_table_name),
+                    target_table=sql.Identifier(dst_table_name),
+                )
+            )
+
+    def _duplicate_table_entry(
+        self,
+        user: AbstractUser,
+        table: Table,
+        name: str,
+        database: Optional[Database] = None,
+    ) -> Table:
+
+        if database is None:
+            database = table.database
+
+        return table.make_clone(attrs={"name": name, "database": database})
+
+    def _duplicate_table_model_and_data(
+        self,
+        user: AbstractUser,
+        original_table: Table,
+        duplicated_table: Table,
+        include_data: bool = True,
+        id_mapping: Optional[Dict[str, Dict[int, Any]]] = None,
+    ) -> None:
+
+        if id_mapping is None:
+            id_mapping = {
+                "tables": {
+                    original_table.id: duplicated_table,
+                    duplicated_table.id: original_table,
+                },
+                "fields": {},
+            }
+
+        from baserow.contrib.database.fields.handler import FieldHandler
+
+        field_handler = FieldHandler()
+        field_instances: List[Field] = []
+        for field in original_table.field_set.all():
+            duplicated_field = field_handler.duplicate_field(
+                user, field, duplicated_table, id_mapping=id_mapping
+            )
+            field_instances.append(duplicated_field)
+
+        new_table_model = duplicated_table.get_model(
+            fields=field_instances,
+            field_ids=[],
+            managed=True,
+            add_dependencies=False,
+        )
+        with safe_django_schema_editor() as schema_editor:
+            # Django only creates indexes when the model is managed.
+            create_model_and_related_tables_without_duplicates(
+                schema_editor, new_table_model
+            )
+
+        if include_data:
+            src_model_table = original_table.get_model()
+            self._duplicate_table_data(src_model_table, new_table_model)
+
+        from baserow.contrib.database.views.handler import ViewHandler
+
+        view_handler = ViewHandler()
+        for view in original_table.view_set.all():
+            view_handler.duplicate_view(
+                user,
+                view,
+                table=duplicated_table,
+            )
+
+    def duplicate_database_tables(
+        self,
+        user: AbstractUser,
+        tables: List[Table],
+        database: Database,
+        include_data: bool = True,
+    ) -> Table:
+
+        tables_id_mapping: Dict[int, Table] = {}
+        for table in tables:
+            duplicated_table = self._duplicate_table_entry(
+                user, table, table.name, database
+            )
+            tables_id_mapping[table.id] = duplicated_table
+            tables_id_mapping[duplicated_table.id] = table
+
+        id_mapping = {"tables": tables_id_mapping, "fields": {}}
+        for table in tables:
+            duplicated_table = tables_id_mapping[table.id]
+            self._duplicate_table_model_and_data(
+                user, table, duplicated_table, include_data, id_mapping
+            )
+        return database
+
+    def duplicate_table(
+        self,
+        user: AbstractUser,
+        table: Table,
+        name: Optional[str] = None,
+        database: Optional[Database] = None,
+        include_data: bool = True,
+    ) -> Table:
+        """
+        Duplicates a table.
+
+        :param table: The table that needs to be duplicated.
+        :param database: The database to which the table is duplicated. If not
+            provided, the table is duplicated to the same database.
+        :param include_data: Indicates if the data should be included in the
+            duplicated table.
+        :param include_views: Indicates if the views should be included in the
+            duplicated table.
+        :return: The duplicated table.
+        """
+
+        if not isinstance(table, Table):
+            raise ValueError("The table is not an instance of Table")
+
+        if database is None:
+            database = table.database
+
+        database.group.has_user(user, raise_error=True)
+
+        if name is None:
+            name = table.name
+
+        new_table = self._duplicate_table_entry(user, table, name, database)
+        self._duplicate_table_model_and_data(user, table, new_table, include_data)
+
+        return new_table
 
     def order_tables(self, user: AbstractUser, database: Database, order: List[int]):
         """

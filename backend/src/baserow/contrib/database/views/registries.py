@@ -165,6 +165,54 @@ class ViewType(
                 ),
             }
 
+    def duplicate_view(
+        self, user: AbstractUser, view: "View", table: "Table", name: str
+    ):
+        """
+        A hook that's called when a view is duplicated.
+
+        :param view: The duplicated view instance.
+        """
+
+        duplicated_view = view.make_clone(
+            attrs={"name": name, "table": table, "public": False}
+        )
+
+        id_mapping: Dict[int, Field] = {}
+
+        def find_corrisponding_field(original_field: "Field", new_table: "Table"):
+            if original_field.id in id_mapping:
+                return id_mapping[original_field.id]
+            corrispondent_field = new_table.field_set.get(name=original_field.name)
+            id_mapping[original_field.id] = corrispondent_field
+            return corrispondent_field
+
+        # duplicate all view filters
+        for viewfilter in view.viewfilter_set.all():
+            if table.id != view.table_id:
+                field = find_corrisponding_field(viewfilter.field, table)
+            else:
+                field = viewfilter.field
+            viewfilter.make_clone(attrs={"field": field, "view": duplicated_view})
+
+        # duplicate all view sortings
+        for viewsort in view.viewsort_set.all():
+            if table.id != view.table_id:
+                field = find_corrisponding_field(viewsort.field, table)
+            else:
+                field = viewsort.field
+            viewsort.make_clone(attrs={"field": field, "view": duplicated_view})
+
+        # duplicate all view decorators
+        for viewdecoration in view.viewdecoration_set.all():
+            if table.id != view.table_id:
+                field = find_corrisponding_field(viewdecoration.field, table)
+            else:
+                field = viewdecoration.field
+            viewdecoration.make_clone(attrs={"field": field, "view": duplicated_view})
+
+        return duplicated_view
+
     def export_serialized(
         self, view: "View", files_zip: ZipFile, storage: Optional[Storage] = None
     ) -> Dict[str, Any]:

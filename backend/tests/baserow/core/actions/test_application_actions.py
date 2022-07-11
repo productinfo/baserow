@@ -1,6 +1,7 @@
 import pytest
 
 from pytest_unordered import unordered
+from baserow.contrib.database import application_types
 
 from baserow.core.action.scopes import GroupActionScopeType
 from baserow.core.action.handler import ActionHandler
@@ -12,6 +13,7 @@ from baserow.core.actions import (
     CreateApplicationActionType,
     DuplicateApplicationActionType,
 )
+from baserow.core.handler import CoreHandler
 from baserow.core.models import Application
 
 

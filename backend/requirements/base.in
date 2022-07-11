@@ -34,3 +34,4 @@ django-health-check==3.16.5
 psutil==5.9.0
 dj-database-url==0.5.0
 redis==4.1.4
+django-clone==3.0.3

@@ -436,13 +436,24 @@ class AsyncDuplicateApplicationView(APIView):
         Duplicates an existing application if the user belongs to the group.
         """
 
-        job = JobHandler().create_and_start_job(
-            request.user,
-            DuplicateApplicationJobType.type,
-            application_id=application_id,
+        # job = JobHandler().create_and_start_job(
+        #     request.user,
+        #     DuplicateApplicationJobType.type,
+        #     application_id=application_id,
+        # )
+
+        # return Response(
+        #     get_job_serializer(job).data,
+        #     status=status.HTTP_202_ACCEPTED,
+        # )
+
+        core_handler = CoreHandler()
+        application = core_handler.get_application(application_id)
+        new_application_name = core_handler.find_unused_application_name(
+            application.group, proposed_name=application.name
+        )
+        new_application = core_handler.duplicate_application(
+            request.user, application, name=new_application_name
         )
 
-        return Response(
-            get_job_serializer(job).data,
-            status=status.HTTP_202_ACCEPTED,
-        )
+        return Response(get_application_serializer(new_application).data, status=200)

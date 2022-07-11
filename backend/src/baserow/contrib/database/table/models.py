@@ -4,6 +4,7 @@ from typing import Dict, Any, Union, Type
 from django.conf import settings
 from django.db import models
 from django.db.models import Q, F, QuerySet
+from model_clone import CloneMixin
 
 from baserow.contrib.database.fields.exceptions import (
     OrderByFieldNotFound,
@@ -344,7 +345,11 @@ class GeneratedTableModel(models.Model):
 
 
 class Table(
-    TrashableModelMixin, CreatedAndUpdatedOnMixin, OrderableMixin, models.Model
+    TrashableModelMixin,
+    CreatedAndUpdatedOnMixin,
+    OrderableMixin,
+    CloneMixin,
+    models.Model,
 ):
     USER_TABLE_DATABASE_NAME_PREFIX = "database_table_"
     database = models.ForeignKey("database.Database", on_delete=models.CASCADE)

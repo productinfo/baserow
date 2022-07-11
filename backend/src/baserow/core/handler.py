@@ -730,6 +730,23 @@ class CoreHandler:
 
         return base_queryset.filter(group_id=group.id, group__trashed=False)
 
+    def find_unused_application_name(self, group: Group, proposed_name: str) -> str:
+        """
+        Finds an unused application name in a group.
+
+        :param group: The group to find the application name in.
+        :param name: The name of the application that must be found.
+        :return: The name of the application that is not used in the group.
+        """
+
+        existing_application_names = self.list_applications_in_group(group).values_list(
+            "name", flat=True
+        )
+        name, _ = split_ending_number(proposed_name)
+        return find_unused_name(
+            [name], existing_names=existing_application_names, max_length=256
+        )
+
     def create_application(
         self, user: AbstractUser, group: Group, type_name: str, name: str
     ) -> Application:
@@ -780,7 +797,12 @@ class CoreHandler:
         return application
 
     def duplicate_application(
-        self, user: AbstractUser, application: Application
+        self,
+        user: AbstractUser,
+        application: Application,
+        group: Optional[Group] = None,
+        name: Optional[str] = None,
+        order: Optional[int] = None,
     ) -> Application:
         """
         Duplicates an existing application instance.
@@ -790,47 +812,24 @@ class CoreHandler:
         :return: The new (duplicated) application instance.
         """
 
-        group = application.group
+        if group is None:
+            group = application.group
+
         group.has_user(user, raise_error=True)
 
-        storage = default_storage
-        files_buffer = File(NamedTemporaryFile(delete=True))
+        if name is None:
+            name = application.name
 
-        # export the application
-        with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
-            application_type = application_type_registry.get_by_model(application)
-            serialized = application_type.export_serialized(
-                application, files_zip, storage
-            )
+        if order is None:
+            order = application.order + 1
 
-        # Set a new unique name for the new application
-        existing_applications_names = self.list_applications_in_group(
-            group
-        ).values_list("name", flat=True)
-        name, _ = split_ending_number(serialized["name"])
-        serialized["name"] = find_unused_name(
-            [name], existing_applications_names, max_length=255
+        application_type = application_type_registry.get_by_model(
+            application.specific_class
         )
+        specific_application = application.specific
 
-        # import it back as a new application
-        with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
-            id_mapping = {}
-            application_type = application_type_registry.get(serialized["type"])
-            new_application_clone = application_type.import_serialized(
-                group,
-                serialized,
-                id_mapping,
-                files_zip,
-                storage,
-            )
-
-        # broadcast the application_created signal
-        application_type = application_type_registry.get_by_model(new_application_clone)
-        application_created.send(
-            self,
-            application=new_application_clone,
-            user=user,
-            type_name=application_type.type,
+        new_application_clone = application_type.duplicate_application(
+            user, specific_application, group, name=name, order=order
         )
 
         return new_application_clone

@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.db.models import UniqueConstraint, Q
 from django.contrib.postgres.fields import ArrayField
+from model_clone import CloneMixin
 
 from rest_framework.exceptions import NotAuthenticated
 from baserow.core.jobs.models import Job
@@ -272,6 +273,7 @@ class Application(
     CreatedAndUpdatedOnMixin,
     OrderableMixin,
     PolymorphicContentTypeMixin,
+    CloneMixin,
     models.Model,
 ):
     group = models.ForeignKey(Group, on_delete=models.CASCADE)

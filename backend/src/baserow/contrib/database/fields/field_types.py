@@ -11,9 +11,10 @@ from pytz import timezone
 from dateutil import parser
 from dateutil.parser import ParserError
 
+from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.postgres.fields import JSONField
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.files.storage import default_storage
 from django.db import models, OperationalError
 from django.db.models import Case, When, Q, F, Func, Value, CharField, DateTimeField
@@ -121,7 +122,8 @@ from .registries import (
 from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
 
 if TYPE_CHECKING:
-    from baserow.contrib.database.table.models import GeneratedTableModel
+    from baserow.contrib.database.models import Database
+    from baserow.contrib.database.table.models import GeneratedTableModel, Table
     from baserow.contrib.database.fields.dependencies.update_collector import (
         FieldUpdateCollector,
     )
@@ -1507,6 +1509,82 @@ class LinkRowFieldType(FieldType):
             "id", flat=True
         )
         return values
+
+    def duplicate_field(
+        self,
+        user: AbstractUser,
+        field: "Field",
+        table: Optional["Table"],
+        name: Optional[str] = None,
+        attrs: Optional[Dict[str, Any]] = None,
+        id_mapping: Optional[Dict[str, Dict[int, Any]]] = None,
+    ) -> "Field":
+        """
+        Duplicates a link row field.
+        There are two cases:
+        1. Table duplication: the database is the same so we already have the tables
+        needed to set the related field.
+        2. Database duplication: we are recreating the tables se we need to check if
+        the related field already exists, otherwise we need to set it up when it's ready.
+        """
+
+        if attrs is None:
+            attrs = {}
+
+        if id_mapping is None:
+            id_mapping = {"tables": {}, "fields": {}}
+
+        def find_corrispondent_relation_in_database(
+            original_related_table: "Table",
+            original_related_field: "Field",
+            dest_database: "Database",
+        ) -> Tuple["Table", "Field"]:
+            """
+            Finds the table in the database that is linked to the table in the
+            database.
+            """
+
+            link_row_table = id_mapping["tables"][original_related_table.id]
+            try:
+                link_row_related_field = id_mapping["fields"][original_related_field.id]
+            except KeyError:
+                link_row_related_field = None
+
+            return link_row_table, link_row_related_field
+
+        # if it's just a table duplication the field's database is the same of the table
+        if field.table.database == table.database:
+            link_row_table = field.link_row_table
+            # update the linked table for self-referencing link_rows
+            if link_row_table is field.table:
+                link_row_table = table
+            attrs["link_row_table"] = link_row_table
+            attrs["link_row_related_field"] = field.link_row_related_field
+        else:
+            # database duplication.
+            (
+                link_row_table,
+                link_row_related_field,
+            ) = find_corrispondent_relation_in_database(
+                field.link_row_table, field.link_row_related_field, table.database
+            )
+            if link_row_related_field is None:
+                attrs["link_row_relation_id"] = None
+            elif (
+                link_row_related_field
+                and link_row_related_field.link_row_related_field is None
+            ):
+                link_row_related_field.link_row_related_field = field
+                attrs[
+                    "link_row_relation_id"
+                ] = link_row_related_field.link_row_relation_id
+                link_row_related_field.save()
+            attrs["link_row_table"] = link_row_table
+            attrs["link_row_related_field"] = link_row_related_field
+
+        return super().duplicate_field(
+            user, field, table, name, attrs=attrs, id_mapping=id_mapping
+        )
 
     def export_serialized(self, field):
         serialized = super().export_serialized(field, False)

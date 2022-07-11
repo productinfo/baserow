@@ -1,7 +1,8 @@
-from typing import Any, Dict, List, TYPE_CHECKING, NoReturn, Optional, Union
+from typing import Any, Dict, List, TYPE_CHECKING, NoReturn, Optional, Tuple, Union
 from zipfile import ZipFile
 
 from django.contrib.postgres.fields import JSONField, ArrayField
+from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
 from django.db import models as django_models
@@ -645,6 +646,32 @@ class FieldType(
         """
 
         return False
+
+    def duplicate_field(
+        self,
+        user: AbstractUser,
+        field: "Field",
+        table: Optional["Table"],
+        name: Optional[str] = None,
+        attrs: Optional[Dict[str, Any]] = None,
+        id_mapping: Optional[Dict[str, Dict[int, Any]]] = None,
+    ) -> "Field":
+
+        if attrs is None:
+            attrs = {}
+
+        if id_mapping is None:
+            id_mapping = {"tables": {}, "fields": {}}
+
+        attrs["name"] = field.name if field is None else name
+        attrs["table"] = field.table if table is None else table
+
+        duplicated_field = field.make_clone(attrs=attrs)
+
+        id_mapping["fields"][field.id] = duplicated_field
+        id_mapping["fields"][duplicated_field.id] = field
+
+        return duplicated_field
 
     def export_serialized(
         self, field: Field, include_allowed_fields: bool = True

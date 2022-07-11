@@ -542,6 +542,46 @@ class FieldHandler:
         else:
             return field
 
+    def duplicate_field(
+        self,
+        user: AbstractUser,
+        field: Field,
+        table: Optional[Table] = None,
+        name: Optional[str] = None,
+        attrs: Optional[Dict[str, Any]] = None,
+        id_mapping: Optional[Dict[str, Dict[int, Any]]] = None,
+    ) -> Field:
+        """
+        Duplicates a field.
+        """
+
+        if not isinstance(field, Field):
+            raise ValueError("The field is not an instance of Field")
+
+        group = field.table.database.group
+        group.has_user(user, raise_error=True)
+
+        if attrs is None:
+            attrs = {}
+
+        if table is None:
+            table = field.table
+
+        if name is None:
+            name = field.name
+
+        specific_field = field.specific
+        field_type = field_type_registry.get_by_model(specific_field)
+
+        return field_type.duplicate_field(
+            user,
+            specific_field,
+            table,
+            name,
+            attrs,
+            id_mapping=id_mapping,
+        )
+
     def delete_field(
         self,
         user: AbstractUser,

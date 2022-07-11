@@ -1,5 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
+from django.contrib.auth.models import AbstractUser
 from django.core.management.color import no_style
 from django.db import connection
 from django.urls import path, include
@@ -19,8 +21,8 @@ from baserow.contrib.database.models import Database, Table
 from baserow.contrib.database.views.registries import view_type_registry
 from baserow.core.registries import ApplicationType
 from baserow.core.trash.handler import TrashHandler
-from baserow.core.utils import ChildProgressBuilder
-from baserow.core.utils import grouper
+from baserow.core.models import Group
+from baserow.core.utils import ChildProgressBuilder, grouper
 from .constants import IMPORT_SERIALIZED_IMPORTING, IMPORT_SERIALIZED_IMPORTING_TABLE
 from .export_serialized import DatabaseExportSerializedStructure
 
@@ -51,6 +53,45 @@ class DatabaseApplicationType(ApplicationType):
         return [
             path("database/", include(api_urls, namespace=self.type)),
         ]
+
+    def duplicate_application(
+        self,
+        user: AbstractUser,
+        database: Database,
+        group: Group,
+        name: Optional[str] = None,
+        order: Optional[int] = None,
+        include_data: bool = True,
+    ):
+        """
+        Duplicates the database and all related tables.
+        """
+
+        from baserow.contrib.database.table.handler import TableHandler
+
+        if name is None:
+            name = database.name
+
+        if order is None:
+            order = database.order + 1
+
+        new_database = database.make_clone(
+            attrs={"name": name, "group": group, "order": order}
+        )
+
+        tables = database.table_set.all().prefetch_related(
+            "field_set",
+            "view_set",
+            "view_set__viewfilter_set",
+            "view_set__viewsort_set",
+        )
+
+        table_handler = TableHandler()
+        table_handler.duplicate_database_tables(
+            user, tables, new_database, include_data
+        )
+
+        return new_database
 
     def export_serialized(self, database, files_zip, storage):
         """

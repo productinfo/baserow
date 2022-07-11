@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from .exceptions import ApplicationTypeAlreadyRegistered, ApplicationTypeDoesNotExist
 from .registry import (
     Instance,
@@ -11,6 +12,10 @@ from .registry import (
 from .export_serialized import CoreExportSerializedStructure
 from baserow.core.utils import ChildProgressBuilder
 from baserow.contrib.database.constants import IMPORT_SERIALIZED_IMPORTING
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractUser
+    from baserow.core.models import Application, Group
 
 
 class Plugin(APIUrlsInstanceMixin, Instance):
@@ -170,6 +175,26 @@ class ApplicationType(
         :param application: The application model instance that needs to be deleted.
         :type application: Application
         """
+
+    def duplicate_application(
+        self,
+        user: "AbstractUser",
+        application: "Application",
+        group: "Group",
+        name: str,
+        order: int,
+    ) -> "Application":
+        """
+        Duplicates the application type.
+
+        :param application: The application model instance that needs to be duplicated.
+        :param new_name: The name of the new application.
+        :return: The new application model instance.
+        """
+
+        return application.make_clone(
+            attrs={"name": name, "group": group, "order": order}
+        )
 
     def export_serialized(self, application, files_zip, storage):
         """

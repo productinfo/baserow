@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.functional import cached_property
+from model_clone import CloneMixin
 
 from baserow.contrib.database.fields.mixins import (
     BaseDateMixin,
@@ -68,6 +69,7 @@ class Field(
     CreatedAndUpdatedOnMixin,
     OrderableMixin,
     PolymorphicContentTypeMixin,
+    CloneMixin,
     models.Model,
 ):
     """

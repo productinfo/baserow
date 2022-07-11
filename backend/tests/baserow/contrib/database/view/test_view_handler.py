@@ -407,9 +407,9 @@ def test_duplicate_views(reordered_mock, created_mock, data_fixture):
     handler = ViewHandler()
 
     with pytest.raises(UserNotInGroup):
-        handler.duplicate_view(user=user_2, original_view=grid)
+        handler.duplicate_view(user=user_2, view=grid)
 
-    new_view = handler.duplicate_view(user=user, original_view=grid)
+    new_view = handler.duplicate_view(user=user, view=grid)
 
     created_mock.assert_called_once()
     assert created_mock.call_args[1]["view"].id == new_view.id
@@ -430,7 +430,7 @@ def test_duplicate_views(reordered_mock, created_mock, data_fixture):
         == view_decoration.value_provider_conf
     )
 
-    new_view2 = handler.duplicate_view(user=user, original_view=new_view)
+    new_view2 = handler.duplicate_view(user=user, view=new_view)
 
     assert new_view2.name == grid.name + " 3"
 
