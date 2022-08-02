@@ -1,16 +1,17 @@
 from collections import Callable
-from socket import gaierror, timeout
 from http.client import _is_illegal_header_value, _is_legal_header_name
+from socket import gaierror, timeout
 from urllib.parse import urlparse
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 from advocate import AddrValidator, RequestsAPIWrapper
 from advocate.connection import (
     UnacceptableAddressException,
     validating_create_connection,
 )
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 
 INVALID_URL_CODE = "invalid_url"
 

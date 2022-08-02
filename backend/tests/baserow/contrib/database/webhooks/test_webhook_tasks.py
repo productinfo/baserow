@@ -12,7 +12,8 @@ from baserow.contrib.database.webhooks.tasks import call_webhook
 @pytest.mark.django_db(transaction=True)
 @responses.activate
 @override_settings(
-    WEBHOOKS_MAX_RETRIES_PER_CALL=1, WEBHOOKS_MAX_CONSECUTIVE_TRIGGER_FAILURES=1
+    BASEROW_WEBHOOKS_MAX_RETRIES_PER_CALL=1,
+    BASEROW_WEBHOOKS_MAX_CONSECUTIVE_TRIGGER_FAILURES=1,
 )
 def test_call_webhook(data_fixture):
     webhook = data_fixture.create_table_webhook()

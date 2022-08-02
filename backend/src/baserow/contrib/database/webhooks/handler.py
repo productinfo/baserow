@@ -133,7 +133,7 @@ class WebhookHandler:
 
         webhook_count = TableWebhook.objects.filter(table_id=table.id).count()
 
-        if webhook_count >= settings.WEBHOOKS_MAX_PER_TABLE:
+        if webhook_count >= settings.BASEROW_WEBHOOKS_MAX_PER_TABLE:
             raise TableWebhookMaxAllowedCountExceeded
 
         allowed_fields = [
@@ -306,7 +306,7 @@ class WebhookHandler:
             url,
             headers=headers,
             json=payload,
-            timeout=settings.WEBHOOKS_REQUEST_TIMEOUT_SECONDS,
+            timeout=settings.BASEROW_WEBHOOKS_REQUEST_TIMEOUT_SECONDS,
         )
 
         if response.history:
@@ -407,7 +407,7 @@ class WebhookHandler:
     def clean_webhook_calls(self, webhook: TableWebhook):
         """
         Cleans up oldest webhook calls and makes sure that the total amount of calls
-        will never exceed the `WEBHOOKS_MAX_CALL_LOG_ENTRIES` setting.
+        will never exceed the `BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES` setting.
 
         :param webhook: The webhook for which the calls must be cleaned up.
         """
@@ -415,7 +415,9 @@ class WebhookHandler:
         calls_to_keep = (
             TableWebhookCall.objects.filter(webhook=webhook)
             .order_by("-called_time")
-            .values_list("id", flat=True)[: settings.WEBHOOKS_MAX_CALL_LOG_ENTRIES]
+            .values_list("id", flat=True)[
+                : settings.BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES
+            ]
         )
         TableWebhookCall.objects.filter(
             ~Q(id__in=calls_to_keep), webhook=webhook

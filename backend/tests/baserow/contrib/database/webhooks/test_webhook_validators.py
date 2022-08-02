@@ -1,12 +1,13 @@
 import re
 from ipaddress import ip_network
-from socket import AF_INET, SOCK_STREAM, AF_INET6, IPPROTO_TCP
+from socket import AF_INET, AF_INET6, IPPROTO_TCP, SOCK_STREAM
 from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
+from django.test import override_settings
 
 import httpretty as httpretty
 import pytest
-from django.core.exceptions import ValidationError
-from django.test import override_settings
 
 from baserow.contrib.database.webhooks.validators import url_validator
 
