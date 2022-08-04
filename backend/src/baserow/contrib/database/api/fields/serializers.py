@@ -185,3 +185,8 @@ class UniqueRowValueParamsSerializer(serializers.Serializer):
 
 class UniqueRowValuesSerializer(serializers.Serializer):
     values = serializers.ListSerializer(child=serializers.CharField())
+
+
+class CollaboratorSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(source="first_name", read_only=True)

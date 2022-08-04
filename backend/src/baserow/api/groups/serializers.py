@@ -2,18 +2,23 @@ from rest_framework import serializers
 
 from baserow.core.models import Group
 
-from .users.serializers import GroupUserGroupSerializer
+from .users.serializers import GroupUserGroupSerializer, GroupUserSerializer
 
 
 __all__ = ["GroupUserGroupSerializer", "GroupSerializer", "OrderGroupsSerializer"]
 
 
 class GroupSerializer(serializers.ModelSerializer):
+    users = GroupUserSerializer(
+        many=True, source="groupuser_set", required=False, read_only=True
+    )
+
     class Meta:
         model = Group
         fields = (
             "id",
             "name",
+            "users",
         )
         extra_kwargs = {"id": {"read_only": True}}
 

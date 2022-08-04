@@ -502,4 +502,19 @@ class LookupField(FormulaField):
         )
 
 
+class CollaboratorField(Field):
+    THROUGH_DATABASE_TABLE_PREFIX = "database_collaborator_"
+
+    @property
+    def through_table_name(self):
+        """
+        Generating a unique through table name based on the relation id.
+
+        :return: The table name of the through model.
+        :rtype: string
+        """
+
+        return f"{self.THROUGH_DATABASE_TABLE_PREFIX}{self.id}"
+
+
 SpecificFieldForUpdate = NewType("SpecificFieldForUpdate", Field)

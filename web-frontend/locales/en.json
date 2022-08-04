@@ -82,7 +82,8 @@
         "multipleSelect": "Multiple select",
         "phoneNumber": "Phone number",
         "formula": "Formula",
-        "lookup": "Lookup"
+        "lookup": "Lookup",
+        "collaborator": "Collaborator"
     },
     "fieldErrors": {
         "invalidNumber": "Invalid number",

@@ -41,6 +41,7 @@ from baserow.core.actions import (
     UpdateGroupActionType,
     OrderGroupsActionType,
 )
+from baserow.core.models import Group
 
 
 class GroupsView(APIView):
@@ -62,7 +63,11 @@ class GroupsView(APIView):
     def get(self, request):
         """Responds with a list of serialized groups where the user is part of."""
 
-        groups = GroupUser.objects.filter(user=request.user).select_related("group")
+        groups = (
+            GroupUser.objects.filter(user=request.user)
+            .select_related("group")
+            .prefetch_related("group__users")
+        )
         serializer = GroupUserGroupSerializer(groups, many=True)
         return Response(serializer.data)
 

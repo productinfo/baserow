@@ -31,6 +31,7 @@ import GridViewFieldFile from '@baserow/modules/database/components/view/grid/fi
 import GridViewFieldSingleSelect from '@baserow/modules/database/components/view/grid/fields/GridViewFieldSingleSelect'
 import GridViewFieldMultipleSelect from '@baserow/modules/database/components/view/grid/fields/GridViewFieldMultipleSelect'
 import GridViewFieldPhoneNumber from '@baserow/modules/database/components/view/grid/fields/GridViewFieldPhoneNumber'
+import GridViewFieldCollaborator from '@baserow/modules/database/components/view/grid/fields/GridViewFieldCollaborator'
 
 import FunctionalGridViewFieldText from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldText'
 import FunctionalGridViewFieldLongText from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldLongText'
@@ -44,6 +45,7 @@ import FunctionalGridViewFieldSingleSelect from '@baserow/modules/database/compo
 import FunctionalGridViewFieldMultipleSelect from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldMultipleSelect'
 import FunctionalGridViewFieldPhoneNumber from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldPhoneNumber'
 import FunctionalGridViewFieldFormula from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldFormula'
+import FunctionalGridViewFieldCollaborator from '@baserow/modules/database/components/view/grid/fields/FunctionalGridViewFieldCollaborator'
 
 import RowEditFieldText from '@baserow/modules/database/components/row/RowEditFieldText'
 import RowEditFieldLongText from '@baserow/modules/database/components/row/RowEditFieldLongText'
@@ -59,6 +61,7 @@ import RowEditFieldFile from '@baserow/modules/database/components/row/RowEditFi
 import RowEditFieldSingleSelect from '@baserow/modules/database/components/row/RowEditFieldSingleSelect'
 import RowEditFieldMultipleSelect from '@baserow/modules/database/components/row/RowEditFieldMultipleSelect'
 import RowEditFieldPhoneNumber from '@baserow/modules/database/components/row/RowEditFieldPhoneNumber'
+import RowEditFieldCollaborator from '@baserow/modules/database/components/row/RowEditFieldCollaborator'
 
 import RowCardFieldBoolean from '@baserow/modules/database/components/card/RowCardFieldBoolean'
 import RowCardFieldDate from '@baserow/modules/database/components/card/RowCardFieldDate'
@@ -2432,5 +2435,186 @@ export class LookupFieldType extends FormulaFieldType {
 
   shouldFetchFieldSelectOptions() {
     return false
+  }
+}
+
+export class CollaboratorFieldType extends FieldType {
+  static getType() {
+    return 'collaborator'
+  }
+
+  getIconClass() {
+    return 'user-friends'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('fieldType.collaborator')
+  }
+
+  getFormComponent() {
+    return null
+  }
+
+  getGridViewFieldComponent() {
+    return GridViewFieldCollaborator
+  }
+
+  getFunctionalGridViewFieldComponent() {
+    return FunctionalGridViewFieldCollaborator
+  }
+
+  getRowEditFieldComponent() {
+    return RowEditFieldCollaborator
+  }
+
+  getCardComponent() {
+    // TODO:
+    return RowCardFieldMultipleSelect
+  }
+
+  getSort(name, order) {
+    return (a, b) => {
+      const valuesA = a[name]
+      const valuesB = b[name]
+      const stringA =
+        valuesA.length > 0 ? valuesA.map((obj) => obj.value).join('') : ''
+      const stringB =
+        valuesB.length > 0 ? valuesB.map((obj) => obj.value).join('') : ''
+
+      return order === 'ASC'
+        ? stringA.localeCompare(stringB)
+        : stringB.localeCompare(stringA)
+    }
+  }
+
+  prepareValueForUpdate(field, value) {
+    if (value === undefined || value === null) {
+      return []
+    }
+    return value
+  }
+
+  prepareValueForCopy(field, value) {
+    // TODO:
+    if (value === undefined || value === null) {
+      return ''
+    }
+
+    const nameList = value.map(({ value }) => value)
+    // Use papa to generate a CSV  string
+    const result = this.app.$papa.unparse([nameList])
+    return result
+  }
+
+  prepareValueForPaste(field, clipboardData) {
+    // TODO:
+    try {
+      const values = this.app.$papa.parse(clipboardData)
+      const data = values.data[0]
+
+      const selectOptionMap = Object.fromEntries(
+        field.select_options.map((option) => [option.value, option])
+      )
+
+      return data
+        .filter((name) => Object.keys(selectOptionMap).includes(name))
+        .map((name) => selectOptionMap[name])
+    } catch (e) {
+      return []
+    }
+  }
+
+  toHumanReadableString(field, value) {
+    // TODO:
+    if (value === undefined || value === null || value === []) {
+      return ''
+    }
+    return value.map((item) => item.value).join(', ')
+  }
+
+  getDocsDataType() {
+    // TODO:
+    return 'array'
+  }
+
+  getDocsDescription(field) {
+    // TODO:
+    const options = field.select_options
+      .map(
+        (option) =>
+          // @TODO move this template to a component.
+          `<div class="select-options-listing">
+              <div class="select-options-listing__id">${option.id}</div>
+              <div class="select-options-listing__value background-color--${option.color}">${option.value}</div>
+           </div>
+          `
+      )
+      .join('\n')
+
+    return `
+      ${this.app.i18n.t('fieldDocs.multipleSelect')}
+      <br />
+      ${options}
+    `
+  }
+
+  getDocsRequestExample() {
+    // TODO:
+    return [1]
+  }
+
+  getDocsResponseExample() {
+    // TODO:
+    return [
+      {
+        id: 1,
+        value: 'Option',
+        color: 'light-blue',
+      },
+    ]
+  }
+
+  getContainsFilterFunction() {
+    // TODO:
+    return genericContainsFilter
+  }
+
+  getEmptyValue() {
+    return []
+  }
+
+  shouldFetchFieldSelectOptions() {
+    // TODO:
+    return false
+  }
+
+  acceptSplitCommaSeparatedSelectOptions() {
+    // TODO:
+    return true
+  }
+
+  canParseQueryParameter() {
+    // TODO:
+    return true
+  }
+
+  /**
+   * Accepts the following format: option1,option2,option3
+   */
+  parseQueryParameter(field, value) {
+    // TODO:
+    const values = value.split(',')
+
+    const selectOptions = field.field.select_options.filter((option) =>
+      values.includes(option.value)
+    )
+
+    return selectOptions.length > 0 ? selectOptions : this.getEmptyValue()
+  }
+
+  getCanImport() {
+    // TODO:
+    return true
   }
 }

@@ -1741,3 +1741,112 @@ def test_lookup_field_type(api_client, data_fixture):
     response_json = response.json()
     assert response.status_code == HTTP_400_BAD_REQUEST
     assert response_json["error"] == "ERROR_REQUEST_BODY_VALIDATION"
+
+
+@pytest.mark.field_collaborator
+@pytest.mark.django_db
+def test_collaborator_field_type(api_client, data_fixture):
+    user, token = data_fixture.create_user_and_token(
+        email="test@test.nl", password="password", first_name="Test1"
+    )
+    user2 = data_fixture.create_user()
+    user3 = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user, name="Placeholder")
+    table = data_fixture.create_database_table(name="Example", database=database)
+
+    # create
+
+    response = api_client.post(
+        reverse("api:database:fields:list", kwargs={"table_id": table.id}),
+        {
+            "name": "Collaborator 1",
+            "type": "collaborator",
+        },
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    response_json = response.json()
+    assert response.status_code == HTTP_200_OK
+    field_1_id = response_json["id"]
+    assert response_json["name"] == "Collaborator 1"
+    assert response_json["type"] == "collaborator"
+
+    # update
+
+    response = api_client.patch(
+        reverse("api:database:fields:item", kwargs={"field_id": field_1_id}),
+        {"name": "New collaborator 1"},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    response_json = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json["name"] == "New collaborator 1"
+    assert response_json["type"] == "collaborator"
+
+    # TODO: delete
+
+    # insert rows - not a list
+
+    response = api_client.post(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        {f"field_{field_1_id}": "Nothing"},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    response_json = response.json()
+    assert response.status_code == HTTP_400_BAD_REQUEST
+    assert response_json["error"] == "ERROR_REQUEST_BODY_VALIDATION"
+    assert (
+        response_json["detail"][f"field_{field_1_id}"]["non_field_errors"][0]["code"]
+        == "not_a_list"
+    )
+
+    # TODO: empty list
+
+    # TODO: wrong user id
+    # response = api_client.post(
+    #     reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+    #     {f"field_{field_1_id}": [999999]},
+    #     format="json",
+    #     HTTP_AUTHORIZATION=f"JWT {token}",
+    # )
+    # response_json = response.json()
+    # assert response.status_code == HTTP_400_BAD_REQUEST
+    # assert response_json["error"] == "ERROR_REQUEST_BODY_VALIDATION"
+    # assert (
+    #     response_json["detail"]
+    #     == "The provided select option id [999999] is not a valid select option."
+    # )
+
+    # insert row - success
+
+    response = api_client.post(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        {f"field_{field_1_id}": []},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    row_id = response_json["id"]
+    # assert response_json[f"field_{field_1_id}"][0]["id"] == user2.id
+
+    # update row - success
+
+    response = api_client.patch(
+        reverse(
+            "api:database:rows:item", kwargs={"table_id": table.id, "row_id": row_id}
+        ),
+        {f"field_{field_1_id}": [{"id": user2.id}, {"id": user3.id}]},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    assert response_json[f"field_{field_1_id}"][0]["id"] == user2.id
+    assert response_json[f"field_{field_1_id}"][1]["id"] == user3.id
+
+    # TODO: delete row

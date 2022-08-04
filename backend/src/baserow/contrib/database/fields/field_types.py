@@ -37,6 +37,7 @@ from baserow.contrib.database.api.fields.serializers import (
     SelectOptionSerializer,
     FileFieldResponseSerializer,
     MustBeEmptyField,
+    CollaboratorSerializer,
 )
 from baserow.contrib.database.export_serialized import DatabaseExportSerializedStructure
 from baserow.contrib.database.fields.field_cache import FieldCache
@@ -112,6 +113,7 @@ from .models import (
     FormulaField,
     Field,
     LookupField,
+    CollaboratorField,
 )
 from .registries import (
     FieldType,
@@ -3232,3 +3234,255 @@ class LookupFieldType(FormulaFieldType):
     def after_import_serialized(self, field, field_cache):
         self._rebuild_field_from_names(field)
         super().after_import_serialized(field, field_cache)
+
+
+class CollaboratorFieldType(FieldType):
+    type = "collaborator"
+    model_class = CollaboratorField
+
+    # TODO:
+    can_get_unique_values = False
+
+    def get_serializer_field(self, instance, **kwargs):
+        required = kwargs.get("required", False)
+
+        field_serializer = CollaboratorSerializer(
+            **{
+                "required": required,
+                "allow_null": not required,
+                **kwargs,
+            }
+        )
+        return serializers.ListSerializer(child=field_serializer, required=required)
+
+    def get_internal_value_from_db(
+        self, row: "GeneratedTableModel", field_name: str
+    ) -> List[int]:
+        related_objects = getattr(row, field_name)
+        return [{"id": related_object.id} for related_object in related_objects.all()]
+
+    def get_response_serializer_field(self, instance, **kwargs):
+        required = kwargs.get("required", False)
+        return CollaboratorSerializer(
+            **{
+                "required": required,
+                "allow_null": not required,
+                "many": True,
+                **kwargs,
+            }
+        )
+
+    def enhance_queryset(self, queryset, field, name):
+        remote_field = queryset.model._meta.get_field(name).remote_field
+        remote_model = remote_field.model
+        through_model = remote_field.through
+        related_queryset = remote_model.objects.all().extra(
+            order_by=[f"{through_model._meta.db_table}.id"]
+        )
+        return queryset.prefetch_related(
+            models.Prefetch(name, queryset=related_queryset)
+        )
+
+    def prepare_value_for_db(self, instance, value):
+        if value is None:
+            return value
+
+        # TODO: validate user_ids
+
+        # for x in value:
+        #     if not isinstance(x, int):
+        #         raise AllProvidedMultipleSelectValuesMustBeIntegers(x)
+
+        # options = SelectOption.objects.filter(field=instance, id__in=value)
+
+        # if len(options) != len(value):
+        #     raise AllProvidedMultipleSelectValuesMustBeSelectOption(value)
+
+        return [v["id"] for v in value]
+
+    # def prepare_value_for_db_in_bulk(
+    #     self, instance, values_by_row, continue_on_error=False
+    # ):
+    # Create a map {value -> row_indexes}
+    # value_map = defaultdict(list)
+    # for row_index, values in values_by_row.items():
+    #     for value in values:
+    #         value_map[value].append(row_index)
+
+    # unique_values = set(value_map.keys())
+
+    # # Query database for existing options
+    # selected_ids = SelectOption.objects.filter(
+    #     field=instance, id__in=unique_values
+    # ).values_list("id", flat=True)
+
+    # if len(selected_ids) != len(unique_values):
+    #     invalid_ids = sorted(list(unique_values - set(selected_ids)))
+    #     if continue_on_error:
+    #         # Replace values by error for failing rows
+    #         for invalid_id in invalid_ids:
+    #             for row_index in value_map[invalid_id]:
+    #                 values_by_row[
+    #                     row_index
+    #                 ] = AllProvidedMultipleSelectValuesMustBeSelectOption(
+    #                     invalid_id
+    #                 )
+
+    #     else:
+    #         # or fail fast
+    #         raise AllProvidedMultipleSelectValuesMustBeSelectOption(invalid_ids)
+
+    # return values_by_row
+    # ...
+
+    # TODO:
+    def get_serializer_help_text(self, instance):
+        # return (
+        #     "This field accepts a list of `integer` each of which representing the "
+        #     "chosen select option id related to the field. Available ids can be found"
+        #     "when getting or listing the field. The response represents chosen field, "
+        #     "but also the value and color is exposed."
+        # )
+        ...
+
+    # TODO:
+    def get_export_value(self, value, field_object):
+        # if value is None:
+        #     return value
+        # return [item.value for item in value.all()]
+        ...
+
+    # TODO:
+    def get_human_readable_value(self, value, field_object):
+        # export_value = self.get_export_value(value, field_object)
+
+        # return ", ".join(export_value)
+        ...
+
+    def get_model_field(self, instance, **kwargs):
+        return None
+
+    def after_model_generation(self, instance, model, field_name, manytomany_models):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+
+        related_name = f"reversed_field_{instance.id}"
+        shared_kwargs = {
+            "null": True,
+            "blank": True,
+            "db_table": instance.through_table_name,
+            "db_constraint": False,
+        }
+
+        MultipleSelectManyToManyField(
+            to=User, related_name=related_name, **shared_kwargs
+        ).contribute_to_class(model, field_name)
+
+        MultipleSelectManyToManyField(
+            to=model, related_name=field_name, **shared_kwargs
+        ).contribute_to_class(User, related_name)
+
+        # Trigger the newly created pending operations of all the models related to the
+        # created ManyToManyField. They need to be called manually because normally
+        # they are triggered when a new model is registered. Not triggering them
+        # can cause a memory leak because everytime a table model is generated, it will
+        # register new pending operations.
+        apps = model._meta.apps
+        model_field = model._meta.get_field(field_name)
+        collaborator_field = User._meta.get_field(related_name)
+        apps.do_pending_operations(model)
+        apps.do_pending_operations(User)
+        apps.do_pending_operations(model_field.remote_field.through)
+        apps.do_pending_operations(model)
+        apps.do_pending_operations(collaborator_field.remote_field.through)
+        apps.clear_cache()
+
+    # TODO:
+    def get_export_serialized_value(self, row, field_name, cache, files_zip, storage):
+        # cache_entry = f"{field_name}_relations"
+        # if cache_entry not in cache:
+        #     # In order to prevent a lot of lookup queries in the through table, we want
+        #     # to fetch all the relations and add it to a temporary in memory cache
+        #     # containing a mapping of the old ids to the new ids. Every relation can
+        #     # use the cached mapped relations to find the correct id.
+        #     cache[cache_entry] = defaultdict(list)
+        #     through_model = row._meta.get_field(field_name).remote_field.through
+        #     through_model_fields = through_model._meta.get_fields()
+        #     current_field_name = through_model_fields[1].name
+        #     relation_field_name = through_model_fields[2].name
+        #     for relation in through_model.objects.all():
+        #         cache[cache_entry][
+        #             getattr(relation, f"{current_field_name}_id")
+        #         ].append(getattr(relation, f"{relation_field_name}_id"))
+
+        # return cache[cache_entry][row.id]
+        ...
+
+    # TODO:
+    def set_import_serialized_value(
+        self, row, field_name, value, id_mapping, files_zip, storage
+    ):
+        # mapped_values = [
+        #     id_mapping["database_field_select_options"][item] for item in value
+        # ]
+        # getattr(row, field_name).set(mapped_values)
+        ...
+
+    # TODO:
+    def contains_query(self, field_name, value, model_field, field):
+        # value = value.strip()
+        # # If an empty value has been provided we do not want to filter at all.
+        # if value == "":
+        #     return Q()
+
+        # query = StringAgg(f"{field_name}__value", ",")
+
+        # return AnnotatedQ(
+        #     annotation={
+        #         f"select_option_value_{field_name}": Coalesce(query, Value(""))
+        #     },
+        #     q={f"select_option_value_{field_name}__icontains": value},
+        # )
+        ...
+
+    # TODO:
+    def get_order(self, field, field_name, order_direction):
+        """
+        If the user wants to sort the results he expects them to be ordered
+        alphabetically based on the select option value and not in the id which is
+        stored in the table. This method generates a Case expression which maps the id
+        to the correct position.
+        """
+
+        # sort_column_name = f"{field_name}_agg_sort"
+        # query = Coalesce(StringAgg(f"{field_name}__value", ""), Value(""))
+        # annotation = {sort_column_name: query}
+
+        # order = F(sort_column_name)
+        # if order_direction == "DESC":
+        #     order = order.desc(nulls_first=True)
+        # else:
+        #     order = order.asc(nulls_first=True)
+
+        # return AnnotatedOrder(annotation=annotation, order=order)
+        ...
+
+    # TODO:
+    def before_field_options_update(
+        self, field, to_create=None, to_update=None, to_delete=None
+    ):
+        """
+        Before removing the select options, we want to delete the link between
+        the row and the options.
+        """
+
+        # through_model = (
+        #     field.table.get_model(fields=[field], field_ids=[])
+        #     ._meta.get_field(field.db_column)
+        #     .remote_field.through
+        # )
+        # through_model_fields = through_model._meta.get_fields()
+        # option_field_name = through_model_fields[2].name
+        # through_model.objects.filter(**{f"{option_field_name}__in": to_delete}).delete()
+        ...
