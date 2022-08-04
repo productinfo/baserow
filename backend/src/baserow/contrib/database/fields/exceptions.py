@@ -121,7 +121,7 @@ class InvalidBaserowFieldName(Exception):
     """
 
 
-class AllProvidedMultipleSelectValuesMustBeIntegers(ValidationError):
+class AllProvidedMultipleSelectValuesMustBeIntegersOrStrings(ValidationError):
     """
     Raised when one tries to create or update a row for a MultipleSelectField that
     contains a value other than an integer.
@@ -151,14 +151,14 @@ class AllProvidedMultipleSelectValuesMustBeSelectOption(ValidationError):
     field.
     """
 
-    def __init__(self, ids, *args, **kwargs):
-        if not isinstance(ids, list):
-            ids = [ids]
-        self.ids = ids
+    def __init__(self, values, *args, **kwargs):
+        if not isinstance(values, list):
+            values = [values]
+        self.values = values
         msg = (
-            f"The provided select option ids {self.ids} are not valid select options."
-            if len(self.ids) > 1
-            else f"The provided select option id {self.ids} is not a valid select "
+            f"The provided select option values {self.values} are not valid select options."
+            if len(self.values) > 1
+            else f"The provided select option value {self.values} is not a valid select "
             "option."
         )
         super().__init__(

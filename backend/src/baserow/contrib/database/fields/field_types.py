@@ -38,6 +38,7 @@ from baserow.contrib.database.api.fields.serializers import (
     CollaboratorSerializer,
     FileFieldRequestSerializer,
     FileFieldResponseSerializer,
+    IntegerOrStringField,
     LinkRowValueSerializer,
     MustBeEmptyField,
     SelectOptionSerializer,
@@ -76,7 +77,7 @@ from .dependencies.models import FieldDependency
 from .dependencies.types import FieldDependencies
 from .exceptions import (
     AllProvidedCollaboratorIdsMustBeValidUsers,
-    AllProvidedMultipleSelectValuesMustBeIntegers,
+    AllProvidedMultipleSelectValuesMustBeIntegersOrStrings,
     AllProvidedMultipleSelectValuesMustBeSelectOption,
     FieldDoesNotExist,
     IncompatiblePrimaryFieldTypeError,
@@ -1130,6 +1131,36 @@ class LinkRowFieldType(FieldType):
             models.Prefetch(name, queryset=related_queryset)
         )
 
+    def prepare_value_for_db(self, instance, value):
+        result = []
+        for row_name_or_id in value:
+            if isinstance(row_name_or_id, int):
+                # Simple case: it's an id
+                result.append(row_name_or_id)
+            else:
+                # It's a row name -> try to get the corresponding row
+                (
+                    related_model,
+                    primary_field,
+                ) = self._get_related_model_and_primary_field(instance)
+
+                primary_field_type = field_type_registry.get_by_model(
+                    primary_field["field"]
+                )
+                try:
+                    search_value = primary_field_type.prepare_value_for_db(
+                        primary_field["field"], row_name_or_id
+                    )
+                except ValidationError:
+                    raise
+                else:
+                    # Add all matching values
+                    for row in related_model.objects.filter(
+                        **{primary_field["name"]: search_value}
+                    ):
+                        result.append(row.id)
+        return result
+
     def get_export_value(self, value, field_object, rich_value=False):
         def map_to_export_value(inner_value, inner_field_object):
             return inner_field_object["type"].get_export_value(
@@ -1252,7 +1283,7 @@ class LinkRowFieldType(FieldType):
 
         return serializers.ListField(
             **{
-                "child": serializers.IntegerField(min_value=0),
+                "child": IntegerOrStringField(min_value=0),
                 "required": False,
                 **kwargs,
             }
@@ -1272,7 +1303,9 @@ class LinkRowFieldType(FieldType):
 
     def get_serializer_help_text(self, instance):
         return (
-            "This field accepts an `array` containing the ids of the related rows."
+            "This field accepts an `array` containing the ids or the names of the "
+            "related rows. In case of names, if the name is not found, this name "
+            "is ignored. A name is the value of the primary key of the related row."
             "The response contains a list of objects containing the `id` and "
             "the primary field's `value` as a string for display purposes."
         )
@@ -2141,12 +2174,12 @@ class SingleSelectFieldType(SelectOptionBaseFieldType):
 
     def get_serializer_field(self, instance, **kwargs):
         required = kwargs.get("required", False)
-        field_serializer = serializers.IntegerField(
+        field_serializer = IntegerOrStringField(
             **{
                 "required": required,
                 "allow_null": not required,
                 **kwargs,
-            }
+            },
         )
         return field_serializer
 
@@ -2173,13 +2206,23 @@ class SingleSelectFieldType(SelectOptionBaseFieldType):
 
     def prepare_value_for_db(self, instance, value):
         if value is None:
-            return value
+            return None
 
         if isinstance(value, int):
+            # It should be an ID
             try:
                 return SelectOption.objects.get(field=instance, id=value)
             except SelectOption.DoesNotExist:
                 pass
+
+        if isinstance(value, str):
+            # The value is a text so we'll try to find an option value matching this
+            # text
+            first_option = SelectOption.objects.filter(
+                field=instance, value=value
+            ).first()
+            if first_option is not None:
+                return first_option
 
         if isinstance(value, SelectOption) and value.field_id == instance.id:
             return value
@@ -2194,29 +2237,43 @@ class SingleSelectFieldType(SelectOptionBaseFieldType):
         self, instance, values_by_row, continue_on_error=False
     ):
 
-        # Create a map {value -> row_indexes}
+        # Create a map {value -> row_indexes} and extract unique int and text values
         value_map = defaultdict(list)
+        unique_ids = set()
+        unique_names = set()
         for row_index, value in values_by_row.items():
             if value is not None:
                 value_map[value].append(row_index)
+                if isinstance(value, int):
+                    unique_ids.add(value)
+                else:
+                    unique_names.add(value)
 
-        unique_values = set(value_map.keys())
-
-        # Query database with all these gathered ids
-        select_options = SelectOption.objects.filter(
-            field=instance, id__in=unique_values
+        # Query database with all these gathered values
+        select_options_from_ids = SelectOption.objects.filter(
+            field=instance, id__in=unique_ids
+        )
+        select_options_from_names = SelectOption.objects.filter(
+            field=instance, value__in=unique_names
         )
 
-        # Create a map {id -> option}
-        option_map = {opt.id: opt for opt in select_options}
-        found_option_ids = set(option_map.keys())
+        # Create a map {id|value -> option}
+        option_map = {opt.id: opt for opt in select_options_from_ids}
+        # Here we reverse the select_options_from_texts list to let the first value
+        # win in the map in case of duplicate for text values.
+        option_map.update({opt.value: opt for opt in select_options_from_names[::-1]})
+
+        found_option_values = set(option_map.keys())
+        unique_values = unique_ids | unique_names
 
         # Whether invalid values exists ?
-        if len(found_option_ids) != len(unique_values):
-            invalid_ids = sorted(list(unique_values - found_option_ids))
+        if len(found_option_values) != len(unique_values):
+            invalid_values = sorted(
+                [str(val) for val in list(unique_values - found_option_values)]
+            )
             if not continue_on_error:
                 # Fail fast
-                raise AllProvidedMultipleSelectValuesMustBeSelectOption(invalid_ids)
+                raise AllProvidedMultipleSelectValuesMustBeSelectOption(invalid_values)
 
         # Replace original values by real option object if possible
         for row_index, value in values_by_row.items():
@@ -2406,7 +2463,7 @@ class MultipleSelectFieldType(SelectOptionBaseFieldType):
 
     def get_serializer_field(self, instance, **kwargs):
         required = kwargs.get("required", False)
-        field_serializer = serializers.IntegerField(
+        field_serializer = IntegerOrStringField(
             **{
                 "required": required,
                 "allow_null": not required,
@@ -2437,51 +2494,126 @@ class MultipleSelectFieldType(SelectOptionBaseFieldType):
 
     def prepare_value_for_db(self, instance, value):
         if value is None:
-            return value
+            return None
 
-        for x in value:
-            if not isinstance(x, int):
-                raise AllProvidedMultipleSelectValuesMustBeIntegers(x)
+        option_ids = set()
+        option_names = set()
+        for val in value:
+            if isinstance(val, int):
+                option_ids.add(val)
+            elif isinstance(val, str):
+                option_names.add(val)
+            else:
+                raise AllProvidedMultipleSelectValuesMustBeIntegersOrStrings(val)
 
-        options = SelectOption.objects.filter(field=instance, id__in=value)
+        if option_ids:
+            options_from_ids = SelectOption.objects.filter(
+                field=instance, id__in=option_ids
+            )
 
-        if len(options) != len(value):
-            raise AllProvidedMultipleSelectValuesMustBeSelectOption(value)
+            if len(options_from_ids) != len(option_ids):
+                raise AllProvidedMultipleSelectValuesMustBeSelectOption(value)
+
+        if option_names:
+            options_from_names = SelectOption.objects.filter(
+                field=instance, value__in=option_names
+            )
+
+            # Remove duplicates
+            found_option_names = set([opt.value for opt in options_from_names])
+
+            if len(found_option_names) != len(option_names):
+                raise AllProvidedMultipleSelectValuesMustBeSelectOption(value)
+
+            # Map {name -> opt} forward to let the first value win in the map
+            opt_map = {opt.value: opt for opt in options_from_names[::-1]}
+
+            # Replace names by ids
+            value = [opt_map[val].id if val in opt_map else val for val in value]
 
         return value
 
     def prepare_value_for_db_in_bulk(
         self, instance, values_by_row, continue_on_error=False
     ):
-        # Create a map {value -> row_indexes}
-        value_map = defaultdict(list)
+        # Create a map {value -> row_indexes} for ids and strings
+        id_map = defaultdict(list)
+        name_map = defaultdict(list)
         for row_index, values in values_by_row.items():
             for value in values:
-                value_map[value].append(row_index)
+                if isinstance(value, int):
+                    id_map[value].append(row_index)
+                else:
+                    name_map[value].append(row_index)
 
-        unique_values = set(value_map.keys())
+        if id_map:
+            # Query database for existing options
+            option_from_ids = SelectOption.objects.filter(
+                field=instance, id__in=id_map.keys()
+            ).values_list("id", flat=True)
 
-        # Query database for existing options
-        selected_ids = SelectOption.objects.filter(
-            field=instance, id__in=unique_values
-        ).values_list("id", flat=True)
+            if len(option_from_ids) != len(id_map):
+                invalid_ids = sorted(list(set(id_map.keys()) - set(option_from_ids)))
+                if continue_on_error:
+                    # Replace values by error for failing rows
+                    for invalid_name in invalid_ids:
+                        for row_index in id_map[invalid_name]:
+                            values_by_row[
+                                row_index
+                            ] = AllProvidedMultipleSelectValuesMustBeSelectOption(
+                                invalid_name
+                            )
+                else:
+                    # or fail fast
+                    raise AllProvidedMultipleSelectValuesMustBeSelectOption(invalid_ids)
 
-        if len(selected_ids) != len(unique_values):
-            invalid_ids = sorted(list(unique_values - set(selected_ids)))
-            if continue_on_error:
-                # Replace values by error for failing rows
-                for invalid_id in invalid_ids:
-                    for row_index in value_map[invalid_id]:
-                        values_by_row[
-                            row_index
-                        ] = AllProvidedMultipleSelectValuesMustBeSelectOption(
-                            invalid_id
-                        )
+        if name_map:
+            # Query database for existing options
+            options_from_names = list(
+                SelectOption.objects.filter(field=instance, value__in=name_map.keys())
+            )
+            # Remove duplicate names
+            found_option_names = set([opt.value for opt in options_from_names])
 
-            else:
-                # or fail fast
-                raise AllProvidedMultipleSelectValuesMustBeSelectOption(invalid_ids)
+            if len(name_map) != len(found_option_names):
+                invalid_names = sorted(list(set(name_map.keys()) - found_option_names))
+                if continue_on_error:
+                    # Replace values by error for failing rows
+                    for invalid_name in invalid_names:
+                        for row_index in name_map[invalid_name]:
+                            values_by_row[
+                                row_index
+                            ] = AllProvidedMultipleSelectValuesMustBeSelectOption(
+                                invalid_name
+                            )
 
+                else:
+                    # or fail fast
+                    raise AllProvidedMultipleSelectValuesMustBeSelectOption(
+                        invalid_names
+                    )
+
+            # Map {name -> opt} reverse list to let the first value win in the map
+            opt_map = {opt.value: opt for opt in options_from_names[::-1]}
+
+            rows_that_needs_name_replacement = set(
+                [val for value in name_map.values() for val in value]
+            )
+
+            # Replace all option names with actual option ids
+            for row_index in rows_that_needs_name_replacement:
+                value = values_by_row[row_index]
+                if isinstance(value, list):  # filter rows with exceptions
+                    values_by_row[row_index] = [
+                        opt_map[val].id if isinstance(val, str) else val
+                        for val in value
+                    ]
+
+        # Removes duplicate ids keeping ordering
+        values_by_row = {
+            k: list(dict.fromkeys(v)) if isinstance(v, list) else v
+            for k, v in values_by_row.items()
+        }
         return values_by_row
 
     def get_serializer_help_text(self, instance):

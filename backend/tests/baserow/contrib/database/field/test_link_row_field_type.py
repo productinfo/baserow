@@ -364,7 +364,7 @@ def test_link_row_field_type_rows(data_fixture):
     assert getattr(row, f"field_{link_row_field.id}").all().count() == 0
     assert getattr(row_2, f"field_{link_row_field.id}").all().count() == 0
 
-    # Just check if the field can be deleted can be deleted.
+    # Just check if the field can be deleted.
     field_handler.delete_field(user=user, field=link_row_field)
     # We expect only the primary field to be left.
     objects_all = Field.objects.all()
@@ -658,7 +658,7 @@ def test_link_row_field_type_api_row_views(api_client, data_fixture):
     response = api_client.post(
         reverse("api:database:rows:list", kwargs={"table_id": example_table.id}),
         {
-            f"field_{link_row_field.id}": ["a"],
+            f"field_{link_row_field.id}": [{}],
         },
         format="json",
         HTTP_AUTHORIZATION=f"JWT {token}",
