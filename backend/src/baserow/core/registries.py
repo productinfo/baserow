@@ -267,6 +267,28 @@ class ApplicationType(
 
         return application
 
+    def handle_perm_delete_out_of_shared_memory(self, application, exception):
+        """
+        Called when the application failed to be perm deleted as the transaction tried
+        to lock too many separate things in postgres, resulting in an out of shared
+        memory exception.
+
+        This method will not be called in any sort of atomic transaction giving
+        you full control of how to use transactions in a way which prevents locking
+        too many things.
+
+        Use this method to run any steps that you can do to ensure
+        the next time the perm delete is called it will succeed and not run out of
+        locks, for example by perm deleting some items in their own transactions now so
+        the job has less to delete later. If there is nothing safe and reasonable
+        you can do, then just re-raise the exception.
+
+        :param application: The application which failed to be perm deleted.
+        :param exception: The specific exception that resulted from the failure.
+        """
+
+        raise exception
+
 
 class ApplicationTypeRegistry(APIUrlsRegistryMixin, ModelRegistryMixin, Registry):
     """

@@ -4,7 +4,7 @@ from zipfile import ZipFile
 
 from django.core.files.storage import Storage
 from django.core.management.color import no_style
-from django.db import connection
+from django.db import connection, transaction
 from django.db.transaction import Atomic
 from django.urls import include, path
 from django.utils import timezone
@@ -48,6 +48,24 @@ class DatabaseApplicationType(ApplicationType):
 
         for table in database_tables:
             TrashHandler.permanently_delete(table)
+
+    def handle_perm_delete_out_of_shared_memory(self, database, exception):
+        database_tables = (
+            database.table_set(manager="objects_and_trash")
+            .all()
+            .select_related("database__group")
+        )
+
+        # We can ensure the next perm delete run works by deleting all the tables
+        # now, but crucially doing so with one transaction per table. This way we
+        # still can safely delete each table, but we don't try to take a lock on every
+        # single table in the database which is probably what is causing the
+        # out of shared memory exception. After we have done this the perm delete task
+        # for this database/group should now work as we'll have already deleted all the
+        # tables so it doesn't need to take anywhere near the same number of locks.
+        for table in database_tables:
+            with transaction.atomic():
+                TrashHandler.permanently_delete(table)
 
     def get_api_urls(self):
         from .api import urls as api_urls

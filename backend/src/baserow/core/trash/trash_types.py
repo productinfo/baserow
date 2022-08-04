@@ -41,6 +41,11 @@ class ApplicationTrashableItemType(TrashableItemType):
         application.delete()
         return application
 
+    def handle_perm_delete_out_of_shared_memory(self, failed_trashed_app, exception):
+        application = failed_trashed_app.specific
+        application_type = application_type_registry.get_by_model(application)
+        application_type.handle_perm_delete_out_of_shared_memory(application, exception)
+
 
 class GroupTrashableItemType(TrashableItemType):
 
@@ -81,3 +86,15 @@ class GroupTrashableItemType(TrashableItemType):
             application_trashable_type.permanently_delete_item(application)
 
         trashed_group.delete()
+
+    def handle_perm_delete_out_of_shared_memory(self, failed_trashed_group, exception):
+        applications = (
+            failed_trashed_group.application_set(manager="objects_and_trash")
+            .all()
+            .select_related("group")
+        )
+        application_trashable_type = trash_item_type_registry.get("application")
+        for application in applications:
+            application_trashable_type.handle_perm_delete_out_of_shared_memory(
+                application, exception
+            )

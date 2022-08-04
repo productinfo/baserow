@@ -1,9 +1,10 @@
 import logging
+import traceback
 from typing import Any, Dict, Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, transaction, DatabaseError
 from django.db.models import QuerySet
 from django.utils import timezone
 
@@ -194,41 +195,60 @@ class TrashHandler:
 
         trash_item_lookup_cache = {}
         deleted_count = 0
+        trash_entry = None
         while True:
-            with transaction.atomic():
-                # Perm deleting a group or application can cause cascading deletion of
-                # other trash entries hence we only look up one a time. If we instead
-                # looped over a single queryset lookup of all TrashEntries then we could
-                # end up trying to delete TrashEntries which have already been deleted
-                # by a previous cascading delete of a group or application.
-                trash_entry = TrashEntry.objects.filter(
-                    should_be_permanently_deleted=True
-                ).first()
-                if not trash_entry:
-                    break
+            try:
+                with transaction.atomic():
+                    # Perm deleting a group or application can cause cascading
+                    # deletion of other trash entries hence we only look up one a
+                    # time. If we instead looped over a single queryset lookup of all
+                    # TrashEntries then we could end up trying to delete TrashEntries
+                    # which have already been deleted by a previous cascading delete
+                    # of a group or application.
+                    trash_entry = TrashEntry.objects.filter(
+                        should_be_permanently_deleted=True
+                    ).first()
+                    if not trash_entry:
+                        continue
 
-                trash_item_type = trash_item_type_registry.get(
-                    trash_entry.trash_item_type
-                )
+                    trash_item_type = trash_item_type_registry.get(
+                        trash_entry.trash_item_type
+                    )
 
-                try:
-                    to_delete = trash_item_type.lookup_trashed_item(
-                        trash_entry, trash_item_lookup_cache
-                    )
-                    TrashHandler._permanently_delete_and_signal(
-                        trash_item_type,
-                        to_delete,
-                        trash_entry.parent_trash_item_id,
-                        trash_item_lookup_cache,
-                    )
-                except TrashItemDoesNotExist:
-                    # When a parent item is deleted it should also delete all of it's
-                    # children. Hence we expect that many of these TrashEntries to no
-                    # longer point to an existing item. In such a situation we just want
-                    # to delete the entry as the item itself has been correctly deleted.
-                    pass
-                trash_entry.delete()
-                deleted_count += 1
+                    try:
+                        to_delete = trash_item_type.lookup_trashed_item(
+                            trash_entry, trash_item_lookup_cache
+                        )
+                        TrashHandler._permanently_delete_and_signal(
+                            trash_item_type,
+                            to_delete,
+                            trash_entry.parent_trash_item_id,
+                            trash_item_lookup_cache,
+                        )
+                    except TrashItemDoesNotExist:
+                        # When a parent item is deleted it should also delete all of
+                        # it's children. Hence we expect that many of these
+                        # TrashEntries to no longer point to an existing item. In
+                        # such a situation we just want to delete the entry as the
+                        # item itself has been correctly deleted.
+                        pass
+                    trash_entry.delete()
+                    deleted_count += 1
+            except DatabaseError as e:
+                if "out of shared memory" in traceback.format_exc():
+                    if trash_entry:
+                        trash_item = trash_item_type.lookup_trashed_item(
+                            trash_entry, trash_item_lookup_cache
+                        )
+                        trash_item_type = trash_item_type_registry.get(
+                            trash_entry.trash_item_type
+                        )
+                        trash_item_type.handle_perm_delete_out_of_shared_memory(
+                            trash_item, e
+                        )
+                else:
+                    raise e
+
         logger.info(
             f"Successfully deleted {deleted_count} trash entries and their associated "
             "trashed items."

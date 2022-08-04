@@ -1620,3 +1620,34 @@ def test_can_perm_delete_application_which_links_to_self(data_fixture):
         table_a.get_database_table_name() not in connection.introspection.table_names()
     )
     assert TrashEntry.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.disabled_in_ci
+def test_can_delete_a_single_application_with_many_tables(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    for i in range(2000):
+        data_fixture.create_database_table(user=user, database=database)
+
+    trash_entry = TrashHandler.trash(user, database.group, database, database)
+
+    TrashEntry.objects.update(should_be_permanently_deleted=True)
+
+    TrashHandler.permanently_delete_marked_trash()
+
+    assert TrashEntry.objects.filter(id=trash_entry.id).exists()
+
+    TrashHandler.permanently_delete_marked_trash()
+
+    assert not TrashEntry.objects.filter(id=trash_entry.id).exists()
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select count(*)
+from information_schema.tables
+where table_schema = 'public';
+            """
+        )
+        assert cursor.fetchone()[0] == 0
