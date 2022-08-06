@@ -1,17 +1,9 @@
-from datetime import date
 import pytest
-from io import BytesIO
-from faker import Faker
 
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import (
     CollaboratorField,
 )
-from baserow.contrib.database.fields.field_types import (
-    CollaboratorFieldType,
-)
-from django.apps.registry import apps
-from baserow.contrib.database.fields.registries import field_type_registry
 from baserow.contrib.database.rows.handler import RowHandler
 
 
@@ -47,10 +39,13 @@ def test_collaborator_field_type_create(data_fixture):
 @pytest.mark.django_db
 @pytest.mark.field_collaborator
 def test_collaborator_field_type_update(data_fixture):
-    user = data_fixture.create_user()
-    user2 = data_fixture.create_user()
-    user3 = data_fixture.create_user()
-    database = data_fixture.create_database_application(user=user, name="Placeholder")
+    group = data_fixture.create_group()
+    user = data_fixture.create_user(group=group)
+    user2 = data_fixture.create_user(group=group)
+    user3 = data_fixture.create_user(group=group)
+    database = data_fixture.create_database_application(
+        user=user, name="Placeholder", group=group
+    )
     table = data_fixture.create_database_table(name="Example", database=database)
 
     field_handler = FieldHandler()
@@ -74,5 +69,6 @@ def test_collaborator_field_type_update(data_fixture):
 
     collaborator_field_list = getattr(row, field_id).all()
     assert len(collaborator_field_list) == 2
+    # TODO: order is not kept?
     assert collaborator_field_list[0].id == user2.id
     assert collaborator_field_list[1].id == user3.id

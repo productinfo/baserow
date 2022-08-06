@@ -22,6 +22,7 @@ from django.utils.timezone import make_aware
 
 from rest_framework import serializers
 
+from baserow.core.models import GroupUser
 from baserow.contrib.database.api.fields.errors import (
     ERROR_LINK_ROW_TABLE_NOT_IN_SAME_DATABASE,
     ERROR_LINK_ROW_TABLE_NOT_PROVIDED,
@@ -78,6 +79,7 @@ from .exceptions import (
     FieldDoesNotExist,
     InvalidLookupThroughField,
     InvalidLookupTargetField,
+    AllProvidedCollaboratorIdsMustBeValidUsers,
 )
 from .field_filters import (
     contains_filter,
@@ -3245,7 +3247,6 @@ class CollaboratorFieldType(FieldType):
 
     def get_serializer_field(self, instance, **kwargs):
         required = kwargs.get("required", False)
-
         field_serializer = CollaboratorSerializer(
             **{
                 "required": required,
@@ -3287,19 +3288,21 @@ class CollaboratorFieldType(FieldType):
         if value is None:
             return value
 
-        # TODO: validate user_ids
+        if len(value) == 0:
+            return []
 
-        # for x in value:
-        #     if not isinstance(x, int):
-        #         raise AllProvidedMultipleSelectValuesMustBeIntegers(x)
+        user_ids = [v["id"] for v in value]
+        group = instance.table.database.group
+        group_users_count = GroupUser.objects.filter(
+            user_id__in=user_ids, group_id=group.id
+        ).count()
 
-        # options = SelectOption.objects.filter(field=instance, id__in=value)
+        if group_users_count != len(user_ids):
+            raise AllProvidedCollaboratorIdsMustBeValidUsers(user_ids)
 
-        # if len(options) != len(value):
-        #     raise AllProvidedMultipleSelectValuesMustBeSelectOption(value)
+        return user_ids
 
-        return [v["id"] for v in value]
-
+    # TODO:
     # def prepare_value_for_db_in_bulk(
     #     self, instance, values_by_row, continue_on_error=False
     # ):
@@ -3384,7 +3387,7 @@ class CollaboratorFieldType(FieldType):
         ).contribute_to_class(User, related_name)
 
         # Trigger the newly created pending operations of all the models related to the
-        # created ManyToManyField. They need to be called manually because normally
+        # created CollaboratorField. They need to be called manually because normally
         # they are triggered when a new model is registered. Not triggering them
         # can cause a memory leak because everytime a table model is generated, it will
         # register new pending operations.

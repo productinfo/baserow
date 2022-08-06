@@ -14,7 +14,9 @@ export default {
         return []
       }
       const ids = this.value.map((item) => item.id)
-      return this.groupCollaborators.filter((item) => !ids.includes(item.user_id))
+      return this.groupCollaborators.filter(
+        (item) => !ids.includes(item.user_id)
+      )
     },
   },
   methods: {
