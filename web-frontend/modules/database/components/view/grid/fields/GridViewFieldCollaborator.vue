@@ -1,0 +1,61 @@
+<template>
+  <div ref="cell" class="grid-view__cell grid-field-many-to-many__cell active">
+    <div ref="dropdownLink" class="grid-field-many-to-many__list">
+      <div
+        v-for="item in value"
+        :key="item.id"
+        class="grid-field-multiple-select__item background-color--blue"
+      >
+        <div class="grid-field-many-to-many__name">
+          {{ item.name }}
+        </div>
+        <a
+          v-if="!readOnly"
+          class="grid-field-many-to-many__remove"
+          @click.prevent="removeValue($event, value, item.id)"
+        >
+          <i class="fas fa-times"></i>
+        </a>
+      </div>
+      <a
+        v-if="!readOnly"
+        class="
+          grid-field-many-to-many__item grid-field-many-to-many__item--link
+        "
+        @click.prevent="toggleDropdown()"
+      >
+        <i class="fas fa-plus"></i>
+      </a>
+    </div>
+    <FieldCollaboratorDropdown
+      v-if="!readOnly"
+      ref="dropdown"
+      :collaborators="availableCollaborators"
+      :show-input="false"
+      :show-empty-value="false"
+      :allow-create-option="true"
+      class="dropdown--floating grid-field-single-select__dropdown"
+      @show="editing = true"
+      @hide="editing = false"
+      @input="updateValue($event, value)"
+      @create-option="createOption($event)"
+    ></FieldCollaboratorDropdown>
+  </div>
+</template>
+
+<script>
+import gridField from '@baserow/modules/database/mixins/gridField'
+import selectOptions from '@baserow/modules/database/mixins/selectOptions'
+import collaboratorField from '@baserow/modules/database/mixins/collaboratorField'
+import FieldCollaboratorDropdown from '@baserow/modules/database/components/field/FieldCollaboratorDropdown'
+
+export default {
+  components: { FieldCollaboratorDropdown },
+  mixins: [gridField, selectOptions, collaboratorField],
+  data() {
+    return {
+      editing: false,
+    }
+  },
+}
+</script>
