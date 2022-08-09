@@ -243,7 +243,10 @@ class CoreHandler:
         group_user_id = group_user.id
         group_user.delete()
         group_user_deleted.send(
-            self, group_user_id=group_user_id, group_user=group_user, user=user
+            self,
+            group_user_id=group_user_id,
+            group_user=group_user,
+            user=user,
         )
 
     def delete_group_by_id(self, user: AbstractUser, group_id: int):
@@ -394,7 +397,10 @@ class CoreHandler:
         group_user.delete()
 
         group_user_deleted.send(
-            self, group_user_id=group_user_id, group_user=group_user, user=user
+            self,
+            group_user_id=group_user_id,
+            group_user=group_user,
+            user=user,
         )
 
     def get_group_invitation_signer(self):

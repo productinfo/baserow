@@ -373,6 +373,7 @@ class AccountView(APIView):
 
         user = UserHandler().update_user(
             request.user,
+            request.user,
             **data,
         )
         return Response(AccountSerializer(user).data)

@@ -152,14 +152,14 @@ def test_update_user(data_fixture):
     user_handler = UserHandler()
     user = data_fixture.create_user(first_name="Initial", language="fr")
 
-    user_handler.update_user(user, first_name="Updated")
+    user_handler.update_user(user, user, first_name="Updated")
 
     user.refresh_from_db()
     user.profile.refresh_from_db()
     assert user.first_name == "Updated"
     assert user.profile.language == "fr"
 
-    user_handler.update_user(user, language="en")
+    user_handler.update_user(user, user, language="en")
 
     user.refresh_from_db()
     user.profile.refresh_from_db()
