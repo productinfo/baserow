@@ -1,7 +1,6 @@
 from django.db import transaction
 
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
-from drf_spectacular.plumbing import build_array_type
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
