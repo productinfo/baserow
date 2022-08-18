@@ -27,6 +27,7 @@
 @import 'fields/link_row';
 @import 'fields/file';
 @import 'fields/multiple_select';
+@import 'fields/multiple_collaborators.scss';
 @import 'fields/array';
 @import 'card';
 @import 'card/all';
@@ -41,6 +42,7 @@
 @import 'views/grid/file';
 @import 'views/grid/single_select';
 @import 'views/grid/multiple_select';
+@import 'views/grid/multiple_collaboratos.scss';
 @import 'views/grid/many_to_many';
 @import 'views/grid/array';
 @import 'views/grid/aggregation';

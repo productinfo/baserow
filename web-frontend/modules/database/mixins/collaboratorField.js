@@ -20,6 +20,9 @@ export default {
     },
   },
   methods: {
+    initial(name) {
+      return name.slice(0, 1).toUpperCase()
+    },
     /**
      * Removes the provided ID from the current values list and emits an update
      * event with the new values list.

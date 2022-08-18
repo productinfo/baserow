@@ -1,0 +1,49 @@
+.field-multiple-collaborators__items {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.field-multiple-collaborators__item {
+  margin: 5px 0 5px 0;
+  display: flex;
+  align-items: center;
+
+  &:not(:last-child) {
+    margin-right: 5px;
+  }
+}
+
+.field-multiple-collaborators__name {
+  @extend %ellipsis;
+
+  @include collaborator-style(flex, true);
+
+  max-width: 200px;
+}
+
+.field-multiple-collaborators__initials {
+  flex: 0 0 24px;
+  font-weight: bold;
+  color: $white;
+  background-color: $color-primary-500;
+  border-radius: 100%;
+  margin-left: 4px;
+  margin-right: -12px;
+  z-index: 1;
+
+  @include center-text(24px, 12px);
+}
+
+.field-multiple-collaborators__remove {
+  color: $color-primary-900;
+  margin-left: 5px;
+  font-size: 11px;
+  padding: 0 2px;
+
+  &:hover {
+    color: $color-neutral-500;
+  }
+}

@@ -4,18 +4,26 @@
       <div
         v-for="item in value"
         :key="item.id"
-        class="grid-field-multiple-select__item background-color--blue"
+        class="field-multiple-collaborators__item"
       >
-        <div class="grid-field-many-to-many__name">
-          {{ item.name }}
+        <div class="field-multiple-collaborators__initials">
+          {{ initial(item.name) }}
         </div>
-        <a
-          v-if="!readOnly"
-          class="grid-field-many-to-many__remove"
-          @click.prevent="removeValue($event, value, item.id)"
+        <div
+          class="
+            field-multiple-collaborators__name
+            background-color--light-gray
+          "
         >
-          <i class="fas fa-times"></i>
-        </a>
+          {{ item.name }}
+          <a
+            v-if="!readOnly"
+            class="grid-field-many-to-many__remove"
+            @click.prevent="removeValue($event, value, item.id)"
+          >
+            <i class="fas fa-times"></i>
+          </a>
+        </div>
       </div>
       <a
         v-if="!readOnly"
