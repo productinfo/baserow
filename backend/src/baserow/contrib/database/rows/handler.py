@@ -237,26 +237,30 @@ class RowHandler:
 
     def get_order_before_row(
         self,
-        before: GeneratedTableModel,
+        before_row: GeneratedTableModel,
         model: Type[GeneratedTableModel],
         amount: int = 1,
     ) -> Tuple[Decimal, Decimal]:
         """
-        Calculates a new unique order lower than the provided before row
-        order and a step representing the change needed between multiple rows if
-        multiple rows are being placed at once.
-        This order can be used by existing or new rows. Several other rows
-        could be updated as their order might need to change.
+        Calculates a new unique order lower than the provided before row order
+        and a step representing the change needed between multiple rows if
+        multiple rows are being placed at once. This order can be used by
+        existing or new rows. Several other rows could be updated as their order
+        might need to change. In order to decrease the number of queries needed
+        to update the rows order, a space is created between the rows, so that
+        subsequent inserts before the same row can be done without moving all
+        the rows again, until the space is filled.
 
-        :param before: The row instance where the before order must be calculated for.
+        :param before_row: The row instance where the before order must be
+            calculated for.
         :param model: The model of the related table
         :param amount: The number of rows being placed.
-        :return: The order for the last inserted row and the
-            step (change) that should be used between all new rows.
+        :return: The order for the last inserted row and the step (change) that
+            should be used between all new rows.
         :rtype: tuple(Decimal, Decimal)
         """
 
-        if before:
+        if before_row:
             # When the rows are being inserted before an existing row, the order
             # of the last new row is calculated by subtracting a fraction of
             # the "before" row order.
@@ -264,10 +268,24 @@ class RowHandler:
             # rows that have been placed before. By using these fractions we don't
             # have to re-order every row in the table.
             step = Decimal("0.00000000000000000001")
-            order_last_row = before.order - step
-            model.objects.filter(
-                order__gt=floor(order_last_row), order__lte=order_last_row
-            ).update(order=F("order") - (step * amount))
+            space_for_rows = step * max(10000, amount)
+            before_row_order = before_row.order
+            last_order_before_row = (
+                model.objects.filter(order__lt=before_row_order)
+                .values_list("order", flat=True)
+                .last()
+                or 0
+            )
+            order_last_row = max(
+                last_order_before_row + step, before_row_order - space_for_rows
+            )
+
+            if before_row_order - order_last_row < step * amount:
+                # shift all the rows in the unit and create the space for the new rows
+                model.objects.filter(
+                    order__gt=floor(before_row_order - step), order__lt=before_row_order
+                ).update(order=F("order") - space_for_rows)
+                order_last_row = before_row_order - space_for_rows
         else:
             # Because the rows are by default added as last, we have to figure out
             # what the highest order in the table is currently and increase that by
@@ -275,9 +293,12 @@ class RowHandler:
             # The order of new rows should always be a whole number so the number is
             # rounded up.
             step = Decimal("1.00000000000000000000")
-            order_last_row = ceil(
-                model.objects.aggregate(max=Max("order")).get("max") or Decimal("0")
-            ) + (step * amount)
+            order_last_row = (
+                ceil(
+                    model.objects.aggregate(max=Max("order")).get("max") or Decimal("0")
+                )
+                + step
+            )
 
         return order_last_row, step
 
@@ -773,9 +794,9 @@ class RowHandler:
         report.update({index: err for index, err in errors.items()})
 
         rows_relationships = []
-        for index, row in enumerate(rows, start=-len(rows)):
+        for index, row in enumerate(rows):
             values, manytomany_values = self.extract_manytomany_values(row, model)
-            values["order"] = highest_order - (step * (abs(index + 1)))
+            values["order"] = highest_order + (step * index)
             instance = model(**values)
 
             relations = {
@@ -872,13 +893,13 @@ class RowHandler:
         updated_fields = [o["field"] for o in model._field_objects.values()]
         ViewHandler().field_value_updated(updated_fields)
 
-        if send_signal:
-            rows_to_return = list(
-                model.objects.all()
-                .enhance_by_fields()
-                .filter(id__in=[row.id for row in inserted_rows])
-            )
+        rows_to_return = list(
+            model.objects.all()
+            .enhance_by_fields()
+            .filter(id__in=[row.id for row in inserted_rows])
+        )
 
+        if send_signal:
             rows_created.send(
                 self,
                 rows=rows_to_return,
@@ -890,6 +911,7 @@ class RowHandler:
 
         if generate_error_report:
             return inserted_rows, report
+
         return rows_to_return
 
     def validate_rows(

@@ -789,9 +789,7 @@ def test_import_export_link_row_field(data_fixture):
         imported_group, exported_applications, BytesIO(), None
     )
     imported_database = imported_applications[0]
-    imported_tables = imported_database.table_set.all()
-    imported_table = imported_tables[0]
-    imported_customers_table = imported_tables[1]
+    imported_table, imported_customers_table = imported_database.table_set.all()
     imported_link_row_field = imported_table.field_set.all().first().specific
     imported_link_row_relation_field = (
         imported_customers_table.field_set.all().first().specific

@@ -635,7 +635,7 @@ def test_create_row(api_client, data_fixture):
     assert response_json_row_5[f"field_{number_field.id}"] == "480"
     assert not response_json_row_5[f"field_{boolean_field.id}"]
     assert response_json_row_5[f"field_{text_field_2.id}"] == ""
-    assert response_json_row_5["order"] == "2.99999999999999999999"
+    assert Decimal(response_json_row_5["order"]) < Decimal(response_json_row_3["order"])
 
     token.refresh_from_db()
     assert token.handled_calls == 2
@@ -1232,14 +1232,12 @@ def test_move_row(api_client, data_fixture):
     response_json_row_1 = response.json()
     assert response.status_code == HTTP_200_OK
     assert response_json_row_1["id"] == row_1.id
-    assert response_json_row_1["order"] == "2.99999999999999999999"
+    assert row_2.order < Decimal(response_json_row_1["order"]) < row_3.order
 
     row_1.refresh_from_db()
     row_2.refresh_from_db()
     row_3.refresh_from_db()
-    assert row_1.order == Decimal("2.99999999999999999999")
-    assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("3.00000000000000000000")
+    assert row_2.order < row_1.order < row_3.order
 
     data_fixture.create_text_field(user=user, table=table, name="New Field")
     url = reverse(

@@ -14,6 +14,7 @@ from baserow.contrib.database.api.utils import (
     extract_field_ids_from_string,
     get_include_exclude_fields,
 )
+from baserow.contrib.database.management.commands.fill_table_rows import fill_table_rows
 from baserow.contrib.database.rows.exceptions import RowDoesNotExist
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.core.exceptions import UserNotInGroup
@@ -173,7 +174,7 @@ def test_create_row(send_mock, data_fixture):
     row_2.refresh_from_db()
     assert row_1.order == Decimal("1.00000000000000000000")
     assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("1.99999999999999999999")
+    assert row_1.order < row_3.order < row_2.order
     assert send_mock.call_args[1]["before"].id == row_2.id
 
     row_4 = handler.create_row(user=user, table=table, before_row=row_2)
@@ -182,8 +183,7 @@ def test_create_row(send_mock, data_fixture):
     row_3.refresh_from_db()
     assert row_1.order == Decimal("1.00000000000000000000")
     assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("1.99999999999999999998")
-    assert row_4.order == Decimal("1.99999999999999999999")
+    assert row_1.order < row_3.order < row_4.order < row_2.order
 
     row_5 = handler.create_row(user=user, table=table, before_row=row_3)
     row_1.refresh_from_db()
@@ -192,9 +192,7 @@ def test_create_row(send_mock, data_fixture):
     row_4.refresh_from_db()
     assert row_1.order == Decimal("1.00000000000000000000")
     assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("1.99999999999999999998")
-    assert row_4.order == Decimal("1.99999999999999999999")
-    assert row_5.order == Decimal("1.99999999999999999997")
+    assert row_1.order < row_5.order < row_3.order < row_4.order < row_2.order
 
     row_6 = handler.create_row(user=user, table=table, before_row=row_2)
     row_1.refresh_from_db()
@@ -204,10 +202,14 @@ def test_create_row(send_mock, data_fixture):
     row_5.refresh_from_db()
     assert row_1.order == Decimal("1.00000000000000000000")
     assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("1.99999999999999999997")
-    assert row_4.order == Decimal("1.99999999999999999998")
-    assert row_5.order == Decimal("1.99999999999999999996")
-    assert row_6.order == Decimal("1.99999999999999999999")
+    assert (
+        row_1.order
+        < row_5.order
+        < row_3.order
+        < row_4.order
+        < row_6.order
+        < row_2.order
+    )
 
     row_7 = handler.create_row(user, table=table, before_row=row_1)
     row_1.refresh_from_db()
@@ -218,11 +220,15 @@ def test_create_row(send_mock, data_fixture):
     row_6.refresh_from_db()
     assert row_1.order == Decimal("1.00000000000000000000")
     assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("1.99999999999999999997")
-    assert row_4.order == Decimal("1.99999999999999999998")
-    assert row_5.order == Decimal("1.99999999999999999996")
-    assert row_6.order == Decimal("1.99999999999999999999")
-    assert row_7.order == Decimal("0.99999999999999999999")
+    assert (
+        row_7.order
+        < row_1.order
+        < row_5.order
+        < row_3.order
+        < row_4.order
+        < row_6.order
+        < row_2.order
+    )
 
     with pytest.raises(ValidationError):
         handler.create_row(user=user, table=table, values={price_field.id: -10.22})
@@ -534,9 +540,7 @@ def test_move_row(before_send_mock, send_mock, data_fixture):
     row_1.refresh_from_db()
     row_2.refresh_from_db()
     row_3.refresh_from_db()
-    assert row_1.order == Decimal("2.99999999999999999999")
-    assert row_2.order == Decimal("2.00000000000000000000")
-    assert row_3.order == Decimal("3.00000000000000000000")
+    assert row_2.order < row_1.order == row_3.order
 
     row_ids = table.get_model().objects.all()
     assert row_ids[0].id == row_2.id
@@ -725,7 +729,7 @@ def create_multiple_rows_with_same_before_row(data_fixture, row_count):
     row_handler = RowHandler()
     before_row = row_handler.create_row(user=user, table=table)
 
-    for _ in range(row_count):
+    for i in range(row_count):
         row_handler.create_row(user=user, table=table, before_row=before_row)
 
 
@@ -735,23 +739,23 @@ def test_profiling_create_many_rows_with_same_before_row(data_fixture):
     profiler = Profiler()
 
     profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 1)
-    profiler.stop()
-    print("--------- Creating 1 row -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
-    profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 10)
-    profiler.stop()
-    print("--------- Creating 10 rows -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
-    profiler.start()
     create_multiple_rows_with_same_before_row(data_fixture, 100)
     profiler.stop()
     print("--------- Creating 100 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 200)
+    profiler.stop()
+    print("--------- Creating 200 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 500)
+    profiler.stop()
+    print("--------- Creating 500 rows -------")
     print(profiler.output_text(unicode=True, color=True))
     profiler.reset()
 
@@ -775,3 +779,87 @@ def test_profiling_create_many_rows_with_same_before_row(data_fixture):
     print("--------- Creating 5000 rows -------")
     print(profiler.output_text(unicode=True, color=True))
     profiler.reset()
+
+
+@pytest.mark.django_db
+def test_get_order_before_row(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+
+    row_handler = RowHandler()
+    before_row = row_handler.create_row(user=user, table=table)
+    row_1 = row_handler.create_row(user=user, table=table, before_row=before_row)
+    assert row_1.order == Decimal("0.99999999999999990000")
+
+    # change manually the order so to force the method to create more space
+    row_1.order = Decimal("0.99999999999999999998")
+    row_1.save()
+
+    # a single row fits in the space
+    row_2 = row_handler.create_row(user=user, table=table, before_row=before_row)
+    assert row_2.order == Decimal("0.99999999999999999999")
+
+    # another one force the mehtod to create more space
+    row_3 = row_handler.create_row(user=user, table=table, before_row=before_row)
+    assert row_3.order == Decimal("0.99999999999999990000")
+
+    row_1.refresh_from_db()
+    row_2.refresh_from_db()
+    assert row_1.order == Decimal("0.99999999999999989998")
+    assert row_2.order == Decimal("0.99999999999999989999")
+
+    # this also works for batch_create_rows
+    # change manually the order so to force the method to create more space
+    row_1.order = Decimal("0.99999999999999999997")
+    row_1.save()
+
+    rows = row_handler.create_rows(
+        user=user,
+        table=table,
+        rows_values=[{}, {}, {}, {}, {}],
+        before_row=before_row,
+        send_signal=False,
+    )
+    assert len(rows) == 5
+    assert rows[0].order == Decimal("0.99999999999999990000")
+    assert rows[1].order == Decimal("0.99999999999999990001")
+    assert rows[2].order == Decimal("0.99999999999999990002")
+    assert rows[3].order == Decimal("0.99999999999999990003")
+    assert rows[4].order == Decimal("0.99999999999999990004")
+
+    # other rows has been moved up to create 1 more space
+    row_1.refresh_from_db()
+    row_2.refresh_from_db()
+    row_3.refresh_from_db()
+    assert row_1.order == Decimal("0.99999999999999989997")
+    assert row_2.order == Decimal("0.99999999999999979999")
+    assert row_3.order == Decimal("0.99999999999999980000")
+
+    # inserting more than 10000 rows with fill_table_rows should
+    # call the update just once for the required space
+    new_rows_count = 25000
+    step = Decimal("0.00000000000000000001")
+    fill_table_rows(new_rows_count, table, before_row=before_row)
+
+    row1_new_order = row_1.order - step * new_rows_count
+    row_1.refresh_from_db()
+    assert row_1.order == row1_new_order
+
+    row2_new_order = row_2.order - step * new_rows_count
+    row_2.refresh_from_db()
+    assert row_2.order == row2_new_order
+
+    row3_new_order = row_3.order - step * new_rows_count
+    row_3.refresh_from_db()
+    assert row_3.order == row3_new_order
+
+    # a new row should fit in the space created by the last row inserted
+
+    table_model = table.get_model()
+    row_4 = row_handler.create_row(user=user, table=table, before_row=before_row)
+    assert row_4.order == Decimal("0.99999999999999990000")
+    assert table_model.objects.filter(order=row_4.order).count() == 1
+
+    # all other rows should be just before the row_4.order
+    inserted_rows = 3 + 5 + new_rows_count
+    assert table_model.objects.filter(order__lt=row_4.order).count() == inserted_rows

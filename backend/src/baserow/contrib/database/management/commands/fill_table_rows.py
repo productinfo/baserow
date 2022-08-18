@@ -1,14 +1,12 @@
 import sys
 from collections import defaultdict
-from decimal import Decimal
-from math import ceil
 
 from django.core.management.base import BaseCommand
-from django.db.models import Max
 from django.db.models.fields.related import ForeignKey
 
 from faker import Faker
 
+from baserow.contrib.database.rows.exceptions import RowDoesNotExist
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.contrib.database.table.models import Table
 
@@ -23,10 +21,17 @@ class Command(BaseCommand):
         parser.add_argument(
             "limit", type=int, help="Amount of rows that need to be inserted."
         )
+        parser.add_argument(
+            "--before-row-id",
+            type=int,
+            default=None,
+            help="The row id that the new rows should be inserted before.",
+        )
 
     def handle(self, *args, **options):
         table_id = options["table_id"]
         limit = options["limit"]
+        before_row_id = options["before_row_id"]
 
         try:
             table = Table.objects.get(pk=table_id)
@@ -36,18 +41,30 @@ class Command(BaseCommand):
             )
             sys.exit(1)
 
-        fill_table_rows(limit, table)
+        before_row = None
+        if before_row_id:
+            try:
+                before_row = table.get_model().objects.get(id=before_row_id)
+            except RowDoesNotExist:
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"The table with id {table_id} does not have a row with id {before_row_id}."
+                    )
+                )
+                sys.exit(1)
+
+        fill_table_rows(limit, table, before_row)
 
         self.stdout.write(self.style.SUCCESS(f"{limit} rows have been inserted."))
 
 
-def fill_table_rows(limit, table):
+def fill_table_rows(limit, table, before_row=None):
     fake = Faker()
     row_handler = RowHandler()
     cache = {}
     model = table.get_model()
-    # Find out what the highest order is because we want to append the new rows.
-    order = ceil(model.objects.aggregate(max=Max("order")).get("max") or Decimal("0"))
+
+    last_order, step = row_handler.get_order_before_row(before_row, model, amount=limit)
 
     rows = []
     for i in range(0, limit):
@@ -61,8 +78,8 @@ def fill_table_rows(limit, table):
         }
 
         values, manytomany_values = row_handler.extract_manytomany_values(values, model)
-        order += Decimal("1")
-        values["order"] = order
+        values["order"] = last_order
+        last_order += step
 
         # Prepare an array of objects that can later be inserted all at once.
         instance = model(**values)
