@@ -1,6 +1,6 @@
 <template>
   <li
-    class="select-options__dropdown-item"
+    class="select-collaborators__dropdown-item"
     :class="{
       hidden: !isVisible(query),
       active: isActive(value),
@@ -9,11 +9,12 @@
     }"
   >
     <a
-      class="select-options__dropdown-link"
+      class="select-collaborators__dropdown-link"
       @click="select(value, disabled)"
       @mousemove="hover(value, disabled)"
     >
-      <div class="select-options__dropdown-option">
+      <div class="select-collaborators__initials">A</div>
+      <div class="select-collaborators__dropdown-option">
         {{ name }}
       </div>
     </a>
