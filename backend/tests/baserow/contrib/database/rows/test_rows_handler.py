@@ -7,6 +7,7 @@ from django.db import models
 
 import pytest
 from freezegun import freeze_time
+from pyinstrument import Profiler
 from pytz import UTC
 
 from baserow.contrib.database.api.utils import (
@@ -715,3 +716,62 @@ def test_has_row(data_fixture):
 
     assert handler.has_row(user=user, table=table, row_id=row.id, raise_error=False)
     assert handler.has_row(user=user, table=table, row_id=row.id, raise_error=True)
+
+
+def create_multiple_rows_with_same_before_row(data_fixture, row_count):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+
+    row_handler = RowHandler()
+    before_row = row_handler.create_row(user=user, table=table)
+
+    for _ in range(row_count):
+        row_handler.create_row(user=user, table=table, before_row=before_row)
+
+
+@pytest.mark.django_db
+@pytest.mark.disabled_in_ci
+def test_profiling_create_many_rows_with_same_before_row(data_fixture):
+    profiler = Profiler()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 1)
+    profiler.stop()
+    print("--------- Creating 1 row -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 10)
+    profiler.stop()
+    print("--------- Creating 10 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 100)
+    profiler.stop()
+    print("--------- Creating 100 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 1000)
+    profiler.stop()
+    print("--------- Creating 1000 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 2000)
+    profiler.stop()
+    print("--------- Creating 2000 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
+
+    profiler.start()
+    create_multiple_rows_with_same_before_row(data_fixture, 5000)
+    profiler.stop()
+    print("--------- Creating 5000 rows -------")
+    print(profiler.output_text(unicode=True, color=True))
+    profiler.reset()
