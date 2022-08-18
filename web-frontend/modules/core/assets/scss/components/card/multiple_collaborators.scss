@@ -1,0 +1,14 @@
+.card-multiple-collaborators__list-wrapper {
+  overflow: hidden;
+  margin: 0 -16px;
+  height: 30px;
+}
+
+.card-multiple-collaborators__list {
+  overflow: hidden;
+  display: flex;
+  flex-wrap: nowrap;
+  height: 30px + 15px;
+  padding: 0 16px 15px 16px;
+  overflow-x: scroll;
+}

@@ -76,6 +76,7 @@ import RowCardFieldPhoneNumber from '@baserow/modules/database/components/card/R
 import RowCardFieldSingleSelect from '@baserow/modules/database/components/card/RowCardFieldSingleSelect'
 import RowCardFieldText from '@baserow/modules/database/components/card/RowCardFieldText'
 import RowCardFieldURL from '@baserow/modules/database/components/card/RowCardFieldURL'
+import RowCardFieldMultipleCollaborators from '@baserow/modules/database/components/card/RowCardFieldMultipleCollaborators'
 
 import FormViewFieldLinkRow from '@baserow/modules/database/components/view/form/FormViewFieldLinkRow'
 
@@ -2598,8 +2599,7 @@ export class CollaboratorFieldType extends FieldType {
   }
 
   getCardComponent() {
-    // TODO:
-    return RowCardFieldMultipleSelect
+    return RowCardFieldMultipleCollaborators
   }
 
   getSort(name, order) {

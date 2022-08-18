@@ -48,9 +48,11 @@
 import rowEditField from '@baserow/modules/database/mixins/rowEditField'
 import selectOptions from '@baserow/modules/database/mixins/selectOptions'
 import collaboratorField from '@baserow/modules/database/mixins/collaboratorField'
+import FieldCollaboratorDropdown from '@baserow/modules/database/components/field/FieldCollaboratorDropdown'
 
 export default {
   name: 'RowEditFieldCollaborator',
+  components: { FieldCollaboratorDropdown },
   mixins: [rowEditField, selectOptions, collaboratorField],
 }
 </script>
