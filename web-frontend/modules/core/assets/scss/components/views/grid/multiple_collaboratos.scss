@@ -1,12 +1,3 @@
-/* TODO: unused? */
-.grid-field-multiple-collaborators__item {
-  white-space: nowrap;
-  margin: 6px 4px 4px 4px;
-  overflow: unset;
-
-  @include collaborator-style(flex, true);
-
-  .grid-view__column--matches-search .grid-field-many-to-many__cell.active & {
-    background-color: $color-primary-200;
-  }
-}
+// .grid-field-multiple-collaborators__list {
+//   margin-left: 4px;
+// }

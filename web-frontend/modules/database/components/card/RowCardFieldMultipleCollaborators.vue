@@ -4,7 +4,7 @@
       <div
         v-for="item in props.value"
         :key="item.id"
-        class="field-multiple-collaborators__item"
+        class="card-multiple-collaborators__item"
       >
         <div v-if="props.value" class="field-multiple-collaborators__initials">
           {{ $options.methods.initial(item.name) }}
