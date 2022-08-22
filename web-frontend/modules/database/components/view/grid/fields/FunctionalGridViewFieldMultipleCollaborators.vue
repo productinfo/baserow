@@ -7,7 +7,7 @@
         class="field-multiple-collaborators__item"
       >
         <div v-if="props.value" class="field-multiple-collaborators__initials">
-          {{ $options.methods.initial(item.name) }}
+          {{ $options.methods.getCollaboratorNameInitials(item, parent.$store) }}
         </div>
         <div
           v-if="props.value"
@@ -16,7 +16,7 @@
             background-color--light-gray
           "
         >
-          {{ item.name }}
+          {{ $options.methods.getCollaboratorName(item, parent.$store) }}
         </div>
       </div>
     </div>
@@ -24,18 +24,16 @@
 </template>
 
 <script>
+import collaboratorName from '@baserow/modules/database/mixins/collaboratorName'
+
 export default {
   name: 'FunctionalGridViewFieldMultipleCollaborators',
   functional: true,
+  mixins: [collaboratorName],
   props: {
     value: {
       required: true,
       type: Array,
-    },
-  },
-  methods: {
-    initial(name) {
-      return name.slice(0, 1).toUpperCase()
     },
   },
 }

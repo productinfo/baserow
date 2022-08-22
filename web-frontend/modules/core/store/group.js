@@ -371,6 +371,15 @@ export const getters = {
 
     return state.selected.id
   },
+  getUserById: (state) => (id) => {
+    const allUsers = []
+    for (const group of state.items) {
+      for (const user of group.users) {
+        allUsers.push(user)
+      }
+    }
+    return allUsers.find((groupUser) => groupUser.user_id === id)
+  },
 }
 
 export default {

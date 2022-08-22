@@ -7,14 +7,14 @@
         class="card-multiple-collaborators__item"
       >
         <div v-if="props.value" class="field-multiple-collaborators__initials">
-          {{ $options.methods.initial(item.name) }}
+          {{ $options.methods.getCollaboratorNameInitials(item, parent.$store) }}
         </div>
         <span
           class="
             field-multiple-collaborators__name
             background-color--light-gray
           "
-          >{{ item.name }}</span
+          >{{ $options.methods.getCollaboratorName(item, parent.$store) }}</span
         >
       </div>
     </div>
@@ -22,12 +22,10 @@
 </template>
 
 <script>
+import collaboratorName from '@baserow/modules/database/mixins/collaboratorName'
+
 export default {
   height: 30,
-  methods: {
-    initial(name) {
-      return name.slice(0, 1).toUpperCase()
-    },
-  },
+  mixins: [collaboratorName],
 }
 </script>

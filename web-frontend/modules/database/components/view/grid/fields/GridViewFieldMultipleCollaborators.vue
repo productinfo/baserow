@@ -7,7 +7,7 @@
         class="field-multiple-collaborators__item"
       >
         <div class="field-multiple-collaborators__initials">
-          {{ initial(item.name) }}
+          {{ getCollaboratorNameInitials(item.name) }}
         </div>
         <div
           class="
@@ -15,7 +15,7 @@
             background-color--light-gray
           "
         >
-          {{ item.name }}
+          {{ getCollaboratorName(item) }}
           <a
             v-if="!readOnly"
             class="grid-field-many-to-many__remove"
@@ -56,10 +56,11 @@ import gridField from '@baserow/modules/database/mixins/gridField'
 import selectOptions from '@baserow/modules/database/mixins/selectOptions'
 import collaboratorField from '@baserow/modules/database/mixins/collaboratorField'
 import FieldCollaboratorDropdown from '@baserow/modules/database/components/field/FieldCollaboratorDropdown'
+import collaboratorName from '@baserow/modules/database/mixins/collaboratorName'
 
 export default {
   components: { FieldCollaboratorDropdown },
-  mixins: [gridField, selectOptions, collaboratorField],
+  mixins: [gridField, selectOptions, collaboratorField, collaboratorName],
   data() {
     return {
       editing: false,
