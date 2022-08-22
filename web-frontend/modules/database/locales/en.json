@@ -280,6 +280,9 @@
     "rowEditFieldMultipleSelect": {
         "addOption": "Add another option"
     },
+    "rowEditFieldMultipleCollaborators": {
+        "addCollaborator": "Add a collaborator"
+    },
     "rowEditFieldFile": {
         "addFile": "Add a file",
         "sizes": {

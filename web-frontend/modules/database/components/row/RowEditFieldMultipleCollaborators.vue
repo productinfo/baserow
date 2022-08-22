@@ -4,19 +4,26 @@
       <li
         v-for="item in value"
         :key="item.id"
-        class="field-multiple-select__item"
-        :class="'background-color--' + item.color"
+        class="field-multiple-collaborators__item"
       >
-        <div class="field-multiple-select__name">
-          {{ item.value }}
+        <div class="field-multiple-collaborators__initials">
+          {{ initial(item.name) }}
         </div>
-        <a
-          v-if="!readOnly"
-          class="field-multiple-select__remove"
-          @click.prevent="removeValue($event, value, item.id)"
+        <div
+          class="
+            field-multiple-collaborators__name
+            background-color--light-gray
+          "
         >
-          <i class="fas fa-times"></i>
-        </a>
+          {{ item.name }}
+          <a
+            v-if="!readOnly"
+            class="field-multiple-select__remove"
+            @click.prevent="removeValue($event, value, item.id)"
+          >
+            <i class="fas fa-times"></i>
+          </a>
+        </div>
       </li>
     </ul>
     <a
@@ -26,7 +33,7 @@
       @click.prevent="toggleDropdown()"
     >
       <i class="fas fa-plus add__icon"></i>
-      {{ $t('rowEditFieldMultipleSelect.addOption') }}
+      {{ $t('rowEditFieldMultipleCollaborators.addCollaborator') }}
     </a>
     <FieldCollaboratorDropdown
       ref="dropdown"
@@ -51,7 +58,7 @@ import collaboratorField from '@baserow/modules/database/mixins/collaboratorFiel
 import FieldCollaboratorDropdown from '@baserow/modules/database/components/field/FieldCollaboratorDropdown'
 
 export default {
-  name: 'RowEditFieldCollaborator',
+  name: 'RowEditFieldMultipleCollaborators',
   components: { FieldCollaboratorDropdown },
   mixins: [rowEditField, selectOptions, collaboratorField],
 }

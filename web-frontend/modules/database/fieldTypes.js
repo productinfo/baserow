@@ -61,7 +61,7 @@ import RowEditFieldFile from '@baserow/modules/database/components/row/RowEditFi
 import RowEditFieldSingleSelect from '@baserow/modules/database/components/row/RowEditFieldSingleSelect'
 import RowEditFieldMultipleSelect from '@baserow/modules/database/components/row/RowEditFieldMultipleSelect'
 import RowEditFieldPhoneNumber from '@baserow/modules/database/components/row/RowEditFieldPhoneNumber'
-import RowEditFieldCollaborator from '@baserow/modules/database/components/row/RowEditFieldCollaborator'
+import RowEditFieldMultipleCollaborators from '@baserow/modules/database/components/row/RowEditFieldMultipleCollaborators'
 
 import RowCardFieldBoolean from '@baserow/modules/database/components/card/RowCardFieldBoolean'
 import RowCardFieldDate from '@baserow/modules/database/components/card/RowCardFieldDate'
@@ -2595,7 +2595,7 @@ export class CollaboratorFieldType extends FieldType {
   }
 
   getRowEditFieldComponent() {
-    return RowEditFieldCollaborator
+    return RowEditFieldMultipleCollaborators
   }
 
   getCardComponent() {
@@ -2622,5 +2622,13 @@ export class CollaboratorFieldType extends FieldType {
       return []
     }
     return value
+  }
+
+  getFormViewFieldComponent() {
+    return null
+  }
+
+  getEmptyValue() {
+    return []
   }
 }
