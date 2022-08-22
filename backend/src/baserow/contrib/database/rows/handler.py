@@ -7,7 +7,7 @@ from typing import Any, Dict, List, NewType, Optional, Set, Tuple, Type, cast
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import F, Max, QuerySet
+from django.db.models import Max, QuerySet
 from django.db.models.fields.related import ForeignKey, ManyToManyField
 from django.utils.encoding import force_str
 
@@ -235,6 +235,28 @@ class RowHandler:
 
         return values, manytomany_values
 
+    def _decrease_order_for_rows(
+        self,
+        model: GeneratedTableModel,
+        before_row_order: Decimal,
+        step: Decimal,
+        amount: int,
+    ):
+        rows_to_update = []
+        space_for_rows = step * amount
+
+        queryset = model.objects.filter(
+            order__gt=floor(before_row_order - step),
+            order__lt=before_row_order,
+        )
+        for i, row in enumerate(queryset.only("order").iterator(chunk_size=amount)):
+            row.order -= space_for_rows
+            rows_to_update.append(row)
+            if i % amount:
+                model.objects.bulk_update(rows_to_update, ["order"], batch_size=amount)
+                rows_to_update = []
+        model.objects.bulk_update(rows_to_update, ["order"], batch_size=amount)
+
     def get_order_before_row(
         self,
         before_row: GeneratedTableModel,
@@ -268,7 +290,8 @@ class RowHandler:
             # rows that have been placed before. By using these fractions we don't
             # have to re-order every row in the table.
             step = Decimal("0.00000000000000000001")
-            space_for_rows = step * max(10000, amount)
+            space_for_rows = max(10000, amount)
+            steps_for_rows = step * space_for_rows
             before_row_order = before_row.order
             last_order_before_row = (
                 model.objects.filter(order__lt=before_row_order)
@@ -277,15 +300,14 @@ class RowHandler:
                 or 0
             )
             order_last_row = max(
-                last_order_before_row + step, before_row_order - space_for_rows
+                last_order_before_row + step, before_row_order - steps_for_rows
             )
 
             if before_row_order - order_last_row < step * amount:
-                # shift all the rows in the unit and create the space for the new rows
-                model.objects.filter(
-                    order__gt=floor(before_row_order - step), order__lt=before_row_order
-                ).update(order=F("order") - space_for_rows)
-                order_last_row = before_row_order - space_for_rows
+                self._decrease_order_for_rows(
+                    model, order_last_row, step, space_for_rows
+                )
+                order_last_row = before_row_order - steps_for_rows
         else:
             # Because the rows are by default added as last, we have to figure out
             # what the highest order in the table is currently and increase that by

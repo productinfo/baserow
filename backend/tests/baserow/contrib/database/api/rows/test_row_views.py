@@ -1816,3 +1816,75 @@ def test_list_row_names(api_client, data_fixture):
     )
     assert response.status_code == HTTP_404_NOT_FOUND
     assert response.json()["error"] == "ERROR_TABLE_DOES_NOT_EXIST"
+
+
+@pytest.mark.django_db
+def test_get_order_before_row_inserting_between_new_rows_should_add_space(
+    data_fixture, api_client
+):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+
+    user, jwt_token = data_fixture.create_user_and_token()
+    table = data_fixture.create_database_table(user=user)
+
+    url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
+    response = api_client.post(
+        url,
+        {},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+    )
+
+    response_json_before_row = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json_before_row["order"] == "1.00000000000000000000"
+
+    step = Decimal("0.00000000000000000001")
+
+    url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
+    response = api_client.post(
+        f"{url}?before={response_json_before_row['id']}",
+        {},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+    )
+
+    response_json_row_1 = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json_row_1["order"] == "0.99999999999999990000"
+
+    url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
+    response = api_client.post(
+        f"{url}?before={response_json_before_row['id']}",
+        {},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+    )
+
+    response_json_row_2 = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json_row_2["order"] == "0.99999999999999990001"
+
+    url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
+    response = api_client.post(
+        f"{url}?before={response_json_row_2['id']}",
+        {},
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+    )
+
+    response_json_row_2 = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json_row_2["order"] == "0.99999999999999980001"
+
+    url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
+    response = api_client.get(url, format="json", HTTP_AUTHORIZATION=f"JWT {jwt_token}")
+    assert response.status_code == HTTP_200_OK
+    orders = [row["order"] for row in response.json()["results"]]
+    assert orders == [
+        "0.99999999999999980000",
+        "0.99999999999999980001",
+        "0.99999999999999990001",
+        "1.00000000000000000000",
+    ]

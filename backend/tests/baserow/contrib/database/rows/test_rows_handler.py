@@ -540,7 +540,7 @@ def test_move_row(before_send_mock, send_mock, data_fixture):
     row_1.refresh_from_db()
     row_2.refresh_from_db()
     row_3.refresh_from_db()
-    assert row_2.order < row_1.order == row_3.order
+    assert row_2.order < row_1.order < row_3.order
 
     row_ids = table.get_model().objects.all()
     assert row_ids[0].id == row_2.id
@@ -786,32 +786,75 @@ def test_get_order_before_row(data_fixture):
     user = data_fixture.create_user()
     table = data_fixture.create_database_table(user=user)
 
+    step = Decimal("0.00000000000000000001")
+    space_for_rows = step * 10000
+
     row_handler = RowHandler()
     before_row = row_handler.create_row(user=user, table=table)
     row_1 = row_handler.create_row(user=user, table=table, before_row=before_row)
-    assert row_1.order == Decimal("0.99999999999999990000")
+    assert (
+        row_1.order
+        == Decimal("0.99999999999999990000")
+        == before_row.order - space_for_rows
+    )
 
     # change manually the order so to force the method to create more space
     row_1.order = Decimal("0.99999999999999999998")
     row_1.save()
 
-    # a single row fits in the space
+    # a single row fits in the space left
     row_2 = row_handler.create_row(user=user, table=table, before_row=before_row)
     assert row_2.order == Decimal("0.99999999999999999999")
 
-    # another one force the mehtod to create more space
+    # another one force the method to create more space and move up previous orders
     row_3 = row_handler.create_row(user=user, table=table, before_row=before_row)
-    assert row_3.order == Decimal("0.99999999999999990000")
+    assert (
+        row_3.order
+        == Decimal("0.99999999999999990000")
+        == before_row.order - space_for_rows
+    )
 
+    prev_row_1_order = row_1.order
+    prev_row_2_order = row_2.order
     row_1.refresh_from_db()
     row_2.refresh_from_db()
-    assert row_1.order == Decimal("0.99999999999999989998")
-    assert row_2.order == Decimal("0.99999999999999989999")
+    assert (
+        row_1.order
+        == Decimal("0.99999999999999989998")
+        == prev_row_1_order - space_for_rows
+    )
+    assert (
+        row_2.order
+        == Decimal("0.99999999999999989999")
+        == prev_row_2_order - space_for_rows
+    )
 
-    # this also works for batch_create_rows
-    # change manually the order so to force the method to create more space
-    row_1.order = Decimal("0.99999999999999999997")
-    row_1.save()
+    # insert a new row between the two previous ones, so to create another space between
+    # row_1 and row_2
+    row_4 = row_handler.create_row(user=user, table=table, before_row=row_2)
+    assert (
+        row_4.order == Decimal("0.99999999999999979999") == row_2.order - space_for_rows
+    )
+    prev_row_1_order = row_1.order
+    prev_row_2_order = row_2.order
+    prev_row_3_order = row_3.order
+    row_1.refresh_from_db()
+    row_2.refresh_from_db()
+    row_3.refresh_from_db()
+    assert (
+        row_1.order
+        == Decimal("0.99999999999999979998")
+        == prev_row_1_order - space_for_rows
+    )
+    assert prev_row_2_order == row_2.order == Decimal("0.99999999999999989999")
+    assert prev_row_3_order == row_3.order == Decimal("0.99999999999999990000")
+
+    assert row_1.order < row_4.order < row_2.order < row_3.order
+
+    # change manually the order so to force the method to create more space also
+    # for batch create rows
+    row_3.order = Decimal("0.99999999999999999997")
+    row_3.save()
 
     rows = row_handler.create_rows(
         user=user,
@@ -821,45 +864,78 @@ def test_get_order_before_row(data_fixture):
         send_signal=False,
     )
     assert len(rows) == 5
-    assert rows[0].order == Decimal("0.99999999999999990000")
-    assert rows[1].order == Decimal("0.99999999999999990001")
-    assert rows[2].order == Decimal("0.99999999999999990002")
-    assert rows[3].order == Decimal("0.99999999999999990003")
-    assert rows[4].order == Decimal("0.99999999999999990004")
+    assert (
+        rows[0].order
+        == Decimal("0.99999999999999990000")
+        == before_row.order - space_for_rows
+    )
+    assert rows[1].order == Decimal("0.99999999999999990001") == rows[0].order + step
+    assert rows[2].order == Decimal("0.99999999999999990002") == rows[1].order + step
+    assert rows[3].order == Decimal("0.99999999999999990003") == rows[2].order + step
+    assert rows[4].order == Decimal("0.99999999999999990004") == rows[3].order + step
 
     # other rows has been moved up to create 1 more space
+    prev_row_1_order = row_1.order
+    prev_row_2_order = row_2.order
+    prev_row_3_order = row_3.order
+    prev_row_4_order = row_4.order
     row_1.refresh_from_db()
     row_2.refresh_from_db()
     row_3.refresh_from_db()
-    assert row_1.order == Decimal("0.99999999999999989997")
-    assert row_2.order == Decimal("0.99999999999999979999")
-    assert row_3.order == Decimal("0.99999999999999980000")
+    row_4.refresh_from_db()
+    assert (
+        row_1.order
+        == Decimal("0.99999999999999969998")
+        == prev_row_1_order - space_for_rows
+    )
+    assert (
+        row_2.order
+        == Decimal("0.99999999999999979999")
+        == prev_row_2_order - space_for_rows
+    )
+    assert (
+        row_3.order
+        == Decimal("0.99999999999999989997")
+        == prev_row_3_order - space_for_rows
+    )
+    assert (
+        row_4.order
+        == Decimal("0.99999999999999969999")
+        == prev_row_4_order - space_for_rows
+    )
+    assert row_1.order < row_4.order < row_2.order < row_3.order
 
     # inserting more than 10000 rows with fill_table_rows should
     # call the update just once for the required space
     new_rows_count = 25000
-    step = Decimal("0.00000000000000000001")
     fill_table_rows(new_rows_count, table, before_row=before_row)
+    space_for_rows = step * new_rows_count
 
-    row1_new_order = row_1.order - step * new_rows_count
+    row1_new_order = row_1.order - space_for_rows
     row_1.refresh_from_db()
     assert row_1.order == row1_new_order
 
-    row2_new_order = row_2.order - step * new_rows_count
+    row2_new_order = row_2.order - space_for_rows
     row_2.refresh_from_db()
     assert row_2.order == row2_new_order
 
-    row3_new_order = row_3.order - step * new_rows_count
+    row3_new_order = row_3.order - space_for_rows
     row_3.refresh_from_db()
     assert row_3.order == row3_new_order
 
     # a new row should fit in the space created by the last row inserted
 
     table_model = table.get_model()
-    row_4 = row_handler.create_row(user=user, table=table, before_row=before_row)
-    assert row_4.order == Decimal("0.99999999999999990000")
-    assert table_model.objects.filter(order=row_4.order).count() == 1
+    row_5 = row_handler.create_row(user=user, table=table, before_row=before_row)
+    assert row_5.order == Decimal("0.99999999999999990000")
+    assert table_model.objects.filter(order=row_5.order).count() == 1
 
     # all other rows should be just before the row_4.order
-    inserted_rows = 3 + 5 + new_rows_count
-    assert table_model.objects.filter(order__lt=row_4.order).count() == inserted_rows
+    inserted_rows = 4 + 5 + new_rows_count
+    assert table_model.objects.filter(order__lt=row_5.order).count() == inserted_rows
+
+    row_1.refresh_from_db()
+    row_2.refresh_from_db()
+    row_3.refresh_from_db()
+    row_4.refresh_from_db()
+    assert row_1.order < row_4.order < row_2.order < row_3.order < row_5.order

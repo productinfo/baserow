@@ -563,19 +563,19 @@ describe('Grid view store', () => {
     expect(store.getters['grid/getAllRows'].length).toBe(6)
     expect(store.getters['grid/getAllRows'][0].id).toBe(10)
     expect(store.getters['grid/getAllRows'][0].order).toBe(
-      '14.99999999999999999994'
+      '14.99999999999999989995'
     )
     expect(store.getters['grid/getAllRows'][1].id).toBe(12)
     expect(store.getters['grid/getAllRows'][1].order).toBe(
-      '14.99999999999999999996'
+      '14.99999999999999989997'
     )
     expect(store.getters['grid/getAllRows'][2].id).toBe(13)
     expect(store.getters['grid/getAllRows'][2].order).toBe(
-      '14.99999999999999999997'
+      '14.99999999999999989998'
     )
     expect(store.getters['grid/getAllRows'][3].id).toBe(14)
     expect(store.getters['grid/getAllRows'][3].order).toBe(
-      '14.99999999999999999998'
+      '14.99999999999999989999'
     )
     expect(store.getters['grid/getAllRows'][4].id).toBe(11)
     expect(store.getters['grid/getAllRows'][4].order).toBe(
@@ -607,19 +607,19 @@ describe('Grid view store', () => {
     expect(store.getters['grid/getAllRows'].length).toBe(6)
     expect(store.getters['grid/getAllRows'][0].id).toBe(10)
     expect(store.getters['grid/getAllRows'][0].order).toBe(
-      '14.99999999999999999994'
+      '14.99999999999999989995'
     )
     expect(store.getters['grid/getAllRows'][1].id).toBe(12)
     expect(store.getters['grid/getAllRows'][1].order).toBe(
-      '14.99999999999999999996'
+      '14.99999999999999989997'
     )
     expect(store.getters['grid/getAllRows'][2].id).toBe(13)
     expect(store.getters['grid/getAllRows'][2].order).toBe(
-      '14.99999999999999999997'
+      '14.99999999999999989998'
     )
     expect(store.getters['grid/getAllRows'][3].id).toBe(14)
     expect(store.getters['grid/getAllRows'][3].order).toBe(
-      '14.99999999999999999998'
+      '14.99999999999999989999'
     )
     expect(store.getters['grid/getAllRows'][4].id).toBe(11)
     expect(store.getters['grid/getAllRows'][4].order).toBe(

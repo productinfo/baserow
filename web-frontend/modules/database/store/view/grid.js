@@ -45,6 +45,73 @@ function extractMetadataAndPopulateRow(data, rowIndex) {
   populateRow(row, metadata[row.id])
 }
 
+function getNewOrderValueBeforeRow(rows, beforeRow = null) {
+  /**
+   * calculate the correct order value for the row both if need to be inserted
+   * before any other row and if need to be appended to the end of the list.
+   */
+  const highestOrderBefore = getHighestOrderValueBeforeRow(rows, beforeRow)
+
+  if (beforeRow != null) {
+    const orderAfter = new BigNumber(beforeRow.order)
+    const step = BigNumber('0.00000000000000000001')
+    const change = step.multipliedBy(10000)
+
+    const newOrderBeforeRow = highestOrderBefore.plus(step)
+    // increment the order only if ther is the space available, otherwise return
+    // the highestOrderBefore the row and relay on `decreaseOrdersInBufferLowerThan`
+    // to create the space necessary.
+    if (newOrderBeforeRow.isLessThan(orderAfter)) {
+      return BigNumber.maximum(newOrderBeforeRow, orderAfter.minus(change))
+    }
+    return highestOrderBefore
+  }
+
+  return highestOrderBefore.integerValue(BigNumber.ROUND_CEIL).plus('1')
+}
+
+function getHighestOrderValueBeforeRow(rows, beforeRow = null) {
+  /**
+   * Return the highest order value for the row before the given BeforeRow,
+   * or the highest value available if beforeRow is null.
+   */
+  let order = new BigNumber('0.00000000000000000000')
+  const maximum = new BigNumber(beforeRow ? beforeRow.order : Infinity)
+  rows.forEach((r) => {
+    const rOrder = new BigNumber(r.order)
+    if (rOrder.isGreaterThan(order) && rOrder.isLessThan(maximum)) {
+      order = rOrder
+    }
+  })
+  return order
+}
+
+function decreaseOrdersInBufferLowerThan(
+  rows,
+  upperBoundOrder,
+  includeUpperBound = false
+) {
+  /*
+   * Decrease the order value of all the rows in the buffer that have an order value
+   * lower than the given upperBoundOrder (or equal to if includeUpperBound is true).
+   */
+  const step = BigNumber('0.00000000000000000001')
+  const change = step.multipliedBy(10000)
+  let maxOrder = new BigNumber(upperBoundOrder)
+  if (includeUpperBound) {
+    maxOrder = maxOrder.plus(step)
+  }
+  const minOrder = new BigNumber(maxOrder.minus(step)).integerValue(
+    BigNumber.ROUND_FLOOR
+  )
+  rows.forEach((row) => {
+    const order = new BigNumber(row.order)
+    if (order.isGreaterThan(minOrder) && order.isLessThan(maxOrder)) {
+      row.order = order.minus(change).toString()
+    }
+  })
+}
+
 export const state = () => ({
   // Indicates if multiple cell selection is active
   multiSelectActive: false,
@@ -314,43 +381,27 @@ export const mutations = {
       return { ...row }
     })
   },
-  DECREASE_ORDERS_IN_BUFFER_LOWER_THAN(state, existingOrder) {
-    const min = new BigNumber(existingOrder).integerValue(BigNumber.ROUND_FLOOR)
-    const max = new BigNumber(existingOrder)
-
-    // Decrease all the orders that have already have been inserted before the same
-    // row.
-    state.rows.forEach((row) => {
-      const order = new BigNumber(row.order)
-      if (order.isGreaterThan(min) && order.isLessThanOrEqualTo(max)) {
-        row.order = order
-          .minus(new BigNumber('0.00000000000000000001'))
-          .toString()
-      }
-    })
+  DECREASE_ORDERS_IN_BUFFER_LOWER_THAN(state, beforeRowOrder) {
+    decreaseOrdersInBufferLowerThan(
+      state.rows,
+      new BigNumber(beforeRowOrder),
+      true
+    )
   },
   INSERT_NEW_ROW_IN_BUFFER_AT_INDEX(state, { row, index }) {
     state.count++
     state.bufferLimit++
 
-    // If another row with the same order already exists, then we need to decrease all
-    // the other orders that are within the range by '0.00000000000000000001'.
-    if (
-      state.rows.findIndex((r) => r.id !== row.id && r.order === row.order) > -1
-    ) {
-      const min = new BigNumber(row.order).integerValue(BigNumber.ROUND_FLOOR)
-      const max = new BigNumber(row.order)
+    const newOrder = new BigNumber(row.order)
+    const orderValueAlreadyExists =
+      state.rows.findIndex((r) => BigNumber(r.order).isEqualTo(newOrder)) > -1
 
-      // Decrease all the orders that have already have been inserted before the same
-      // row.
-      state.rows.forEach((row) => {
-        const order = new BigNumber(row.order)
-        if (order.isGreaterThan(min) && order.isLessThanOrEqualTo(max)) {
-          row.order = order
-            .minus(new BigNumber('0.00000000000000000001'))
-            .toString()
-        }
-      })
+    if (orderValueAlreadyExists) {
+      const step = BigNumber('0.00000000000000000001')
+      const change = step.multipliedBy(10000)
+      const orderAfter = new BigNumber(state.rows[index].order)
+      row.order = orderAfter.minus(change)
+      decreaseOrdersInBufferLowerThan(state.rows, orderAfter)
     }
 
     state.rows.splice(index, 0, row)
@@ -1335,17 +1386,11 @@ export const actions = {
     // If before is not provided, then the row is added last. Because we don't know
     // the total amount of rows in the table, we are going to add find the highest
     // existing order in the buffer and increase that by one.
-    let order = getters.getHighestOrder
-      .integerValue(BigNumber.ROUND_CEIL)
-      .plus('1')
-      .toString()
+    const allRows = getters.getAllRows
+    const newOrder = getNewOrderValueBeforeRow(allRows, before)
     let index = getters.getBufferEndIndex
     if (before !== null) {
-      // If the row has been placed before another row we can specifically insert to
-      // the row at a calculated index.
-      const change = new BigNumber('0.00000000000000000001')
-      order = new BigNumber(before.order).minus(change).toString()
-      index = getters.getAllRows.findIndex((r) => r.id === before.id)
+      index = allRows.findIndex((r) => r.id === before.id)
     }
 
     // Populate the row and set the loading state to indicate that the row has not
@@ -1353,7 +1398,7 @@ export const actions = {
     const row = Object.assign({}, values)
     populateRow(row)
     row.id = uuid()
-    row.order = order
+    row.order = newOrder
     row._.loading = true
 
     commit('INSERT_NEW_ROW_IN_BUFFER_AT_INDEX', { row, index })
@@ -1447,20 +1492,10 @@ export const actions = {
     { table, grid, fields, getScrollTop, row, before = null }
   ) {
     const oldOrder = row.order
-
-    // If before is not provided, then the row is added last. Because we don't know
-    // the total amount of rows in the table, we are going to add find the highest
-    // existing order in the buffer and increase that by one.
-    let order = getters.getHighestOrder
-      .integerValue(BigNumber.ROUND_CEIL)
-      .plus('1')
-      .toString()
-    if (before !== null) {
-      // If the row has been placed before another row we can specifically insert to
-      // the row at a calculated index.
-      const change = new BigNumber('0.00000000000000000001')
-      order = new BigNumber(before.order).minus(change).toString()
-    }
+    const newOrder = getNewOrderValueBeforeRow(
+      getters.getAllRows,
+      before
+    ).toString()
 
     // In order to make changes feel really fast, we optimistically
     // updated all the field values that provide a onRowMove function
@@ -1474,7 +1509,7 @@ export const actions = {
       const currentFieldValue = row[fieldID]
       const fieldValue = fieldType.onRowMove(
         row,
-        order,
+        newOrder,
         oldOrder,
         field,
         currentFieldValue
@@ -1489,7 +1524,7 @@ export const actions = {
       view: grid,
       fields,
       row,
-      values: { order, ...optimisticFieldValues },
+      values: { order: newOrder, ...optimisticFieldValues },
     })
 
     try {
@@ -2262,16 +2297,6 @@ export const getters = {
   },
   getServerSearchTerm(state) {
     return state.hideRowsNotMatchingSearch ? state.activeSearchTerm : false
-  },
-  getHighestOrder(state) {
-    let order = new BigNumber('0.00000000000000000000')
-    state.rows.forEach((r) => {
-      const rOrder = new BigNumber(r.order)
-      if (rOrder.isGreaterThan(order)) {
-        order = rOrder
-      }
-    })
-    return order
   },
   isMultiSelectActive(state) {
     return state.multiSelectActive
