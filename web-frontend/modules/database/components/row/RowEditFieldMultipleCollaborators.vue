@@ -7,7 +7,7 @@
         class="field-multiple-collaborators__item"
       >
         <div class="field-multiple-collaborators__initials">
-          {{ getCollaboratorNameInitials(item.name) }}
+          {{ getCollaboratorNameInitials(item) }}
         </div>
         <div
           class="
