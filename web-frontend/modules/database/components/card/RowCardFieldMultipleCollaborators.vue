@@ -7,7 +7,9 @@
         class="card-multiple-collaborators__item"
       >
         <div v-if="props.value" class="field-multiple-collaborators__initials">
-          {{ $options.methods.getCollaboratorNameInitials(item, parent.$store) }}
+          {{
+            $options.methods.getCollaboratorNameInitials(item, parent.$store)
+          }}
         </div>
         <span
           class="
