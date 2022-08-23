@@ -162,7 +162,7 @@ class DatabaseConfig(AppConfig):
             SingleSelectFieldType,
             TextFieldType,
             URLFieldType,
-            CollaboratorFieldType,
+            MultipleCollaboratorsFieldType,
         )
 
         field_type_registry.register(TextFieldType())
@@ -182,7 +182,7 @@ class DatabaseConfig(AppConfig):
         field_type_registry.register(PhoneNumberFieldType())
         field_type_registry.register(FormulaFieldType())
         field_type_registry.register(LookupFieldType())
-        field_type_registry.register(CollaboratorFieldType())
+        field_type_registry.register(MultipleCollaboratorsFieldType())
 
         from .fields.field_converters import (
             FileFieldConverter,

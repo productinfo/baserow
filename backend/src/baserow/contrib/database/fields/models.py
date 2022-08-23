@@ -500,8 +500,8 @@ class LookupField(FormulaField):
         )
 
 
-class CollaboratorField(Field):
-    THROUGH_DATABASE_TABLE_PREFIX = "database_collaborator_"
+class MultipleCollaboratorsField(Field):
+    THROUGH_DATABASE_TABLE_PREFIX = "database_multiple_collaborators_"
 
     @property
     def through_table_name(self):

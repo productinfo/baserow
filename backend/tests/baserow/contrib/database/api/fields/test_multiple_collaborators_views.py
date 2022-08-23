@@ -8,9 +8,9 @@ from baserow.contrib.database.rows.handler import RowHandler
 from baserow.test_utils.helpers import is_dict_subset
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.django_db
-def test_collaborator_field_type_create(api_client, data_fixture):
+def test_multiple_collaborators_field_type_create(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -21,7 +21,7 @@ def test_collaborator_field_type_create(api_client, data_fixture):
         reverse("api:database:fields:list", kwargs={"table_id": table.id}),
         {
             "name": "Collaborator 1",
-            "type": "collaborator",
+            "type": "multiple_collaborators",
         },
         format="json",
         HTTP_AUTHORIZATION=f"JWT {token}",
@@ -31,12 +31,12 @@ def test_collaborator_field_type_create(api_client, data_fixture):
     assert response.status_code == HTTP_200_OK
     field_1_id = response_json["id"]
     assert response_json["name"] == "Collaborator 1"
-    assert response_json["type"] == "collaborator"
+    assert response_json["type"] == "multiple_collaborators"
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.django_db
-def test_collaborator_field_type_update(api_client, data_fixture):
+def test_multiple_collaborators_field_type_update(api_client, data_fixture):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -49,7 +49,7 @@ def test_collaborator_field_type_update(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -63,12 +63,12 @@ def test_collaborator_field_type_update(api_client, data_fixture):
     response_json = response.json()
     assert response.status_code == HTTP_200_OK
     assert response_json["name"] == "New collaborator 1"
-    assert response_json["type"] == "collaborator"
+    assert response_json["type"] == "multiple_collaborators"
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.django_db
-def test_collaborator_field_type_delete(api_client, data_fixture):
+def test_multiple_collaborators_field_type_delete(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -78,7 +78,7 @@ def test_collaborator_field_type_delete(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -93,10 +93,12 @@ def test_collaborator_field_type_delete(api_client, data_fixture):
     assert collaborator_field.trashed is True
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_insert_row_validation(api_client, data_fixture):
+def test_multiple_collaborators_field_type_insert_row_validation(
+    api_client, data_fixture
+):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -107,7 +109,7 @@ def test_collaborator_field_type_insert_row_validation(api_client, data_fixture)
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -162,10 +164,10 @@ def test_collaborator_field_type_insert_row_validation(api_client, data_fixture)
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_insert_row(api_client, data_fixture):
+def test_multiple_collaborators_field_type_insert_row(api_client, data_fixture):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -180,7 +182,7 @@ def test_collaborator_field_type_insert_row(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -217,10 +219,12 @@ def test_collaborator_field_type_insert_row(api_client, data_fixture):
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_update_row_validation(api_client, data_fixture):
+def test_multiple_collaborators_field_type_update_row_validation(
+    api_client, data_fixture
+):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -234,7 +238,7 @@ def test_collaborator_field_type_update_row_validation(api_client, data_fixture)
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
@@ -300,10 +304,10 @@ def test_collaborator_field_type_update_row_validation(api_client, data_fixture)
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_update_row(api_client, data_fixture):
+def test_multiple_collaborators_field_type_update_row(api_client, data_fixture):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -318,7 +322,7 @@ def test_collaborator_field_type_update_row(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
@@ -357,10 +361,10 @@ def test_collaborator_field_type_update_row(api_client, data_fixture):
     assert is_dict_subset({f"field_{collaborator_field.id}": []}, response.json())
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_delete_row(api_client, data_fixture):
+def test_multiple_collaborators_field_type_delete_row(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -370,7 +374,7 @@ def test_collaborator_field_type_delete_row(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
@@ -391,10 +395,12 @@ def test_collaborator_field_type_delete_row(api_client, data_fixture):
     assert model.objects.count() == 0
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_batch_insert_rows_validation(api_client, data_fixture):
+def test_multiple_collaborators_field_type_batch_insert_rows_validation(
+    api_client, data_fixture
+):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -405,7 +411,7 @@ def test_collaborator_field_type_batch_insert_rows_validation(api_client, data_f
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -480,10 +486,10 @@ def test_collaborator_field_type_batch_insert_rows_validation(api_client, data_f
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_batch_insert_rows(api_client, data_fixture):
+def test_multiple_collaborators_field_type_batch_insert_rows(api_client, data_fixture):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -498,7 +504,7 @@ def test_collaborator_field_type_batch_insert_rows(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
 
@@ -555,10 +561,12 @@ def test_collaborator_field_type_batch_insert_rows(api_client, data_fixture):
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_batch_update_rows_validation(api_client, data_fixture):
+def test_multiple_collaborators_field_type_batch_update_rows_validation(
+    api_client, data_fixture
+):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -572,7 +580,7 @@ def test_collaborator_field_type_batch_update_rows_validation(api_client, data_f
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
@@ -666,10 +674,10 @@ def test_collaborator_field_type_batch_update_rows_validation(api_client, data_f
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_batch_update_rows(api_client, data_fixture):
+def test_multiple_collaborators_field_type_batch_update_rows(api_client, data_fixture):
     group = data_fixture.create_group()
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1", group=group
@@ -684,7 +692,7 @@ def test_collaborator_field_type_batch_update_rows(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
@@ -759,10 +767,10 @@ def test_collaborator_field_type_batch_update_rows(api_client, data_fixture):
     )
 
 
-@pytest.mark.field_collaborator
+@pytest.mark.field_multiple_collaborators
 @pytest.mark.api_rows
 @pytest.mark.django_db
-def test_collaborator_field_type_batch_delete_rows(api_client, data_fixture):
+def test_multiple_collaborators_field_type_batch_delete_rows(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
@@ -772,7 +780,7 @@ def test_collaborator_field_type_batch_delete_rows(api_client, data_fixture):
     collaborator_field = field_handler.create_field(
         user=user,
         table=table,
-        type_name="collaborator",
+        type_name="multiple_collaborators",
         name="Collaborator 1",
     )
     row_handler = RowHandler()
