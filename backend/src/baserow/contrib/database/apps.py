@@ -182,7 +182,9 @@ class DatabaseConfig(AppConfig):
         field_type_registry.register(PhoneNumberFieldType())
         field_type_registry.register(FormulaFieldType())
         field_type_registry.register(LookupFieldType())
-        field_type_registry.register(MultipleCollaboratorsFieldType())
+
+        if "collaborators" in settings.FEATURE_FLAGS:
+            field_type_registry.register(MultipleCollaboratorsFieldType())
 
         from .fields.field_converters import (
             FileFieldConverter,

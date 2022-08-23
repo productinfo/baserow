@@ -314,7 +314,13 @@ export default (context) => {
   app.$registry.register('field', new PhoneNumberFieldType(context))
   app.$registry.register('field', new FormulaFieldType(context))
   app.$registry.register('field', new LookupFieldType(context))
-  app.$registry.register('field', new MultipleCollaboratorsFieldType(context))
+
+  let flags = app.$env.FEATURE_FLAGS || ''
+  flags = flags.split(',').map((flag) => flag.trim())
+  if (flags.includes('collaborators')) {
+    app.$registry.register('field', new MultipleCollaboratorsFieldType(context))
+  }
+
   app.$registry.register('importer', new CSVImporterType(context))
   app.$registry.register('importer', new PasteImporterType(context))
   app.$registry.register('importer', new XMLImporterType(context))
