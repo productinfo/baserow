@@ -21,7 +21,6 @@ from dateutil.parser import ParserError
 from pytz import all_timezones, timezone
 from rest_framework import serializers
 
-from baserow.core.models import GroupUser
 from baserow.contrib.database.api.fields.errors import (
     ERROR_INCOMPATIBLE_PRIMARY_FIELD_TYPE,
     ERROR_INVALID_LOOKUP_TARGET_FIELD,
@@ -32,12 +31,12 @@ from baserow.contrib.database.api.fields.errors import (
     ERROR_WITH_FORMULA,
 )
 from baserow.contrib.database.api.fields.serializers import (
+    CollaboratorSerializer,
     FileFieldRequestSerializer,
     FileFieldResponseSerializer,
     LinkRowValueSerializer,
     MustBeEmptyField,
     SelectOptionSerializer,
-    CollaboratorSerializer,
 )
 from baserow.contrib.database.export_serialized import DatabaseExportSerializedStructure
 from baserow.contrib.database.fields.field_cache import FieldCache
@@ -58,7 +57,7 @@ from baserow.contrib.database.formula import (
 )
 from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
 from baserow.contrib.database.validators import UnicodeRegexValidator
-from baserow.core.models import UserFile
+from baserow.core.models import GroupUser, UserFile
 from baserow.core.user_files.exceptions import UserFileDoesNotExist
 from baserow.core.user_files.handler import UserFileHandler
 from baserow.core.utils import list_to_comma_separated_string
@@ -72,6 +71,7 @@ from .dependencies.handler import FieldDependants, FieldDependencyHandler
 from .dependencies.models import FieldDependency
 from .dependencies.types import FieldDependencies
 from .exceptions import (
+    AllProvidedCollaboratorIdsMustBeValidUsers,
     AllProvidedMultipleSelectValuesMustBeIntegers,
     AllProvidedMultipleSelectValuesMustBeSelectOption,
     FieldDoesNotExist,
@@ -80,7 +80,6 @@ from .exceptions import (
     InvalidLookupThroughField,
     LinkRowTableNotInSameDatabase,
     LinkRowTableNotProvided,
-    AllProvidedCollaboratorIdsMustBeValidUsers,
 )
 from .field_filters import AnnotatedQ, contains_filter, filename_contains_filter
 from .field_sortings import AnnotatedOrder
@@ -104,6 +103,7 @@ from .models import (
     LinkRowField,
     LongTextField,
     LookupField,
+    MultipleCollaboratorsField,
     MultipleSelectField,
     NumberField,
     PhoneNumberField,
@@ -112,7 +112,6 @@ from .models import (
     SingleSelectField,
     TextField,
     URLField,
-    MultipleCollaboratorsField,
 )
 from .registries import (
     FieldType,

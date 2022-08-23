@@ -155,6 +155,7 @@ class DatabaseConfig(AppConfig):
             LinkRowFieldType,
             LongTextFieldType,
             LookupFieldType,
+            MultipleCollaboratorsFieldType,
             MultipleSelectFieldType,
             NumberFieldType,
             PhoneNumberFieldType,
@@ -162,7 +163,6 @@ class DatabaseConfig(AppConfig):
             SingleSelectFieldType,
             TextFieldType,
             URLFieldType,
-            MultipleCollaboratorsFieldType,
         )
 
         field_type_registry.register(TextFieldType())

@@ -1,9 +1,7 @@
 import pytest
 
 from baserow.contrib.database.fields.handler import FieldHandler
-from baserow.contrib.database.fields.models import (
-    MultipleCollaboratorsField,
-)
+from baserow.contrib.database.fields.models import MultipleCollaboratorsField
 from baserow.contrib.database.rows.handler import RowHandler
 
 
