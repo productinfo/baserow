@@ -2568,9 +2568,9 @@ export class LookupFieldType extends FormulaFieldType {
   }
 }
 
-export class CollaboratorFieldType extends FieldType {
+export class MultipleCollaboratorsFieldType extends FieldType {
   static getType() {
-    return 'collaborator'
+    return 'multiple_collaborators'
   }
 
   getIconClass() {
@@ -2579,7 +2579,7 @@ export class CollaboratorFieldType extends FieldType {
 
   getName() {
     const { i18n } = this.app
-    return i18n.t('fieldType.collaborator')
+    return i18n.t('fieldType.multipleCollaborators')
   }
 
   getFormComponent() {
@@ -2600,21 +2600,6 @@ export class CollaboratorFieldType extends FieldType {
 
   getCardComponent() {
     return RowCardFieldMultipleCollaborators
-  }
-
-  getSort(name, order) {
-    return (a, b) => {
-      const valuesA = a[name]
-      const valuesB = b[name]
-      const stringA =
-        valuesA.length > 0 ? valuesA.map((obj) => obj.value).join('') : ''
-      const stringB =
-        valuesB.length > 0 ? valuesB.map((obj) => obj.value).join('') : ''
-
-      return order === 'ASC'
-        ? stringA.localeCompare(stringB)
-        : stringB.localeCompare(stringA)
-    }
   }
 
   prepareValueForUpdate(field, value) {

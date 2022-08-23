@@ -83,7 +83,7 @@
         "phoneNumber": "Phone number",
         "formula": "Formula",
         "lookup": "Lookup",
-        "collaborator": "Collaborator"
+        "multipleCollaborators": "Multiple collaborators"
     },
     "fieldErrors": {
         "invalidNumber": "Invalid number",

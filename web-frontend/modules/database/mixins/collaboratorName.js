@@ -16,7 +16,7 @@ export default {
       if (user) {
         return user.name
       }
-      
+
       // Fallback if for some reason the user is missing from the store
       return collaboratorValue.name
     },
