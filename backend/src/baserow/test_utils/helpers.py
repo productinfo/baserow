@@ -78,7 +78,7 @@ def setup_interesting_test_table(
         group=database.group, email="user2@example.com"
     )
     user3 = User.objects.filter(
-        email="user2@example.com"
+        email="user3@example.com"
     ).first() or data_fixture.create_user(
         group=database.group, email="user3@example.com"
     )
