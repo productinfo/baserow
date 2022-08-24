@@ -503,7 +503,7 @@ def test_phone_number_field_type(data_fixture):
 
 @pytest.mark.django_db
 def test_human_readable_values(data_fixture):
-    table, user, row, blank_row = setup_interesting_test_table(data_fixture)
+    table, user, row, blank_row, context = setup_interesting_test_table(data_fixture)
     model = table.get_model()
     results = {}
     blank_results = {}
