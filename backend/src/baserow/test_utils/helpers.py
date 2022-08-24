@@ -328,7 +328,9 @@ def setup_interesting_test_table(
         [user2.id, user3.id]
     )
 
-    return table, user, row, blank_row
+    context = {"user2": user2, "user3": user3}
+
+    return table, user, row, blank_row, context
 
 
 def setup_interesting_test_database(
