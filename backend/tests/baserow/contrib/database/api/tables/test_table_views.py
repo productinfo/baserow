@@ -614,8 +614,13 @@ def test_async_duplicate_table(api_client, data_fixture):
                     duplicated_row[field_name]["value"],
                     original_value["value"],
                 )
-            elif field_name in ["multiple_select", "lookup"] or field_name.endswith(
-                "_link_row"
+            elif (
+                field_name
+                in [
+                    "multiple_select",
+                    "lookup",
+                ]
+                or field_name.endswith("_link_row")
             ):
                 assert_row_field_value(
                     field_name,

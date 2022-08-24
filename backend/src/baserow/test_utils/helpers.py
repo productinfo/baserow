@@ -3,8 +3,8 @@ from contextlib import contextmanager
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Type
 
-from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
 from django.db import connection
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, utc
@@ -22,7 +22,6 @@ from baserow.contrib.database.rows.handler import RowHandler
 from baserow.core.action.models import Action
 from baserow.core.action.registries import ActionType
 from baserow.core.models import Group
-
 
 User = get_user_model()
 

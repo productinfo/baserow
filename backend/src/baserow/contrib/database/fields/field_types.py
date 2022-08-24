@@ -3389,10 +3389,6 @@ class MultipleCollaboratorsFieldType(FieldType):
             through_model_fields = through_model._meta.get_fields()
             current_field_name = through_model_fields[1].name
             relation_field_name = through_model_fields[2].name
-
-            print(current_field_name)
-            print(relation_field_name)
-
             for relation in through_model.objects.all():
                 cache[cache_entry][
                     getattr(relation, f"{current_field_name}_id")
