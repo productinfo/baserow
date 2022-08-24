@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Type
 
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
 from django.db import connection
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, utc
@@ -21,6 +22,9 @@ from baserow.contrib.database.rows.handler import RowHandler
 from baserow.core.action.models import Action
 from baserow.core.action.registries import ActionType
 from baserow.core.models import Group
+
+
+User = get_user_model()
 
 
 def _parse_datetime(datetime):
@@ -69,8 +73,16 @@ def setup_interesting_test_table(
 
     user = user or data_fixture.create_user(**user_kwargs)
     database = database or data_fixture.create_database_application(user=user)
-    user2 = data_fixture.create_user(group=database.group, email="user2@example.com")
-    user3 = data_fixture.create_user(group=database.group, email="user3@example.com")
+    user2 = User.objects.filter(
+        email="user2@example.com"
+    ).first() or data_fixture.create_user(
+        group=database.group, email="user2@example.com"
+    )
+    user3 = User.objects.filter(
+        email="user2@example.com"
+    ).first() or data_fixture.create_user(
+        group=database.group, email="user3@example.com"
+    )
     table = data_fixture.create_database_table(
         database=database, user=user, name=name or "interesting_test_table"
     )

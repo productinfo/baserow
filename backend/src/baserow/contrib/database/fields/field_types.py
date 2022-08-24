@@ -3376,3 +3376,34 @@ class MultipleCollaboratorsFieldType(FieldType):
         apps.do_pending_operations(model)
         apps.do_pending_operations(collaborator_field.remote_field.through)
         apps.clear_cache()
+
+    def get_export_serialized_value(self, row, field_name, cache, files_zip, storage):
+        cache_entry = f"{field_name}_relations"
+        if cache_entry not in cache:
+            # In order to prevent a lot of lookup queries in the through table, we want
+            # to fetch all the relations and add it to a temporary in memory cache
+            # containing a mapping of the old ids to the new ids. Every relation can
+            # use the cached mapped relations to find the correct id.
+            cache[cache_entry] = defaultdict(list)
+            through_model = row._meta.get_field(field_name).remote_field.through
+            through_model_fields = through_model._meta.get_fields()
+            current_field_name = through_model_fields[1].name
+            relation_field_name = through_model_fields[2].name
+
+            print(current_field_name)
+            print(relation_field_name)
+
+            for relation in through_model.objects.all():
+                cache[cache_entry][
+                    getattr(relation, f"{current_field_name}_id")
+                ].append(getattr(relation, f"{relation_field_name}_id"))
+
+        return cache[cache_entry][row.id]
+
+    def set_import_serialized_value(
+        self, row, field_name, value, id_mapping, files_zip, storage
+    ):
+        mapped_values = [
+            id_mapping["database_field_select_options"][item] for item in value
+        ]
+        getattr(row, field_name).set(mapped_values)
