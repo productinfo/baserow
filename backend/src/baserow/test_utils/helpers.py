@@ -69,6 +69,8 @@ def setup_interesting_test_table(
 
     user = user or data_fixture.create_user(**user_kwargs)
     database = database or data_fixture.create_database_application(user=user)
+    user2 = data_fixture.create_user(group=database.group, email="user2@example.com")
+    user3 = data_fixture.create_user(group=database.group, email="user3@example.com")
     table = data_fixture.create_database_table(
         database=database, user=user, name=name or "interesting_test_table"
     )
@@ -173,6 +175,7 @@ def setup_interesting_test_table(
             value="A", field_id=name_to_field_id["single_select"]
         ),
         "multiple_select": None,
+        "multiple_collaborators": None,
         "phone_number": "+4412345678",
         "formula_text": "test FORMULA",
         "formula_int": "1",
@@ -319,6 +322,12 @@ def setup_interesting_test_table(
             value="E", field_id=name_to_field_id["multiple_select"]
         ).id
     )
+
+    # multiple collaborators
+    getattr(row, f"field_{name_to_field_id['multiple_collaborators']}").set(
+        [user2.id, user3.id]
+    )
+
     return table, user, row, blank_row
 
 

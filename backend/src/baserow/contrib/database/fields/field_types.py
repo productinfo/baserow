@@ -3269,7 +3269,7 @@ class MultipleCollaboratorsFieldType(FieldType):
 
     def prepare_value_for_db(self, instance, value):
         if value is None:
-            return value
+            return []
 
         if len(value) == 0:
             return []
@@ -3327,15 +3327,15 @@ class MultipleCollaboratorsFieldType(FieldType):
             "directly along with its id."
         )
 
-    # TODO:
     def get_export_value(self, value, field_object):
-        # if value is None:
-        #     return value
-        # return [item.value for item in value.all()]
-        ...
+        if value is None:
+            return []
+        return [item.email for item in value.all()]
 
     def get_human_readable_value(self, value, field_object):
         export_value = self.get_export_value(value, field_object)
+        if len(export_value) == 0:
+            return ""
         return ", ".join(export_value)
 
     def get_model_field(self, instance, **kwargs):
