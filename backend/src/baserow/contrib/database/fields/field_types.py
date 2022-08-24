@@ -3226,6 +3226,8 @@ class MultipleCollaboratorsFieldType(FieldType):
     type = "multiple_collaborators"
     model_class = MultipleCollaboratorsField
 
+    can_be_in_form_view = False
+
     def get_serializer_field(self, instance, **kwargs):
         required = kwargs.get("required", False)
         field_serializer = CollaboratorSerializer(
