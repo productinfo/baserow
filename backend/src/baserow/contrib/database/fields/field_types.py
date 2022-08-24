@@ -3290,9 +3290,13 @@ class MultipleCollaboratorsFieldType(FieldType):
     def prepare_value_for_db_in_bulk(
         self, instance, values_by_row, continue_on_error=False
     ):
+        # {user_id -> row_indexes}
+        rows_by_value = defaultdict(list)
         all_user_ids = set()
         for row_index, values in values_by_row.items():
             user_ids = [v["id"] for v in values]
+            for user_id in user_ids:
+                rows_by_value[user_id].append(row_index)
             all_user_ids = all_user_ids.union(user_ids)
             values_by_row[row_index] = user_ids
 
@@ -3305,15 +3309,11 @@ class MultipleCollaboratorsFieldType(FieldType):
         if len(selected_ids) != len(all_user_ids):
             invalid_ids = sorted(list(all_user_ids - set(selected_ids)))
             if continue_on_error:
-                ...
-                # TODO:
-                # Replace values by error for failing rows
-                # for invalid_id in invalid_ids:
-                #     for row_index in value_map[invalid_id]:
-                #         values_by_row[
-                #             row_index
-                #         ] = AllProvidedCollaboratorIdsMustBeValidUsers(invalid_id)
-
+                for invalid_id in invalid_ids:
+                    for row_index in rows_by_value[invalid_id]:
+                        values_by_row[
+                            row_index
+                        ] = AllProvidedCollaboratorIdsMustBeValidUsers(invalid_id)
             else:
                 # or fail fast
                 raise AllProvidedCollaboratorIdsMustBeValidUsers(invalid_ids)
