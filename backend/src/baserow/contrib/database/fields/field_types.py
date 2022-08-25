@@ -3256,19 +3256,6 @@ class MultipleCollaboratorsFieldType(FieldType):
             }
         )
 
-    def enhance_queryset(self, queryset, field, name):
-        # TODO:
-        # remote_field = queryset.model._meta.get_field(name).remote_field
-        # remote_model = remote_field.model
-        # through_model = remote_field.through
-        # related_queryset = remote_model.objects.all().extra(
-        #     order_by=[f"{through_model._meta.db_table}.id"]
-        # )
-        # return queryset.prefetch_related(
-        #     models.Prefetch(name, queryset=related_queryset)
-        # )
-        return queryset
-
     def prepare_value_for_db(self, instance, value):
         if value is None:
             return []
@@ -3329,7 +3316,7 @@ class MultipleCollaboratorsFieldType(FieldType):
             "directly along with its id."
         )
 
-    def get_export_value(self, value, field_object):
+    def get_export_value(self, value, field_object, rich_value=False):
         if value is None:
             return []
         return [item.email for item in value.all()]
@@ -3375,7 +3362,6 @@ class MultipleCollaboratorsFieldType(FieldType):
         apps.do_pending_operations(model)
         apps.do_pending_operations(User)
         apps.do_pending_operations(model_field.remote_field.through)
-        apps.do_pending_operations(model)
         apps.do_pending_operations(collaborator_field.remote_field.through)
         apps.clear_cache()
 
