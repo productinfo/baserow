@@ -3332,8 +3332,28 @@ class MultipleCollaboratorsFieldType(FieldType):
 
     def after_model_generation(self, instance, model, field_name, manytomany_models):
         from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import AbstractUser
 
-        User = get_user_model()
+        user_meta = type(
+            "Meta",
+            (AbstractUser.Meta,),
+            {
+                "managed": False,
+                "app_label": model._meta.app_label,
+                "db_tablespace": model._meta.db_tablespace,
+                "db_table": get_user_model().objects.model._meta.db_table,
+                "apps": model._meta.apps,
+            },
+        )
+        user_model = type(
+            str(f"MultipleCollaboratorsField{instance.id}User"),
+            (AbstractUser,),
+            {
+                "Meta": user_meta,
+                "__module__": model.__module__,
+                "_generated_table_model": True,
+            },
+        )
 
         related_name = f"reversed_field_{instance.id}"
         shared_kwargs = {
@@ -3344,12 +3364,11 @@ class MultipleCollaboratorsFieldType(FieldType):
         }
 
         MultipleSelectManyToManyField(
-            to=User, related_name=related_name, **shared_kwargs
+            to=user_model, related_name=related_name, **shared_kwargs
         ).contribute_to_class(model, field_name)
-
         MultipleSelectManyToManyField(
             to=model, related_name=field_name, **shared_kwargs
-        ).contribute_to_class(User, related_name)
+        ).contribute_to_class(user_model, related_name)
 
         # Trigger the newly created pending operations of all the models related to the
         # created CollaboratorField. They need to be called manually because normally
@@ -3358,13 +3377,24 @@ class MultipleCollaboratorsFieldType(FieldType):
         # register new pending operations.
         apps = model._meta.apps
         model_field = model._meta.get_field(field_name)
-        collaborator_field = User._meta.get_field(related_name)
+        collaborator_field = user_model._meta.get_field(related_name)
         apps.do_pending_operations(model)
-        apps.do_pending_operations(User)
+        apps.do_pending_operations(user_model)
         apps.do_pending_operations(model_field.remote_field.through)
-        apps.do_pending_operations(collaborator_field.remote_field.through)
         apps.do_pending_operations(model)
+        apps.do_pending_operations(collaborator_field.remote_field.through)
         apps.clear_cache()
+
+    def enhance_queryset(self, queryset, field, name):
+        remote_field = queryset.model._meta.get_field(name).remote_field
+        remote_model = remote_field.model
+        through_model = remote_field.through
+        related_queryset = remote_model.objects.all().extra(
+            order_by=[f"{through_model._meta.db_table}.id"]
+        )
+        return queryset.prefetch_related(
+            models.Prefetch(name, queryset=related_queryset)
+        )
 
     def get_export_serialized_value(self, row, field_name, cache, files_zip, storage):
         cache_entry = f"{field_name}_relations"
