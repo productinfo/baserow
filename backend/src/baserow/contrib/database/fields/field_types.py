@@ -3363,6 +3363,7 @@ class MultipleCollaboratorsFieldType(FieldType):
         apps.do_pending_operations(User)
         apps.do_pending_operations(model_field.remote_field.through)
         apps.do_pending_operations(collaborator_field.remote_field.through)
+        apps.do_pending_operations(model)
         apps.clear_cache()
 
     def get_export_serialized_value(self, row, field_name, cache, files_zip, storage):
