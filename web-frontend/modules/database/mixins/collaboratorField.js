@@ -1,4 +1,7 @@
+import selectDropdown from '@baserow/modules/database/mixins/selectDropdown'
+
 export default {
+  mixins: [selectDropdown],
   computed: {
     groupCollaborators() {
       const groupId = this.$store.getters['group/selectedId']

@@ -41,26 +41,23 @@
       :collaborators="availableCollaborators"
       :show-input="false"
       :show-empty-value="false"
-      :allow-create-option="true"
       class="dropdown--floating grid-field-single-select__dropdown"
       @show="editing = true"
       @hide="editing = false"
       @input="updateValue($event, value)"
-      @create-option="createOption($event)"
     ></FieldCollaboratorDropdown>
   </div>
 </template>
 
 <script>
 import gridField from '@baserow/modules/database/mixins/gridField'
-import selectOptions from '@baserow/modules/database/mixins/selectOptions'
 import collaboratorField from '@baserow/modules/database/mixins/collaboratorField'
 import FieldCollaboratorDropdown from '@baserow/modules/database/components/field/FieldCollaboratorDropdown'
 import collaboratorName from '@baserow/modules/database/mixins/collaboratorName'
 
 export default {
   components: { FieldCollaboratorDropdown },
-  mixins: [gridField, selectOptions, collaboratorField, collaboratorName],
+  mixins: [gridField, collaboratorField, collaboratorName],
   data() {
     return {
       editing: false,
