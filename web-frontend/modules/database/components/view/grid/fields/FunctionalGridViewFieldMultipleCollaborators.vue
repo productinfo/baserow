@@ -6,11 +6,6 @@
         :key="item.id"
         class="field-multiple-collaborators__item"
       >
-        <div v-if="props.value" class="field-multiple-collaborators__initials">
-          {{
-            $options.methods.getCollaboratorNameInitials(item, parent.$store)
-          }}
-        </div>
         <div
           v-if="props.value"
           class="
@@ -19,6 +14,11 @@
           "
         >
           {{ $options.methods.getCollaboratorName(item, parent.$store) }}
+        </div>
+        <div v-if="props.value" class="field-multiple-collaborators__initials">
+          {{
+            $options.methods.getCollaboratorNameInitials(item, parent.$store)
+          }}
         </div>
       </div>
     </div>

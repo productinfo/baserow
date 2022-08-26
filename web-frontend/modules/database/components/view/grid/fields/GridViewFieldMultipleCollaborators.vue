@@ -6,9 +6,6 @@
         :key="item.id"
         class="field-multiple-collaborators__item"
       >
-        <div class="field-multiple-collaborators__initials">
-          {{ getCollaboratorNameInitials(item) }}
-        </div>
         <div
           class="
             field-multiple-collaborators__name
@@ -23,6 +20,9 @@
           >
             <i class="fas fa-times"></i>
           </a>
+        </div>
+        <div class="field-multiple-collaborators__initials">
+          {{ getCollaboratorNameInitials(item) }}
         </div>
       </div>
       <a
