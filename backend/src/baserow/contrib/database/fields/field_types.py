@@ -3418,7 +3418,9 @@ class MultipleCollaboratorsFieldType(FieldType):
     def set_import_serialized_value(
         self, row, field_name, value, id_mapping, files_zip, storage
     ):
+        if "database_field_collaborators" not in id_mapping:
+            id_mapping["database_field_collaborators"] = {}
         mapped_values = [
-            id_mapping["database_field_select_options"][item] for item in value
+            id_mapping["database_field_collaborators"][item] for item in value
         ]
         getattr(row, field_name).set(mapped_values)
