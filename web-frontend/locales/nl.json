@@ -174,10 +174,6 @@
         "request": "Verzoek",
         "response": "Antwoord",
         "successfullyUpdated": "Webhook succesvol bijgewerkt.",
-        "form": {
-            "invalidURLTitle": "",
-            "invalidURLDescription": ""
-        },
         "status": {
             "noStatus": "GEEN STATUS",
             "statusOK": "OK",

@@ -174,10 +174,6 @@
         "request": "Requerimiento",
         "response": "Respuesta",
         "successfullyUpdated": "Webhook actualizado con éxito.",
-        "form": {
-            "invalidURLTitle": "",
-            "invalidURLDescription": ""
-        },
         "status": {
             "noStatus": "SIN ESTATUS",
             "statusOK": "OK",

@@ -174,10 +174,6 @@
         "request": "Requête",
         "response": "Réponse",
         "successfullyUpdated": "Le webhook a été mis à jour.",
-        "form": {
-            "invalidURLTitle": "",
-            "invalidURLDescription": ""
-        },
         "status": {
             "noStatus": "PAS D'ÉTAT",
             "statusOK": "OK",
