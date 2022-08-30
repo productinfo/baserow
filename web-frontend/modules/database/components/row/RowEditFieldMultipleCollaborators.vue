@@ -1,6 +1,6 @@
 <template>
   <div class="control__elements">
-    <ul class="field-multiple-select__items">
+    <ul class="field-multiple-collaborators__items">
       <li
         v-for="item in value"
         :key="item.id"
@@ -15,7 +15,7 @@
           {{ getCollaboratorName(item) }}
           <a
             v-if="!readOnly"
-            class="field-multiple-select__remove"
+            class="field-multiple-collaborators__remove"
             @click.prevent="removeValue($event, value, item.id)"
           >
             <i class="fas fa-times"></i>

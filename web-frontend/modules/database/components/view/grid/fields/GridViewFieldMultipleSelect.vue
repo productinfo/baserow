@@ -35,7 +35,7 @@
       :show-input="false"
       :show-empty-value="false"
       :allow-create-option="true"
-      class="dropdown--floating grid-field-single-select__dropdown"
+      class="dropdown--floating"
       @show="editing = true"
       @hide="editing = false"
       @input="updateValue($event, value)"
