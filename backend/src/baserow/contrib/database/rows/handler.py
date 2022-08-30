@@ -242,20 +242,32 @@ class RowHandler:
         step: Decimal,
         amount: int,
     ):
-        rows_to_update = []
-        space_for_rows = step * amount
+        """
+        Decreases the order of all the rows that have an order lower than the given
+        before_row_order but with a Decimal with the same real part.
+        It uses `bulk_update` instead of the more logical `update` since
+        `queryset.update(order=F("order") - steps_for_rows)`
+        is subtracting the double of the expected amount of steps.
+        The wrong behaviour happens only with Decimals when using small numbers (1e-16).
+        The fun thing is that the test works correctly anyway, but if you do it
+        manually or using the frontend the incorrect order is saved, causing rows
+        ordering problems in the frontend and weird spaces between consecutive rows.
+        """
 
-        queryset = model.objects.filter(
-            order__gt=floor(before_row_order - step),
-            order__lt=before_row_order,
+        steps_for_rows = step * amount
+
+        queryset = (
+            model.objects.filter(
+                order__gt=floor(before_row_order - step),
+                order__lt=before_row_order,
+            )
+            .only("order")
+            .iterator(chunk_size=BATCH_SIZE)
         )
-        for i, row in enumerate(queryset.only("order").iterator(chunk_size=amount)):
-            row.order -= space_for_rows
-            rows_to_update.append(row)
-            if i % amount:
-                model.objects.bulk_update(rows_to_update, ["order"], batch_size=amount)
-                rows_to_update = []
-        model.objects.bulk_update(rows_to_update, ["order"], batch_size=amount)
+        for rows in grouper(BATCH_SIZE, queryset):
+            for row in rows:
+                row.order -= steps_for_rows
+            model.objects.bulk_update(rows, ["order"])
 
     def get_order_before_row(
         self,

@@ -735,30 +735,14 @@ def create_multiple_rows_with_same_before_row(data_fixture, row_count):
 
 @pytest.mark.django_db
 @pytest.mark.disabled_in_ci
+# You must add --run-disabled-in-ci -s to pytest to run this test, you can do this in
+# intellij by editing the run config for this test and adding --run-disabled-in-ci -s
+# to additional args.
 def test_profiling_create_many_rows_with_same_before_row(data_fixture):
     profiler = Profiler()
 
-    profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 100)
-    profiler.stop()
-    print("--------- Creating 100 rows -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
-    profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 200)
-    profiler.stop()
-    print("--------- Creating 200 rows -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
-    profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 500)
-    profiler.stop()
-    print("--------- Creating 500 rows -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
+    # takes 6.3 seconds to run
+    # 0.55 secs in `get_order_before_row`
     profiler.start()
     create_multiple_rows_with_same_before_row(data_fixture, 1000)
     profiler.stop()
@@ -766,17 +750,12 @@ def test_profiling_create_many_rows_with_same_before_row(data_fixture):
     print(profiler.output_text(unicode=True, color=True))
     profiler.reset()
 
+    # takes 72.9 seconds to run
+    # 16.4 secs in `get_order_before_row`
     profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 2000)
+    create_multiple_rows_with_same_before_row(data_fixture, 10001)
     profiler.stop()
-    print("--------- Creating 2000 rows -------")
-    print(profiler.output_text(unicode=True, color=True))
-    profiler.reset()
-
-    profiler.start()
-    create_multiple_rows_with_same_before_row(data_fixture, 5000)
-    profiler.stop()
-    print("--------- Creating 5000 rows -------")
+    print("--------- Creating 10001 rows -------")
     print(profiler.output_text(unicode=True, color=True))
     profiler.reset()
 
