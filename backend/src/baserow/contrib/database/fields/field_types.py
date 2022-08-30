@@ -3318,8 +3318,12 @@ class MultipleCollaboratorsFieldType(FieldType):
 
     def get_export_value(self, value, field_object, rich_value=False):
         if value is None:
-            return []
-        return [item.email for item in value.all()]
+            return [] if rich_value else ""
+        result = [item.email for item in value.all()]
+        if rich_value:
+            return result
+        else:
+            return list_to_comma_separated_string(result)
 
     def get_human_readable_value(self, value, field_object):
         export_value = self.get_export_value(value, field_object)

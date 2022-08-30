@@ -230,7 +230,7 @@ def test_can_export_every_interesting_different_field_to_csv(
         "formula_bool,formula_decimal,formula_dateinterval,formula_date,formula_singleselect,"
         "formula_email,lookup\r\n"
         "1,,,,,,,,,0,False,,,,,01/02/2021 13:00,01/02/2021,02/01/2021 13:00,02/01/2021,"
-        "01/02/2021 13:00,01/02/2021,02/01/2021 13:00,02/01/2021,,,,,,,,[],,test FORMULA,"
+        "01/02/2021 13:00,01/02/2021,02/01/2021 13:00,02/01/2021,,,,,,,,,,test FORMULA,"
         "1,True,33.3333333333,1 day,2020-01-01,,,"
         "\r\n"
         "2,text,long_text,https://www.google.com,test@example.com,-1,1,-1.2,1.2,3,True,"
@@ -242,7 +242,7 @@ def test_can_export_every_interesting_different_field_to_csv(
         '.txt),unnamed row 2",'
         '"a.txt (http://localhost:8000/media/user_files/hashed_name.txt)'
         ',b.txt (http://localhost:8000/media/user_files/other_name.txt)"'
-        ",A,\"D,C,E\",\"['user2@example.com', 'user3@example.com']\",+4412345678,"
+        ',A,"D,C,E","user2@example.com,user3@example.com",+4412345678,'
         "test FORMULA,1,True,33.3333333333,1 day,2020-01-01,A,"
         'test@example.com,"linked_row_1,linked_row_2,"\r\n'
     )
