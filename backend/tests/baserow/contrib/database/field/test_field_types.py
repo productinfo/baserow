@@ -62,10 +62,7 @@ def test_import_export_formula_field(data_fixture, api_client):
         table=second_table, name="Text name", text_default="Text default"
     )
     formula_field_imported = formula_field_type.import_serialized(
-        text_field_in_diff_table.table,
-        formula_serialized,
-        id_mapping,
-        {}
+        text_field_in_diff_table.table, formula_serialized, id_mapping, {}
     )
     assert formula_field.id != formula_field_imported.id
     assert formula_field.name == formula_field_imported.name
@@ -640,10 +637,7 @@ def test_import_export_lookup_field(data_fixture, api_client):
     lookup.save()
 
     lookup_field_imported = lookup_field_type.import_serialized(
-        table_a,
-        lookup_serialized,
-        id_mapping,
-        {}
+        table_a, lookup_serialized, id_mapping, {}
     )
     assert lookup.id != lookup_field_imported.id
     assert lookup_field_imported.name == "lookup"

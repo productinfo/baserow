@@ -1,10 +1,11 @@
 from io import BytesIO
+
 import pytest
 
-from baserow.core.handler import CoreHandler
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import MultipleCollaboratorsField
 from baserow.contrib.database.rows.handler import RowHandler
+from baserow.core.handler import CoreHandler
 
 
 @pytest.mark.django_db

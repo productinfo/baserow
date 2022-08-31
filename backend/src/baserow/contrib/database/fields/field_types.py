@@ -57,7 +57,7 @@ from baserow.contrib.database.formula import (
 )
 from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
 from baserow.contrib.database.validators import UnicodeRegexValidator
-from baserow.core.models import GroupUser, User, UserFile
+from baserow.core.models import GroupUser, UserFile
 from baserow.core.user_files.exceptions import UserFileDoesNotExist
 from baserow.core.user_files.handler import UserFileHandler
 from baserow.core.utils import list_to_comma_separated_string
