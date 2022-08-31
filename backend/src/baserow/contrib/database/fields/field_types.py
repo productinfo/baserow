@@ -3327,7 +3327,7 @@ class MultipleCollaboratorsFieldType(FieldType):
             return list_to_comma_separated_string(result)
 
     def get_human_readable_value(self, value, field_object):
-        export_value = self.get_export_value(value, field_object)
+        export_value = self.get_export_value(value, field_object, rich_value=True)
         if len(export_value) == 0:
             return ""
         return ", ".join(export_value)
