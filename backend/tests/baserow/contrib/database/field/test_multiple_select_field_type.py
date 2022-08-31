@@ -568,7 +568,7 @@ def test_import_export_multiple_select_field(data_fixture):
     field_type = field_type_registry.get_by_model(field)
     field_serialized = field_type.export_serialized(field)
     id_mapping = {}
-    field_imported = field_type.import_serialized(table, field_serialized, id_mapping)
+    field_imported = field_type.import_serialized(table, field_serialized, id_mapping, {})
 
     assert field_imported.select_options.all().count() == 4
     imported_select_option = field_imported.select_options.all().first()

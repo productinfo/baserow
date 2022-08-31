@@ -57,7 +57,7 @@ from baserow.contrib.database.formula import (
 )
 from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
 from baserow.contrib.database.validators import UnicodeRegexValidator
-from baserow.core.models import GroupUser, UserFile
+from baserow.core.models import GroupUser, User, UserFile
 from baserow.core.user_files.exceptions import UserFileDoesNotExist
 from baserow.core.user_files.handler import UserFileHandler
 from baserow.core.utils import list_to_comma_separated_string
@@ -627,7 +627,7 @@ class BooleanFieldType(FieldType):
         return "true" if value else "false"
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         setattr(row, field_name, value == "true")
 
@@ -817,7 +817,7 @@ class DateFieldType(FieldType):
         return value.isoformat()
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         if not value:
             return value
@@ -975,7 +975,7 @@ class CreatedOnLastModifiedBaseFieldType(ReadOnlyFieldType, DateFieldType):
             )
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         """
         The `auto_now_add` and `auto_now` properties are set to False during the
@@ -1617,7 +1617,7 @@ class LinkRowFieldType(FieldType):
         return cache[cache_entry][row.id]
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         getattr(row, field_name).set(value)
 
@@ -1951,6 +1951,7 @@ class FileFieldType(FieldType):
         field_name: str,
         value: Dict[str, Any],
         id_mapping: Dict[str, Any],
+        cache: Dict[str, Any],
         files_zip: Optional[ZipFile],
         storage: Optional[Storage],
     ) -> None:
@@ -2262,7 +2263,7 @@ class SingleSelectFieldType(SelectOptionBaseFieldType):
         return Q(**{f"{field_name}__value__icontains": value})
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         if not value:
             return
@@ -2495,7 +2496,7 @@ class MultipleSelectFieldType(SelectOptionBaseFieldType):
         return cache[cache_entry][row.id]
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
         mapped_values = [
             id_mapping["database_field_select_options"][item] for item in value
@@ -3401,30 +3402,45 @@ class MultipleCollaboratorsFieldType(FieldType):
         )
 
     def get_export_serialized_value(self, row, field_name, cache, files_zip, storage):
-        cache_entry = f"{field_name}_relations"
+        cache_entry = f"{field_name}_relations_export"
         if cache_entry not in cache:
             # In order to prevent a lot of lookup queries in the through table, we want
             # to fetch all the relations and add it to a temporary in memory cache
-            # containing a mapping of the old ids to the new ids. Every relation can
-            # use the cached mapped relations to find the correct id.
+            # containing a mapping of the row ids to collaborator emails.
             cache[cache_entry] = defaultdict(list)
             through_model = row._meta.get_field(field_name).remote_field.through
             through_model_fields = through_model._meta.get_fields()
             current_field_name = through_model_fields[1].name
             relation_field_name = through_model_fields[2].name
-            for relation in through_model.objects.all():
+            users_relation = through_model.objects.select_related(relation_field_name)
+            for relation in users_relation:
                 cache[cache_entry][
                     getattr(relation, f"{current_field_name}_id")
-                ].append(getattr(relation, f"{relation_field_name}_id"))
-
+                ].append(getattr(relation, relation_field_name).email)
         return cache[cache_entry][row.id]
 
     def set_import_serialized_value(
-        self, row, field_name, value, id_mapping, files_zip, storage
+        self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
-        if "database_field_collaborators" not in id_mapping:
-            id_mapping["database_field_collaborators"] = {}
-        mapped_values = [
-            id_mapping["database_field_collaborators"][item] for item in value
-        ]
-        getattr(row, field_name).set(mapped_values)
+        group_id = id_mapping["new_group_id"]
+        cache_entry = f"{field_name}_relations_import"
+        if cache_entry not in cache:
+            # In order to prevent a lot of lookup queries in the through table, we want
+            # to fetch all the relations and add it to a temporary in memory cache
+            # containing a mapping of the row ids to collaborator emails.
+            cache[cache_entry] = defaultdict(list)
+
+            groupusers_from_group = GroupUser.objects.filter(
+                group_id=group_id
+            ).select_related("user")
+
+            for groupuser in groupusers_from_group:
+                cache[cache_entry][groupuser.user.email] = groupuser.user.id
+
+        user_ids = []
+        for email in value:
+            user_id = cache[cache_entry].get(email, None)
+            if user_id is not None:
+                user_ids.append(user_id)
+
+        getattr(row, field_name).set(user_ids)

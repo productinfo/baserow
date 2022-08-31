@@ -74,28 +74,28 @@ def test_multiple_collaborators_field_type_update(data_fixture):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_get_set_export_serialized_value_multiple_collaborators_field(
-    data_fixture, django_assert_num_queries
-):
-    user = data_fixture.create_user(email="bram@baserow.io")
-    user_2 = data_fixture.create_user(email="petr@baserow.io")
+def test_get_set_export_serialized_value_multiple_collaborators_field(data_fixture):
+    user = data_fixture.create_user(email="user1@baserow.io")
+    user_2 = data_fixture.create_user(email="user2@baserow.io")
+    user_3 = data_fixture.create_user(email="user3@baserow.io")
     group = data_fixture.create_group(user=user)
     data_fixture.create_user_group(group=group, user=user_2)
+    data_fixture.create_user_group(group=group, user=user_3)
 
     imported_group = data_fixture.create_group(user=user)
+    data_fixture.create_user_group(group=imported_group, user=user_2)
     database = data_fixture.create_database_application(group=group)
     table = data_fixture.create_database_table(database=database)
     field_handler = FieldHandler()
     row_handler = RowHandler()
     core_handler = CoreHandler()
 
-    multiselect_row_field = field_handler.create_field(
+    multiple_collaborators__field = field_handler.create_field(
         user=user,
         table=table,
         name="Multiple collaborators",
         type_name="multiple_collaborators",
     )
-    select_options = multiselect_row_field.select_options.all()
 
     row_handler.create_row(
         user=user,
@@ -107,9 +107,9 @@ def test_get_set_export_serialized_value_multiple_collaborators_field(
         user=user,
         table=table,
         values={
-            f"field_{multiselect_row_field.id}": [
-                user.id,
-                user_2.id,
+            f"field_{multiple_collaborators__field.id}": [
+                {"id": user.id},
+                {"id": user_2.id},
             ],
         },
     )
@@ -118,8 +118,9 @@ def test_get_set_export_serialized_value_multiple_collaborators_field(
         user=user,
         table=table,
         values={
-            f"field_{multiselect_row_field.id}": [
-                user.id,
+            f"field_{multiple_collaborators__field.id}": [
+                {"id": user.id},
+                {"id": user_3.id},
             ],
         },
     )
@@ -133,41 +134,27 @@ def test_get_set_export_serialized_value_multiple_collaborators_field(
     imported_field = imported_table.field_set.all().first().specific
 
     assert imported_table.id != table.id
-    assert imported_field.id != multiselect_row_field.id
-    assert len(SelectOption.objects.all()) == 6
+    assert imported_field.id != multiple_collaborators__field.id
 
     imported_model = imported_table.get_model()
     all = imported_model.objects.all()
     assert len(all) == 3
     imported_row_1 = all[0]
     imported_row_1_field = (
-        getattr(imported_row_1, f"field_" f"{imported_field.id}")
-        .order_by("order")
-        .all()
+        getattr(imported_row_1, f"field_" f"{imported_field.id}").order_by("id").all()
     )
     imported_row_2 = all[1]
     imported_row_2_field = (
-        getattr(imported_row_2, f"field_{imported_field.id}").order_by("order").all()
+        getattr(imported_row_2, f"field_{imported_field.id}").order_by("id").all()
     )
     imported_row_3 = all[2]
     imported_row_3_field = (
-        getattr(imported_row_3, f"field_{imported_field.id}").order_by("order").all()
+        getattr(imported_row_3, f"field_{imported_field.id}").order_by("id").all()
     )
 
     assert len(imported_row_1_field) == 0
-
     assert len(imported_row_2_field) == 2
-    assert imported_row_2_field[0].id != select_options[0].id
-    assert imported_row_2_field[0].value == select_options[0].value
-    assert imported_row_2_field[0].color == select_options[0].color
-    assert imported_row_2_field[1].id != select_options[1].id
-    assert imported_row_2_field[1].value == select_options[1].value
-    assert imported_row_2_field[1].color == select_options[1].color
-
-    assert len(imported_row_3_field) == 2
-    assert imported_row_3_field[0].id != select_options[1].id
-    assert imported_row_3_field[0].value == select_options[1].value
-    assert imported_row_3_field[0].color == select_options[1].color
-    assert imported_row_3_field[1].id != select_options[2].id
-    assert imported_row_3_field[1].value == select_options[2].value
-    assert imported_row_3_field[1].color == select_options[2].color
+    assert imported_row_2_field[0].id == user.id
+    assert imported_row_2_field[1].id == user_2.id
+    assert len(imported_row_3_field) == 1
+    assert imported_row_3_field[0].id == user.id

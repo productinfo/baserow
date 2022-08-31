@@ -300,6 +300,7 @@ class DatabaseApplicationType(ApplicationType):
 
         # Now that everything is in place we can start filling the table with the rows
         # in an efficient matter by using the bulk_create functionality.
+        table_cache: Dict[str, Any] = {}
         for serialized_table in serialized_tables:
             table_model = serialized_table["_model"]
             field_ids = [
@@ -345,6 +346,7 @@ class DatabaseApplicationType(ApplicationType):
                             f'field_{id_mapping["database_fields"][serialized_field["id"]]}',
                             serialized_row[field_name],
                             id_mapping,
+                            table_cache,
                             files_zip,
                             storage,
                         )

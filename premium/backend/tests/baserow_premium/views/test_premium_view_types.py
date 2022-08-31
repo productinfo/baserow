@@ -116,7 +116,7 @@ def test_import_export_kanban_view(premium_data_fixture, tmpdir):
 
     with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
         imported_kanban_view = kanban_field_type.import_serialized(
-            kanban_view.table, serialized, id_mapping, files_zip, storage
+            kanban_view.table, serialized, id_mapping, files_zip, storage, {}
         )
 
     assert kanban_view.id != imported_kanban_view.id
