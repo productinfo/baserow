@@ -253,7 +253,8 @@ class ApplicationType(
         :return: The newly created application.
         """
 
-        id_mapping["new_group_id"] = group.id
+        if "import_group_id" not in id_mapping and group is not None:
+            id_mapping["import_group_id"] = group.id
 
         if "applications" not in id_mapping:
             id_mapping["applications"] = {}

@@ -211,6 +211,9 @@ class DatabaseApplicationType(ApplicationType):
         )
         progress = ChildProgressBuilder.build(progress_builder, child_total=child_total)
 
+        if "import_group_id" not in id_mapping and database.group is not None:
+            id_mapping["import_group_id"] = database.group.id
+
         if "database_tables" not in id_mapping:
             id_mapping["database_tables"] = {}
 

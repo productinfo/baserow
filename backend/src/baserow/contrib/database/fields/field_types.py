@@ -3422,7 +3422,7 @@ class MultipleCollaboratorsFieldType(FieldType):
     def set_import_serialized_value(
         self, row, field_name, value, id_mapping, cache, files_zip, storage
     ):
-        group_id = id_mapping["new_group_id"]
+        group_id = id_mapping["import_group_id"]
         cache_entry = f"{field_name}_relations_import"
         if cache_entry not in cache:
             # In order to prevent a lot of lookup queries in the through table, we want
