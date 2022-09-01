@@ -125,26 +125,42 @@
               >{{ $t('apiDocs.deleteRow') }}</a
             >
           </li>
+        </ul>
+      </li>
+      <li>
+          <a
+            class="api-docs__nav-link"
+            @click.prevent="navigate('section-upload-file')"
+            >File uploads</a
+          >
+          <ul
+            class="api-docs__nav-sub"
+            :class="{
+              open:
+                navActive === 'section-upload-file' ||
+                navActive === 'section-upload-file-via-url',
+            }"
+          >
           <li>
-            <a
-              class="api-docs__nav-link"
-              :class="{
-                active: navActive === 'section-table-' + table.id + '-upload-file',
-              }"
-              @click.prevent="navigate('section-table-' + table.id + '-upload-file')"
-              >{{ $t('apiDocs.uploadFile') }}</a
-            >
-          </li>
-          <li>
-            <a
-              class="api-docs__nav-link"
-              :class="{
-                active: navActive === 'section-table-' + table.id + '-upload-file-via-url',
-              }"
-              @click.prevent="navigate('section-table-' + table.id + '-upload-file-via-url')"
-              >{{ $t('apiDocs.uploadFileViaUrl') }}</a
-            >
-          </li>
+              <a
+                class="api-docs__nav-link"
+                :class="{
+                  active: navActive === 'section-upload-file',
+                }"
+                @click.prevent="navigate('section-upload-file')"
+                >{{ $t('apiDocs.uploadFile') }}</a
+              >
+            </li>
+            <li>
+              <a
+                class="api-docs__nav-link"
+                :class="{
+                  active: navActive === 'section-upload-file-via-url',
+                }"
+                @click.prevent="navigate('section-upload-file-via-url')"
+                >{{ $t('apiDocs.uploadFileViaUrl') }}</a
+              >
+            </li>
         </ul>
       </li>
       <li>

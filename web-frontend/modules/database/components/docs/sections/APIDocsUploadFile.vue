@@ -3,7 +3,7 @@
     <div class="api-docs__left">
       <div class="api-docs__heading-wrapper">
         <h3
-          :id="'section-table-' + table.id + '-upload-file'"
+          :id="'section-upload-file'"
           class="api-docs__heading-3"
         >
           <span>
@@ -14,7 +14,7 @@
       </div>
 
       <p class="api-docs__content">
-        {{ $t('apiDocsUploadFile.description', table) }}
+        {{ $t('apiDocsUploadFile.description') }}
       </p>
 
       <h4 class="api-docs__heading-4">{{ $t('apiDocs.queryParameters') }}</h4>
@@ -32,7 +32,7 @@
       <APIDocsExample
         :value="value"
         type="POST"
-        :url="getUploadFileListUrl(table)"
+        :url="getUploadFileListUrl()"
         :include-user-fields-checkbox="false"
         @input="$emit('input', $event)"
       ></APIDocsExample>
@@ -55,7 +55,6 @@ export default {
       type: Object,
       required: true,
     },
-    table: { type: Object, required: true },
     getUploadFileListUrl: { type: Function, required: true },
   },
   data() {

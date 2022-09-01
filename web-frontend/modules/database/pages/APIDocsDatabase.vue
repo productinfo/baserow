@@ -112,17 +112,15 @@
           :get-delete-list-url="getDeleteListURL"
           :get-batch-delete-request-example="getBatchDeleteRequestExample"
         />
-        <APIDocsUploadFile
-          v-model="exampleData"
-          :table="table"
-          :get-upload-file-list-url="getUploadFileListUrl"
-        />
-        <apiDocsUploadFileViaURL
-          v-model="exampleData"
-          :table="table"
-          :get-upload-file-via-url-list-url="getUploadFileViaUrlListUrl"
-        />
       </div>
+      <APIDocsUploadFile
+        v-model="exampleData"
+        :get-upload-file-list-url="getUploadFileListUrl"
+      />
+      <apiDocsUploadFileViaURL
+        v-model="exampleData"
+        :get-upload-file-via-url-list-url="getUploadFileViaUrlListUrl"
+      />
       <APIDocsFilters />
       <APIDocsErrors v-model="exampleData" />
     </div>
@@ -386,10 +384,10 @@ export default {
     getDeleteListURL(table) {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/database/rows/table/${table.id}/batch-delete/`
     },
-    getUploadFileListUrl(table) {
+    getUploadFileListUrl() {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-file/`
     },
-    getUploadFileViaUrlListUrl(table) {
+    getUploadFileViaUrlListUrl() {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-via-url/`
     },
     getItemURL(table, addUserFieldParam) {
