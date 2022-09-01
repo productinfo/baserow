@@ -37,9 +37,7 @@
               navActive === 'section-table-' + table.id + '-create' ||
               navActive === 'section-table-' + table.id + '-update' ||
               navActive === 'section-table-' + table.id + '-move' ||
-              navActive === 'section-table-' + table.id + '-delete' ||
-              navActive === 'section-table-' + table.id + '-upload-file' ||
-              navActive === 'section-table-' + table.id + '-upload-file-via-url',
+              navActive === 'section-table-' + table.id + '-delete',
           }"
         >
           <li>
