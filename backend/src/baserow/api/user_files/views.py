@@ -15,6 +15,7 @@ from baserow.core.user_files.exceptions import (
     InvalidFileURLError,
 )
 from baserow.core.user_files.handler import UserFileHandler
+from baserow.contrib.database.api.tokens.authentications import TokenAuthentication
 
 from .errors import (
     ERROR_FILE_SIZE_TOO_LARGE,
@@ -28,6 +29,7 @@ from .serializers import UserFileSerializer, UserFileUploadViaURLRequestSerializ
 class UploadFileView(APIView):
     permission_classes = (IsAuthenticated,)
     parser_classes = (MultiPartParser,)
+    authentication_classes = APIView.authentication_classes + [TokenAuthentication]
 
     @extend_schema(
         tags=["User files"],
@@ -63,6 +65,7 @@ class UploadFileView(APIView):
 
 class UploadViaURLView(APIView):
     permission_classes = (IsAuthenticated,)
+    authentication_classes = APIView.authentication_classes + [TokenAuthentication]
 
     @extend_schema(
         tags=["User files"],
