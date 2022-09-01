@@ -112,6 +112,16 @@
           :get-delete-list-url="getDeleteListURL"
           :get-batch-delete-request-example="getBatchDeleteRequestExample"
         />
+        <APIDocsUploadFile
+          v-model="exampleData"
+          :table="table"
+          :get-upload-file-list-url="getUploadFileListUrl"
+        />
+        <apiDocsUploadFileViaURL
+          v-model="exampleData"
+          :table="table"
+          :get-upload-file-via-url-list-url="getUploadFileViaUrlListUrl"
+        />
       </div>
       <APIDocsFilters />
       <APIDocsErrors v-model="exampleData" />
@@ -136,6 +146,8 @@ import APIDocsTableCreateRow from '@baserow/modules/database/components/docs/sec
 import APIDocsTableUpdateRow from '@baserow/modules/database/components/docs/sections/APIDocsTableUpdateRow'
 import APIDocsTableMoveRow from '@baserow/modules/database/components/docs/sections/APIDocsTableMoveRow'
 import APIDocsTableDeleteRow from '@baserow/modules/database/components/docs/sections/APIDocsTableDeleteRow'
+import APIDocsUploadFile from '@baserow/modules/database/components/docs/sections/APIDocsUploadFile'
+import apiDocsUploadFileViaURL from '@baserow/modules/database/components/docs/sections/apiDocsUploadFileViaURL'
 import APIDocsFilters from '@baserow/modules/database/components/docs/sections/APIDocsFilters'
 import APIDocsErrors from '@baserow/modules/database/components/docs/sections/APIDocsErrors'
 import APIDocsMenu from '@baserow/modules/database/components/docs/sections/APIDocsMenu.vue'
@@ -154,6 +166,8 @@ export default {
     APIDocsTableUpdateRow,
     APIDocsTableMoveRow,
     APIDocsTableDeleteRow,
+    APIDocsUploadFile,
+    apiDocsUploadFileViaURL,
     APIDocsFilters,
     APIDocsErrors,
     APIDocsMenu,
@@ -371,6 +385,12 @@ export default {
     },
     getDeleteListURL(table) {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/database/rows/table/${table.id}/batch-delete/`
+    },
+    getUploadFileListUrl(table) {
+      return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-file/`
+    },
+    getUploadFileViaUrlListUrl(table) {
+      return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-via-url/`
     },
     getItemURL(table, addUserFieldParam) {
       return (
