@@ -37,7 +37,9 @@
               navActive === 'section-table-' + table.id + '-create' ||
               navActive === 'section-table-' + table.id + '-update' ||
               navActive === 'section-table-' + table.id + '-move' ||
-              navActive === 'section-table-' + table.id + '-delete',
+              navActive === 'section-table-' + table.id + '-delete' ||
+              navActive === 'section-table-' + table.id + '-upload-file' ||
+              navActive === 'section-table-' + table.id + '-upload-file-via-url',
           }"
         >
           <li>
@@ -121,6 +123,26 @@
               }"
               @click.prevent="navigate('section-table-' + table.id + '-delete')"
               >{{ $t('apiDocs.deleteRow') }}</a
+            >
+          </li>
+          <li>
+            <a
+              class="api-docs__nav-link"
+              :class="{
+                active: navActive === 'section-table-' + table.id + '-upload-file',
+              }"
+              @click.prevent="navigate('section-table-' + table.id + '-upload-file')"
+              >{{ $t('apiDocs.uploadFile') }}</a
+            >
+          </li>
+          <li>
+            <a
+              class="api-docs__nav-link"
+              :class="{
+                active: navActive === 'section-table-' + table.id + '-upload-file-via-url',
+              }"
+              @click.prevent="navigate('section-table-' + table.id + '-upload-file-via-url')"
+              >{{ $t('apiDocs.uploadFileViaUrl') }}</a
             >
           </li>
         </ul>
