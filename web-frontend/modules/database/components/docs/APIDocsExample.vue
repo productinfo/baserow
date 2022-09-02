@@ -233,7 +233,7 @@ export default {
 
       if (this.file !== '') {
         index++
-        example += ` \\\n-F upload=@${this.file}`
+        example += ` \\\n-F file=@${this.file}`
       }
 
       example += `\n${this.url}`
