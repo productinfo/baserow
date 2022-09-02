@@ -35,6 +35,7 @@
         type="POST"
         :url="getUploadFileListUrl()"
         :file="getUploadFileExample()"
+        :response="getFileUploadResponse()"
         :include-user-fields-checkbox="false"
         @input="$emit('input', $event)"
       ></APIDocsExample>
@@ -60,6 +61,7 @@ export default {
     getPublicBackendUrl: { type: Function, required: true },
     getUploadFileListUrl: { type: Function, required: true },
     getUploadFileExample: { type: Function, required: true },
+    getFileUploadResponse: { type: Function, required: true },
   },
 }
 </script>

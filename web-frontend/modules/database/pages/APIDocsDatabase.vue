@@ -118,14 +118,16 @@
         :get-upload-file-list-url="getUploadFileListUrl"
         :get-upload-file-example="getUploadFileExample"
         :get-public-backend-url="getPublicBackendUrl"
+        :get-file-upload-response="getFileUploadResponse"
       />
       <apiDocsUploadFileViaURL
         v-model="exampleData"
+        :get-public-backend-url="getPublicBackendUrl"
+        :get-file-upload-response="getFileUploadResponse"
         :get-upload-file-via-url-list-url="getUploadFileViaUrlListUrl"
         :get-upload-file-via-url-request-example="
           getUploadFileViaUrlRequestExample
         "
-        :get-public-backend-url="getPublicBackendUrl"
       />
       <APIDocsFilters />
       <APIDocsErrors v-model="exampleData" />
@@ -395,6 +397,26 @@ export default {
      */
     getUploadFileExample() {
       return 'photo.png'
+    },
+    /**
+     * Generates the 'upload file' and 'upload via URL' file example response.
+     */
+    getFileUploadResponse() {
+      return {
+        size: 2147483647,
+        mime_type: 'string',
+        is_image: true,
+        image_width: 32767,
+        image_height: 32767,
+        uploaded_at: '2019-08-24T14:15:22Z',
+        url: 'http://example.com',
+        thumbnails: {
+          property1: null,
+          property2: null,
+        },
+        name: 'string',
+        original_name: 'string',
+      }
     },
     /**
      * Generates the 'upload file' URI.
