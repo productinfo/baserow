@@ -48,7 +48,7 @@ import APIDocsExample from '@baserow/modules/database/components/docs/APIDocsExa
 import APIDocsParameter from '@baserow/modules/database/components/docs/APIDocsParameter'
 
 export default {
-  name: 'ApiDocsUploadFileViaURL',
+  name: 'APIDocsUploadFileViaURL',
   components: {
     APIDocsParameter,
     APIDocsExample,

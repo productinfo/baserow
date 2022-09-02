@@ -120,7 +120,7 @@
         :get-public-backend-url="getPublicBackendUrl"
         :get-file-upload-response="getFileUploadResponse"
       />
-      <apiDocsUploadFileViaURL
+      <APIDocsUploadFileViaURL
         v-model="exampleData"
         :get-public-backend-url="getPublicBackendUrl"
         :get-file-upload-response="getFileUploadResponse"
@@ -153,7 +153,7 @@ import APIDocsTableUpdateRow from '@baserow/modules/database/components/docs/sec
 import APIDocsTableMoveRow from '@baserow/modules/database/components/docs/sections/APIDocsTableMoveRow'
 import APIDocsTableDeleteRow from '@baserow/modules/database/components/docs/sections/APIDocsTableDeleteRow'
 import APIDocsUploadFile from '@baserow/modules/database/components/docs/sections/APIDocsUploadFile'
-import ApiDocsUploadFileViaURL from '@baserow/modules/database/components/docs/sections/ApiDocsUploadFileViaURL'
+import APIDocsUploadFileViaURL from '@baserow/modules/database/components/docs/sections/APIDocsUploadFileViaURL'
 import APIDocsFilters from '@baserow/modules/database/components/docs/sections/APIDocsFilters'
 import APIDocsErrors from '@baserow/modules/database/components/docs/sections/APIDocsErrors'
 import APIDocsMenu from '@baserow/modules/database/components/docs/sections/APIDocsMenu.vue'
@@ -173,7 +173,7 @@ export default {
     APIDocsTableMoveRow,
     APIDocsTableDeleteRow,
     APIDocsUploadFile,
-    ApiDocsUploadFileViaURL,
+    APIDocsUploadFileViaURL,
     APIDocsFilters,
     APIDocsErrors,
     APIDocsMenu,
