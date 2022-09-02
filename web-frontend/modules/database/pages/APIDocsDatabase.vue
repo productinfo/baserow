@@ -153,7 +153,7 @@ import APIDocsTableUpdateRow from '@baserow/modules/database/components/docs/sec
 import APIDocsTableMoveRow from '@baserow/modules/database/components/docs/sections/APIDocsTableMoveRow'
 import APIDocsTableDeleteRow from '@baserow/modules/database/components/docs/sections/APIDocsTableDeleteRow'
 import APIDocsUploadFile from '@baserow/modules/database/components/docs/sections/APIDocsUploadFile'
-import apiDocsUploadFileViaURL from '@baserow/modules/database/components/docs/sections/apiDocsUploadFileViaURL'
+import ApiDocsUploadFileViaURL from '@baserow/modules/database/components/docs/sections/ApiDocsUploadFileViaURL'
 import APIDocsFilters from '@baserow/modules/database/components/docs/sections/APIDocsFilters'
 import APIDocsErrors from '@baserow/modules/database/components/docs/sections/APIDocsErrors'
 import APIDocsMenu from '@baserow/modules/database/components/docs/sections/APIDocsMenu.vue'
@@ -173,7 +173,7 @@ export default {
     APIDocsTableMoveRow,
     APIDocsTableDeleteRow,
     APIDocsUploadFile,
-    apiDocsUploadFileViaURL,
+    ApiDocsUploadFileViaURL,
     APIDocsFilters,
     APIDocsErrors,
     APIDocsMenu,
