@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from baserow.api.decorators import map_exceptions, validate_body
 from baserow.api.schemas import get_error_schema
+from baserow.contrib.database.api.tokens.authentications import TokenAuthentication
 from baserow.core.user_files.exceptions import (
     FileSizeTooLargeError,
     FileURLCouldNotBeReached,
@@ -15,7 +16,6 @@ from baserow.core.user_files.exceptions import (
     InvalidFileURLError,
 )
 from baserow.core.user_files.handler import UserFileHandler
-from baserow.contrib.database.api.tokens.authentications import TokenAuthentication
 
 from .errors import (
     ERROR_FILE_SIZE_TOO_LARGE,
