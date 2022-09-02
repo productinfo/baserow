@@ -422,7 +422,7 @@ export default {
      * Generates the 'upload file' URI.
      */
     getUploadFileListUrl() {
-      return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-file/`
+      return this.getPublicBackendUrl() + '/api/user-files/upload-file/'
     },
     /**
      * Generates the 'upload file' request example.
@@ -436,7 +436,7 @@ export default {
      * Generates the 'upload file via URL' URI.
      */
     getUploadFileViaUrlListUrl() {
-      return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-via-url/`
+      return this.getPublicBackendUrl() + '/api/user-files/upload-via-url/'
     },
     getPublicBackendUrl() {
       return `${this.$env.PUBLIC_BACKEND_URL}`
