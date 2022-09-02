@@ -2,10 +2,7 @@
   <div class="api-docs__item">
     <div class="api-docs__left">
       <div class="api-docs__heading-wrapper">
-        <h3
-          :id="'section-upload-file'"
-          class="api-docs__heading-3"
-        >
+        <h3 :id="'section-upload-file'" class="api-docs__heading-3">
           <span>
             {{ $t('apiDocs.uploadFile') }}
           </span>
@@ -22,7 +19,11 @@
         <APIDocsParameter name="file" :optional="false" type="multipart">
           <MarkdownIt
             class="api-docs__content"
-            :content="$t('apiDocs.uploadFileDescription')"
+            :content="
+              $t('apiDocs.uploadFileDescription', {
+                PUBLIC_BACKEND_URL: getPublicBackendUrl(),
+              })
+            "
           />
         </APIDocsParameter>
       </ul>
@@ -33,6 +34,7 @@
         :value="value"
         type="POST"
         :url="getUploadFileListUrl()"
+        :file="getUploadFileExample()"
         :include-user-fields-checkbox="false"
         @input="$emit('input', $event)"
       ></APIDocsExample>
@@ -55,12 +57,9 @@ export default {
       type: Object,
       required: true,
     },
+    getPublicBackendUrl: { type: Function, required: true },
     getUploadFileListUrl: { type: Function, required: true },
-  },
-  data() {
-    return {
-      batchMode: false,
-    }
+    getUploadFileExample: { type: Function, required: true },
   },
 }
 </script>
