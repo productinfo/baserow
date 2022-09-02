@@ -116,10 +116,16 @@
       <APIDocsUploadFile
         v-model="exampleData"
         :get-upload-file-list-url="getUploadFileListUrl"
+        :get-upload-file-example="getUploadFileExample"
+        :get-public-backend-url="getPublicBackendUrl"
       />
       <apiDocsUploadFileViaURL
         v-model="exampleData"
         :get-upload-file-via-url-list-url="getUploadFileViaUrlListUrl"
+        :get-upload-file-via-url-request-example="
+          getUploadFileViaUrlRequestExample
+        "
+        :get-public-backend-url="getPublicBackendUrl"
       />
       <APIDocsFilters />
       <APIDocsErrors v-model="exampleData" />
@@ -384,11 +390,34 @@ export default {
     getDeleteListURL(table) {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/database/rows/table/${table.id}/batch-delete/`
     },
+    /**
+     * Generates the 'upload file' file example.
+     */
+    getUploadFileExample() {
+      return 'photo.png'
+    },
+    /**
+     * Generates the 'upload file' URI.
+     */
     getUploadFileListUrl() {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-file/`
     },
+    /**
+     * Generates the 'upload file' request example.
+     */
+    getUploadFileViaUrlRequestExample() {
+      return {
+        url: 'https://baserow.io/assets/photo.png',
+      }
+    },
+    /**
+     * Generates the 'upload file via URL' URI.
+     */
     getUploadFileViaUrlListUrl() {
       return `${this.$env.PUBLIC_BACKEND_URL}/api/user-files/upload-via-url/`
+    },
+    getPublicBackendUrl() {
+      return `${this.$env.PUBLIC_BACKEND_URL}`
     },
     getItemURL(table, addUserFieldParam) {
       return (
