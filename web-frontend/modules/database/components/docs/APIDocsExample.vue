@@ -340,7 +340,7 @@ export default {
 
       if (this.file !== '') {
         index++
-        example += `\n    files={'upload_file': open('${this.file}', 'rb')}`
+        example += `\n    files={'file': open('${this.file}', 'rb')}`
       }
 
       if (this.request !== false) {
