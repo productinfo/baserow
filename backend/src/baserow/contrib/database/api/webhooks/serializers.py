@@ -157,7 +157,6 @@ class TableWebhookTestCallRequestSerializer(serializers.ModelSerializer):
         "the value the value.",
     )
     url = serializers.URLField(
-        required=False,
         max_length=2000,
         validators=[url_validation],
         help_text="The URL that must be called when the webhook is triggered.",
