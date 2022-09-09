@@ -1,6 +1,6 @@
-from collections import Callable
 from http.client import _is_illegal_header_value, _is_legal_header_name
 from socket import gaierror, timeout
+from typing import Callable
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -25,7 +25,7 @@ def get_webhook_request_function() -> Callable:
     setting BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS.
     """
 
-    if settings.BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS is False:
+    if settings.BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS is True:
         from requests import request
 
         return request

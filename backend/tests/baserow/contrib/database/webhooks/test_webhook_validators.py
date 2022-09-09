@@ -1,6 +1,5 @@
 import re
 from ipaddress import ip_network
-from socket import AF_INET, AF_INET6, IPPROTO_TCP, SOCK_STREAM
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -10,20 +9,9 @@ import httpretty as httpretty
 import pytest
 
 from baserow.contrib.database.webhooks.validators import url_validator
+from baserow.test_utils.helpers import stub_getaddrinfo
 
-
-# The httpretty stub implementation of socket.getaddrinfo is incorrect and doesn't
-# return an IP causing advocate to fail, instead we patch to fix this.
-def stub_getaddrinfo(host, port, family=None, socktype=None, proto=None, flags=None):
-    try:
-        ip_network(host)
-        ip = host
-    except ValueError:
-        ip = "1.1.1.1"
-    return [
-        (AF_INET, SOCK_STREAM, IPPROTO_TCP, host, (ip, port)),
-        (AF_INET6, SOCK_STREAM, IPPROTO_TCP, "", (ip, port)),
-    ]
+URL_BLACKLIST_ONLY_ALLOWING_GOOGLE_WEBHOOKS = re.compile(r"(?!(www\.)?google\.com).*")
 
 
 @httpretty.activate(verbose=True, allow_net_connect=False)
@@ -121,7 +109,7 @@ def test_hostname_blacklist_rules(patched_addr_info):
 
 @httpretty.activate(verbose=True, allow_net_connect=False)
 @override_settings(
-    BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST=[re.compile(r"(?!(www\.)?google\.com).*")]
+    BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST=[URL_BLACKLIST_ONLY_ALLOWING_GOOGLE_WEBHOOKS]
 )
 @patch("socket.getaddrinfo", wraps=stub_getaddrinfo)
 def test_hostname_blacklist_rules_only_allow_one_host(patched_addr_info):
@@ -170,7 +158,7 @@ def test_advocate_combination_of_whitelist_blacklist_rules():
 
 @httpretty.activate(verbose=True, allow_net_connect=False)
 @override_settings(
-    BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST=[re.compile(r"(?!(www\.)?google\.com).*")],
+    BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST=[URL_BLACKLIST_ONLY_ALLOWING_GOOGLE_WEBHOOKS],
     BASEROW_WEBHOOKS_IP_BLACKLIST=[ip_network("1.0.0.0/8")],
     BASEROW_WEBHOOKS_IP_WHITELIST=[ip_network("1.1.1.1/32")],
 )

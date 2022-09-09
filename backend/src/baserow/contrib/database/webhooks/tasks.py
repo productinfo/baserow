@@ -18,7 +18,7 @@ def call_webhook(
     url: str,
     headers: dict,
     payload: dict,
-    **kwargs: dict
+    **kwargs: dict,
 ):
     """
     This task should be called asynchronously when the webhook call must be trigged.
@@ -69,7 +69,7 @@ def call_webhook(
             response = exception.response
             error = str(exception)
         except UnacceptableAddressException as exception:
-            error = str(exception)
+            error = f"UnacceptableAddressException: {exception}"
 
         TableWebhookCall.objects.update_or_create(
             id=event_id,
