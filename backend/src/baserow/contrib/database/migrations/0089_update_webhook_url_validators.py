@@ -9,7 +9,7 @@ import baserow.contrib.database.webhooks.validators
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("database", "0085_alter_fileimportjob_name"),
+        ("database", "0088_multiple_collaborators_field"),
     ]
 
     operations = [
