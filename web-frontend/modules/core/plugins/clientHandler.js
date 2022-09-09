@@ -155,12 +155,8 @@ export class ErrorHandler {
     this.detail = detail
   }
 
-  /**
-   * Returns true if there is a readable error.
-   * @return {boolean}
-   */
-  hasError() {
-    return this.response !== undefined && this.response.code != null
+  hasBaserowAPIError() {
+    return this.response !== undefined && this.code != null
   }
 
   hasRequestBodyValidationError() {
@@ -213,6 +209,25 @@ export class ErrorHandler {
     return this.genericDefaultError()
   }
 
+  searchForMatchingFieldException(
+    listOfDetailErrors,
+    mapOfDetailCodeToResponseError
+  ) {
+    for (const detailError of listOfDetailErrors) {
+      if (
+        detailError &&
+        typeof detailError === 'object' &&
+        typeof detailError.code === 'string'
+      ) {
+        const handledError = mapOfDetailCodeToResponseError[detailError.code]
+        if (handledError) {
+          return handledError
+        }
+      }
+    }
+    return null
+  }
+
   /**
    * Given a "ERROR_REQUEST_BODY_VALIDATION" error has occurred this function matches
    * a provided error map against the machine readable error codes in the "detail"
@@ -247,29 +262,29 @@ export class ErrorHandler {
    */
   getRequestBodyErrorMessage(requestBodyErrorMap) {
     const detail = this.response?.data?.detail
-    if (detail != null && typeof detail === 'object') {
-      for (const failedAttrName of Object.keys(detail)) {
-        const listOfDetailErrors = detail[failedAttrName]
-        const mapOfDetailCodeToResponseError =
-          requestBodyErrorMap[failedAttrName]
+
+    if (requestBodyErrorMap && detail && typeof detail === 'object') {
+      for (const fieldName of Object.keys(detail)) {
+        const errorsForField = detail[fieldName]
+        const supportedExceptionsForField = requestBodyErrorMap[fieldName]
 
         if (
-          listOfDetailErrors != null &&
-          Array.isArray(listOfDetailErrors) &&
-          mapOfDetailCodeToResponseError
+          errorsForField != null &&
+          Array.isArray(errorsForField) &&
+          supportedExceptionsForField
         ) {
-          for (const detailError of listOfDetailErrors) {
-            const handledError =
-              mapOfDetailCodeToResponseError[detailError.code]
-            if (handledError) {
-              return handledError
-            }
+          const matchingException = this.searchForMatchingFieldException(
+            errorsForField,
+            supportedExceptionsForField
+          )
+          if (matchingException) {
+            return matchingException
           }
         }
       }
     }
 
-    return this.genericDefaultError()
+    return null
   }
 
   /**
@@ -281,7 +296,7 @@ export class ErrorHandler {
         this.app.i18n.t('clientHandler.notFoundTitle', {
           name: upperCaseFirst(name),
         }),
-        this.app.i18n.t('clientHandler.notFoundTitle', {
+        this.app.i18n.t('clientHandler.notFoundDescription', {
           name: name.toLowerCase(),
         })
       )
@@ -322,14 +337,18 @@ export class ErrorHandler {
     if (this.hasNetworkError()) {
       return this.getNetworkErrorMessage()
     }
-    if (this.hasError()) {
+    if (this.hasBaserowAPIError()) {
+      if (this.hasRequestBodyValidationError()) {
+        const matchingRequestBodyError =
+          this.getRequestBodyErrorMessage(requestBodyErrorMap)
+        if (matchingRequestBodyError) {
+          return matchingRequestBodyError
+        }
+      }
       return this.getErrorMessage(specificErrorMap)
     }
     if (this.isNotFound()) {
       return this.getNotFoundMessage(name)
-    }
-    if (this.hasRequestBodyValidationError() && requestBodyErrorMap) {
-      return this.getRequestBodyErrorMessage(requestBodyErrorMap)
     }
     return this.genericDefaultError()
   }
@@ -348,7 +367,11 @@ export class ErrorHandler {
    */
   notifyIf(name = null, message = null) {
     if (
-      !(this.hasError() || this.hasNetworkError() || this.isNotFound()) ||
+      !(
+        this.hasBaserowAPIError() ||
+        this.hasNetworkError() ||
+        this.isNotFound()
+      ) ||
       this.isHandled
     ) {
       return
@@ -376,6 +399,29 @@ export class ErrorHandler {
    */
   handled() {
     this.isHandled = true
+  }
+}
+
+export function makeErrorResponseInterceptor(store, app, clientErrorMap) {
+  return (error) => {
+    error.handler = new ErrorHandler(store, app, clientErrorMap, error.response)
+
+    // Add the error message in the response to the error object.
+    const rspCode = error.response?.status
+    const rspData = error.response?.data
+
+    if (rspCode === 401) {
+      store.dispatch('notification/setAuthorizationError', true)
+      error.handler.handled()
+    } else if (
+      typeof rspData === 'object' &&
+      'error' in rspData &&
+      'detail' in rspData
+    ) {
+      error.handler.setError(rspData.error, rspData.detail)
+    }
+
+    return Promise.reject(error)
   }
 }
 
@@ -414,38 +460,11 @@ export default function ({ store, app }, inject) {
     return config
   })
 
-  // Create a response interceptor to add more detail tot the error message
+  // Create a response interceptor to add more detail to the error message
   // and to create a notification when there is a network error.
-  client.interceptors.response.use(
-    (response) => {
-      return response
-    },
-    (error) => {
-      error.handler = new ErrorHandler(
-        store,
-        app,
-        clientErrorMap,
-        error.response
-      )
-
-      // Add the error message in the response to the error object.
-      const rspCode = error.response?.status
-      const rspData = error.response?.data
-
-      if (rspCode === 401) {
-        store.dispatch('notification/setAuthorizationError', true)
-        error.handler.handled()
-      } else if (
-        typeof rspData === 'object' &&
-        'error' in rspData &&
-        'detail' in rspData
-      ) {
-        error.handler.setError(rspData.error, rspData.detail)
-      }
-
-      return Promise.reject(error)
-    }
-  )
+  client.interceptors.response.use((response) => {
+    return response
+  }, makeErrorResponseInterceptor(store, app, clientErrorMap))
 
   inject('client', client)
 }
