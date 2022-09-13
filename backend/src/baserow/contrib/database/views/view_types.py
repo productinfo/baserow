@@ -87,6 +87,7 @@ class GridViewType(ViewType):
     def export_serialized(
         self,
         grid: View,
+        cache: Optional[Dict] = None,
         files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ):
@@ -363,6 +364,7 @@ class GalleryViewType(ViewType):
     def export_serialized(
         self,
         gallery: View,
+        cache: Optional[Dict] = None,
         files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ):
@@ -669,6 +671,7 @@ class FormViewType(ViewType):
     def export_serialized(
         self,
         form: View,
+        cache: Optional[Dict] = None,
         files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ):

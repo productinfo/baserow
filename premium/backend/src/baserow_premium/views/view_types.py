@@ -103,6 +103,7 @@ class KanbanViewType(ViewType):
     def export_serialized(
         self,
         kanban: View,
+        cache: Optional[Dict] = None,
         files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ):

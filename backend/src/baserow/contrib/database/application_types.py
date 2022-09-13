@@ -79,17 +79,18 @@ class DatabaseApplicationType(ApplicationType):
                 field_type = field_type_registry.get_by_model(field)
                 serialized_fields.append(field_type.export_serialized(field))
 
+            table_cache: Dict[str, Any] = {}
+            table_cache["group_id"] = table.database.group.id
             serialized_views = []
             for v in table.view_set.all():
                 view = v.specific
                 view_type = view_type_registry.get_by_model(view)
                 serialized_views.append(
-                    view_type.export_serialized(view, files_zip, storage)
+                    view_type.export_serialized(view, table_cache, files_zip, storage)
                 )
 
             model = table.get_model(fields=fields, add_dependencies=False)
             serialized_rows = []
-            table_cache: Dict[str, Any] = {}
             for row in model.objects.all():
                 serialized_row = DatabaseExportSerializedStructure.row(
                     id=row.id,

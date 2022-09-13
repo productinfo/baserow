@@ -36,6 +36,7 @@ from baserow.contrib.database.fields.field_types import (
     SingleSelectFieldType,
     TextFieldType,
     URLFieldType,
+    MultipleCollaboratorsFieldType,
 )
 from baserow.contrib.database.fields.registries import field_type_registry
 from baserow.contrib.database.formula import (
@@ -48,6 +49,8 @@ from baserow.contrib.database.formula import (
 from baserow.core.expressions import Timezone
 
 from .registries import ViewFilterType
+from baserow.core.models import GroupUser
+from collections import defaultdict
 
 
 class NotViewFilterTypeMixin:
@@ -963,6 +966,54 @@ class MultipleSelectHasNotViewFilterType(
     """
 
     type = "multiple_select_has_not"
+
+
+class MultipleCollaboratorsHasViewFilterType(ManyToManyHasBaseViewFilter):
+    """
+    The multiple select has filter accepts the ID of the select_option to filter for
+    and filters the rows where the multiple select field has the provided select_option.
+    """
+
+    type = "multiple_collaborators_has"
+    compatible_field_types = [MultipleCollaboratorsFieldType.type]
+
+    def get_export_serialized_value(self, value, cache):
+        cache_entry = f"available_collaborators"
+        if cache_entry not in cache:
+            group_id = cache.get("group_id", None)
+            if group_id is None:
+                return value
+
+            cache[cache_entry] = defaultdict(list)
+
+            groupusers_from_group = GroupUser.objects.filter(
+                group_id=group_id
+            ).select_related("user")
+
+            for groupuser in groupusers_from_group:
+                cache[cache_entry][str(groupuser.user.id)] = groupuser.user.email
+
+        return cache[cache_entry].get(value, value)
+
+    def set_import_serialized_value(self, value, id_mapping):
+        try:
+            value = int(value)
+        except ValueError:
+            return ""
+
+        # TODO: transform email value to user id if the user belongs to the group
+        return ""
+
+
+class MultipleCollaboratorsHasNotViewFilterType(
+    NotViewFilterTypeMixin, MultipleCollaboratorsHasViewFilterType
+):
+    """
+    The multiple collaborators has filter accepts the ID of the user to filter for
+    and filters the rows where the field does not have the provided user.
+    """
+
+    type = "multiple_collaborators_has_not"
 
 
 class EmptyViewFilterType(ViewFilterType):

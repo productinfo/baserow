@@ -183,6 +183,7 @@ class ViewType(
     def export_serialized(
         self,
         view: "View",
+        cache: Optional[Dict] = None,
         files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ) -> Dict[str, Any]:
@@ -214,7 +215,7 @@ class ViewType(
                     "type": view_filter.type,
                     "value": view_filter_type_registry.get(
                         view_filter.type
-                    ).get_export_serialized_value(view_filter.value),
+                    ).get_export_serialized_value(view_filter.value, cache),
                 }
                 for view_filter in view.viewfilter_set.all()
             ]
@@ -718,13 +719,14 @@ class ViewFilterType(Instance):
 
         return {}
 
-    def get_export_serialized_value(self, value) -> str:
+    def get_export_serialized_value(self, value, cache: Dict) -> str:
         """
         This method is called before the filter value is exported. Here it can
         optionally be modified.
 
         :param value: The original value.
         :type value: str
+        :param cache: Cache to share export mappings etc.
         :return: The updated value.
         :rtype: str
         """
