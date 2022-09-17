@@ -6,9 +6,9 @@ export default (client) => {
         password,
       })
     },
-    refresh(token) {
+    refresh(refreshToken) {
       return client.post('/user/token-refresh/', {
-        token,
+        refresh: refreshToken,
       })
     },
     register(

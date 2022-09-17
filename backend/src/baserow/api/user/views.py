@@ -9,12 +9,14 @@ from itsdangerous.exc import BadSignature, BadTimeSignature, SignatureExpired
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_jwt.settings import api_settings
-from rest_framework_jwt.views import ObtainJSONWebTokenView as RegularObtainJSONWebToken
-from rest_framework_jwt.views import (
-    RefreshJSONWebTokenView as RegularRefreshJSONWebToken,
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView as RegularObtainJSONWebToken,
 )
-from rest_framework_jwt.views import VerifyJSONWebTokenView as RegularVerifyJSONWebToken
+from rest_framework_simplejwt.views import (
+    TokenRefreshView as RegularRefreshJSONWebToken,
+)
+from rest_framework_simplejwt.views import TokenVerifyView as RegularVerifyJSONWebToken
 
 from baserow.api.actions.serializers import (
     UndoRedoResponseSerializer,
@@ -70,15 +72,13 @@ from .serializers import (
     ChangePasswordBodyValidationSerializer,
     DashboardSerializer,
     DeleteUserBodyValidationSerializer,
-    NormalizedEmailWebTokenSerializer,
     RegisterSerializer,
     ResetPasswordBodyValidationSerializer,
     SendResetPasswordEmailBodyValidationSerializer,
+    TokenObtainPairWithUserSerializer,
+    TokenRefreshWithUserSerializer,
     UserSerializer,
 )
-
-jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
 
 UndoRedoRequestSerializer = get_undo_request_serializer()
 
@@ -90,7 +90,7 @@ class ObtainJSONWebToken(RegularObtainJSONWebToken):
     utility function.
     """
 
-    serializer_class = NormalizedEmailWebTokenSerializer
+    serializer_class = TokenObtainPairWithUserSerializer
 
     @extend_schema(
         tags=["User"],
@@ -102,12 +102,12 @@ class ObtainJSONWebToken(RegularObtainJSONWebToken):
             "authorization. The token will be valid for {valid} minutes, so it has to "
             "be refreshed using the **token_refresh** endpoint before that "
             "time.".format(
-                valid=int(settings.JWT_AUTH["JWT_EXPIRATION_DELTA"].seconds / 60)
+                valid=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].seconds / 60)
             )
         ),
         responses={
             200: authenticate_user_schema,
-            400: {
+            401: {
                 "description": "A user with the provided username and password is "
                 "not found."
             },
@@ -119,6 +119,8 @@ class ObtainJSONWebToken(RegularObtainJSONWebToken):
 
 
 class RefreshJSONWebToken(RegularRefreshJSONWebToken):
+    serializer_class = TokenRefreshWithUserSerializer
+
     @extend_schema(
         tags=["User"],
         operation_id="token_refresh",
@@ -126,17 +128,17 @@ class RefreshJSONWebToken(RegularRefreshJSONWebToken):
             "Refreshes an existing JWT token. If the token is valid, a new "
             "token will be included in the response. It will be valid for {valid} "
             "minutes.".format(
-                valid=int(settings.JWT_AUTH["JWT_EXPIRATION_DELTA"].seconds / 60)
+                valid=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].seconds / 60)
             )
         ),
         responses={
             200: authenticate_user_schema,
-            400: {"description": "The token is invalid or expired."},
+            401: {"description": "The token is invalid or expired."},
         },
         auth=[],
     )
-    def post(self, *args, **kwargs):
-        return super().post(*args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 
 class VerifyJSONWebToken(RegularVerifyJSONWebToken):
@@ -146,7 +148,7 @@ class VerifyJSONWebToken(RegularVerifyJSONWebToken):
         description="Verifies if the token is still valid.",
         responses={
             200: authenticate_user_schema,
-            400: {"description": "The token is invalid or expired."},
+            401: {"description": "The token is invalid or expired."},
         },
         auth=[],
     )
@@ -212,9 +214,12 @@ class UserView(APIView):
         response = {"user": UserSerializer(user).data}
 
         if data["authenticate"]:
-            payload = jwt_payload_handler(user)
-            token = jwt_encode_handler(payload)
-            response.update(token=token)
+            response.update(
+                {
+                    "access": str(AccessToken.for_user(user)),
+                    "refresh": str(RefreshToken.for_user(user)),
+                }
+            )
             response.update(**user_data_registry.get_all_user_data(user, request))
 
         return Response(response)

@@ -162,23 +162,11 @@ export default {
           const response = error.handler.response
           // Because the API server does not yet respond with proper error codes we
           // manually have to add the error here.
-          if (response && response.status === 400) {
-            // In the future we expect the backend to respond with a proper error code
-            // to indicate what went wrong.
-            if (
-              response.data.non_field_errors &&
-              response.data.non_field_errors[0] === 'User account is disabled.'
-            ) {
-              this.showError(
-                this.$t('error.disabledAccountTitle'),
-                this.$t('error.disabledAccountMessage')
-              )
-            } else {
-              this.showError(
-                this.$t('error.incorrectCredentialTitle'),
-                this.$t('error.incorrectCredentialMessage')
-              )
-            }
+          if (response && response.status === 401) {
+            this.showError(
+              this.$t('error.incorrectCredentialTitle'),
+              this.$t('error.incorrectCredentialMessage')
+            )
             this.values.password = ''
             this.$v.$reset()
             this.$refs.password.focus()
