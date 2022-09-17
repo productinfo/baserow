@@ -9,7 +9,6 @@ import pytest
 from freezegun import freeze_time
 from rest_framework.status import (
     HTTP_200_OK,
-    HTTP_201_CREATED,
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -725,16 +724,16 @@ def test_additional_user_data(api_client, data_fixture):
             format="json",
         )
         response_json = response.json()
-        assert response.status_code == HTTP_201_CREATED
+        assert response.status_code == HTTP_200_OK
         assert response_json["tmp"] is True
 
         response = api_client.post(
             reverse("api:user:token_refresh"),
-            {"token": response_json["token"]},
+            {"refresh": response_json["refresh"]},
             format="json",
         )
         response_json = response.json()
-        assert response.status_code == HTTP_201_CREATED
+        assert response.status_code == HTTP_200_OK
         assert response_json["tmp"] is True
 
 

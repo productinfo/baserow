@@ -2,9 +2,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
-from rest_framework_jwt.serializers import JSONWebTokenSerializer
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+    TokenRefreshSerializer,
+)
 
+from baserow.api.authentication import get_user_from_jwt_token
 from baserow.api.groups.invitations.serializers import UserGroupInvitationSerializer
+from baserow.api.user.registries import user_data_registry
 from baserow.api.user.validators import language_validation, password_validation
 from baserow.core.models import Template
 from baserow.core.user.handler import UserHandler
@@ -139,7 +144,7 @@ class NormalizedEmailField(serializers.EmailField):
         return normalize_email_address(data)
 
 
-class NormalizedEmailWebTokenSerializer(JSONWebTokenSerializer):
+class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields[self.username_field] = NormalizedEmailField()
@@ -154,14 +159,25 @@ class NormalizedEmailWebTokenSerializer(JSONWebTokenSerializer):
         # In the future, when migrating away from the JWT implementation, we want to
         # respond with machine readable error codes when authentication fails.
         validated_data = super().validate(attrs)
+        validated_data["user"] = UserSerializer(self.user).data
+        request = self.context["request"]
+        validated_data.update(
+            **user_data_registry.get_all_user_data(self.user, request)
+        )
+        UserHandler().user_signed_in(self.user)
 
-        user = validated_data["user"]
-        if not user.is_active:
-            msg = "User account is disabled."
-            raise serializers.ValidationError(msg)
+        return validated_data
 
-        UserHandler().user_signed_in(user)
 
+class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        validated_data = super().validate(attrs)
+        # Add the user to the payload so that the frontend can use it
+        user = get_user_from_jwt_token(validated_data["refresh"], self.token_class)
+        validated_data["user"] = UserSerializer(user).data
+        validated_data.update(
+            **user_data_registry.get_all_user_data(user, self.context["request"])
+        )
         return validated_data
 
 

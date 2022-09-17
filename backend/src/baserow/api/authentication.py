@@ -1,13 +1,16 @@
-from django.apps import apps
+from typing import Optional, Type
 
-import jwt
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractBaseUser
+
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework import exceptions
-from rest_framework_jwt.authentication import (
-    JSONWebTokenAuthentication as JWTJSONWebTokenAuthentication,
+from rest_framework_simplejwt.authentication import (
+    JWTAuthentication as JWTJSONWebTokenAuthentication,
 )
-from rest_framework_jwt.blacklist.exceptions import MissingToken
-from rest_framework_jwt.compat import ExpiredSignature
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import AccessToken, Token
 
 from baserow.api.sessions import (
     set_client_undo_redo_action_group_id_from_request_or_raise_if_invalid,
@@ -16,48 +19,39 @@ from baserow.api.sessions import (
 
 
 class JSONWebTokenAuthentication(JWTJSONWebTokenAuthentication):
+    def get_token_from_request(self, request):
+        header = self.get_header(request)
+        if header is None:
+            return None
+
+        raw_token = self.get_raw_token(header)
+        if raw_token is None:
+            return None
+        return raw_token
+
     def authenticate(self, request):
         """
         This method is basically a copy of
-        rest_framework_jwt.authentication.BaseJSONWebTokenAuthentication.authenticate
+        rest_framework_simplejwt.authentication.JWTAuthentication.authenticate
         it adds a machine readable errors to the responses.
 
         Returns a two-tuple of `User` and token if a valid signature has been
         supplied using JWT-based authentication.  Otherwise returns `None`.
         """
 
-        try:
-            token = self.get_token_from_request(request)
-            if token is None:
-                return None
-        except MissingToken:
+        token = self.get_token_from_request(request)
+        if token is None:
             return None
 
         try:
-            payload = self.jwt_decode_token(token)
-        except ExpiredSignature:
-            msg = "Token has expired."
-            raise exceptions.AuthenticationFailed(
-                {"detail": msg, "error": "ERROR_SIGNATURE_HAS_EXPIRED"}
-            )
-        except jwt.DecodeError:
-            msg = "Error decoding token."
-            raise exceptions.AuthenticationFailed(
-                {"detail": msg, "error": "ERROR_DECODING_SIGNATURE"}
-            )
-        except jwt.InvalidTokenError:
+            payload = self.get_validated_token(token)
+        except InvalidToken:
             msg = "Invalid token."
-            raise exceptions.AuthenticationFailed(msg)
+            raise exceptions.AuthenticationFailed(
+                {"detail": msg, "error": "ERROR_INVALID_TOKEN"}
+            )
 
-        if apps.is_installed("rest_framework_jwt.blacklist"):
-            from rest_framework_jwt.blacklist.models import BlacklistedToken
-
-            if BlacklistedToken.is_blocked(token, payload):
-                msg = "Token is blacklisted."
-                raise exceptions.PermissionDenied(
-                    {"detail": msg, "error": "ERROR_SIGNATURE_HAS_EXPIRED"}
-                )
-        user = self.authenticate_credentials(payload)
+        user = self.get_user(payload)
 
         # @TODO this should actually somehow be moved to the ws app.
         user.web_socket_id = request.headers.get("WebSocketId")
@@ -81,3 +75,21 @@ class JSONWebTokenAuthenticationExtension(OpenApiAuthenticationExtension):
             "scheme": "bearer",
             "bearerFormat": "JWT your_token",
         }
+
+
+def get_user_from_jwt_token(
+    token: str, token_class: Optional[Type[Token]] = None
+) -> AbstractBaseUser:
+    """
+    Returns the user that is associated with the given JWT token.
+
+    :param token: The JWT token
+    :return: The user that is associated with the token
+    """
+
+    if token_class is None:
+        token_class = AccessToken
+
+    payload = token_class(token).token_backend.decode(token)
+    user_id = payload.get(api_settings.USER_ID_CLAIM)
+    return get_user_model().objects.get(pk=user_id)

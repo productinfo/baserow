@@ -1,13 +1,14 @@
 import jwtDecode from 'jwt-decode'
 
 import AuthService from '@baserow/modules/core/services/auth'
-import { setToken, unsetToken } from '@baserow/modules/core/utils/auth'
+import { setTokenPair, unsetTokenPair } from '@baserow/modules/core/utils/auth'
 import { unsetGroupCookie } from '@baserow/modules/core/utils/group'
 import { v4 as uuidv4 } from 'uuid'
 
 export const state = () => ({
   refreshing: false,
   token: null,
+  refresh: null,
   user: null,
   additional: {},
   webSocketId: null,
@@ -18,9 +19,10 @@ export const state = () => ({
 })
 
 export const mutations = {
-  SET_USER_DATA(state, { token, user, ...additional }) {
-    state.token = token
-    state.token_data = jwtDecode(token)
+  SET_USER_DATA(state, { access, refresh, user, ...additional }) {
+    state.token = access
+    state.refresh = refresh
+    state.token_data = jwtDecode(access)
     state.user = user
     // Additional entries in the response payload could have been added via the
     // backend user data registry. We want to store them in the `additional` state so
@@ -56,7 +58,7 @@ export const actions = {
   async login({ commit, dispatch, getters }, { email, password }) {
     const { data } = await AuthService(this.$client).login(email, password)
     if (!getters.getPreventSetToken) {
-      setToken(data.token, this.app)
+      setTokenPair(data.access, data.refresh, this.app)
     }
     commit('SET_USER_DATA', data)
     dispatch('startRefreshTimeout')
@@ -86,7 +88,7 @@ export const actions = {
       groupInvitationToken,
       templateId
     )
-    setToken(data.token, this.app)
+    setTokenPair(data.access, data.refresh, this.app)
     commit('SET_USER_DATA', data)
     dispatch('startRefreshTimeout')
   },
@@ -95,7 +97,7 @@ export const actions = {
    * data.
    */
   async logoff({ commit, dispatch }) {
-    unsetToken(this.app)
+    unsetTokenPair(this.app)
     unsetGroupCookie(this.app)
     commit('CLEAR_USER_DATA')
     await dispatch('group/clearAll', {}, { root: true })
@@ -106,11 +108,11 @@ export const actions = {
    * new refresh timeout. If unsuccessful the existing cookie and user data is
    * cleared.
    */
-  async refresh({ commit, state, dispatch, getters }, token) {
+  async refresh({ commit, state, dispatch, getters }, refreshToken) {
     try {
-      const { data } = await AuthService(this.$client).refresh(token)
+      const { data } = await AuthService(this.$client).refresh(refreshToken)
       if (!getters.getPreventSetToken) {
-        setToken(data.token, this.app)
+        setTokenPair(data.access, data.refresh, this.app)
       }
       commit('SET_USER_DATA', data)
       dispatch('startRefreshTimeout')
@@ -123,7 +125,7 @@ export const actions = {
 
       // The token could not be refreshed, this means the token is no longer
       // valid and the user not logged in anymore.
-      unsetToken(this.app)
+      unsetTokenPair(this.app)
       commit('CLEAR_USER_DATA')
 
       // @TODO we might want to do something here, trigger some event, show
@@ -145,7 +147,7 @@ export const actions = {
     // The token expires within a given time. When 80% of that time has expired we want
     // to fetch a new token.
     this.refreshTimeout = setTimeout(() => {
-      dispatch('refresh', getters.token)
+      dispatch('refresh', getters.refreshToken)
       commit('SET_REFRESHING', false)
     }, Math.floor((getters.tokenExpireSeconds / 100) * 80) * 1000)
   },
@@ -197,6 +199,9 @@ export const getters = {
   },
   token(state) {
     return state.token
+  },
+  refreshToken(state) {
+    return state.refresh
   },
   webSocketId(state) {
     return state.webSocketId

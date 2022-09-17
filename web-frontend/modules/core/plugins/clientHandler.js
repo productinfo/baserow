@@ -409,8 +409,9 @@ export function makeErrorResponseInterceptor(store, app, clientErrorMap) {
     // Add the error message in the response to the error object.
     const rspCode = error.response?.status
     const rspData = error.response?.data
+    const isLoginUrl = error.response?.config?.url === '/user/token-auth/'
 
-    if (rspCode === 401) {
+    if (rspCode === 401 && !isLoginUrl) {
       store.dispatch('notification/setAuthorizationError', true)
       error.handler.handled()
     } else if (
