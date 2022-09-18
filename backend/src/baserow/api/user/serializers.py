@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer,
     TokenRefreshSerializer,
@@ -173,7 +174,14 @@ class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
         validated_data = super().validate(attrs)
         # Add the user to the payload so that the frontend can use it
-        user = get_user_from_jwt_token(validated_data["refresh"], self.token_class)
+        try:
+            user = get_user_from_jwt_token(validated_data["refresh"], self.token_class)
+        except User.DoesNotExist:
+            # this can happen if the user has been deleted in the meantime
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"],
+                "no_active_account",
+            )
         validated_data["user"] = UserSerializer(user).data
         validated_data.update(
             **user_data_registry.get_all_user_data(user, self.context["request"])

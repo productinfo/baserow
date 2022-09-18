@@ -1,7 +1,7 @@
 import jwtDecode from 'jwt-decode'
 
 import AuthService from '@baserow/modules/core/services/auth'
-import { setTokenPair, unsetTokenPair } from '@baserow/modules/core/utils/auth'
+import { setToken, unsetToken } from '@baserow/modules/core/utils/auth'
 import { unsetGroupCookie } from '@baserow/modules/core/utils/group'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -58,7 +58,7 @@ export const actions = {
   async login({ commit, dispatch, getters }, { email, password }) {
     const { data } = await AuthService(this.$client).login(email, password)
     if (!getters.getPreventSetToken) {
-      setTokenPair(data.access, data.refresh, this.app)
+      setToken(data.refresh, this.app)
     }
     commit('SET_USER_DATA', data)
     dispatch('startRefreshTimeout')
@@ -88,7 +88,7 @@ export const actions = {
       groupInvitationToken,
       templateId
     )
-    setTokenPair(data.access, data.refresh, this.app)
+    setToken(data.refresh, this.app)
     commit('SET_USER_DATA', data)
     dispatch('startRefreshTimeout')
   },
@@ -97,7 +97,7 @@ export const actions = {
    * data.
    */
   async logoff({ commit, dispatch }) {
-    unsetTokenPair(this.app)
+    unsetToken(this.app)
     unsetGroupCookie(this.app)
     commit('CLEAR_USER_DATA')
     await dispatch('group/clearAll', {}, { root: true })
@@ -112,7 +112,7 @@ export const actions = {
     try {
       const { data } = await AuthService(this.$client).refresh(refreshToken)
       if (!getters.getPreventSetToken) {
-        setTokenPair(data.access, data.refresh, this.app)
+        setToken(data.refresh, this.app)
       }
       commit('SET_USER_DATA', data)
       dispatch('startRefreshTimeout')
@@ -125,7 +125,7 @@ export const actions = {
 
       // The token could not be refreshed, this means the token is no longer
       // valid and the user not logged in anymore.
-      unsetTokenPair(this.app)
+      unsetToken(this.app)
       commit('CLEAR_USER_DATA')
 
       // @TODO we might want to do something here, trigger some event, show

@@ -181,11 +181,9 @@ def test_token_refresh(api_client, data_fixture):
         assert json["user"]["is_staff"] is False
         assert not plugin_mock.called
 
-    with patch("rest_framework_jwt.utils.datetime") as mock_datetime:
-        mock_datetime.utcnow.return_value = datetime(2019, 1, 1, 1, 1, 1, 0)
-        token = str(RefreshToken.for_user(user))
-
+    with freeze_time("2019-01-01 12:00"):
         response = api_client.post(
-            reverse("api:user:token_refresh"), json={"refresh": token}
+            reverse("api:user:token_refresh"),
+            json={"refresh": str(RefreshToken.for_user(user))},
         )
         assert response.status_code == HTTP_400_BAD_REQUEST

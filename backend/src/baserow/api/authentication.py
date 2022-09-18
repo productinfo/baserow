@@ -85,6 +85,8 @@ def get_user_from_jwt_token(
 
     :param token: The JWT token
     :return: The user that is associated with the token
+    :raises TokenError: If the token is invalid or if the user does not exist.
+    :raises User.DoesNotExist: If the user does not exist.
     """
 
     if token_class is None:

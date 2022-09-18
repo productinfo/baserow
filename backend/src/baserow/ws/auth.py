@@ -2,6 +2,7 @@ import uuid
 from urllib.parse import parse_qs
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
@@ -12,6 +13,8 @@ from baserow.api.authentication import get_user_from_jwt_token
 # Nosec disables spurious hardcoded password warning, this is not a password but instead
 # the value of the JWT token to be used when a user wants to connect anonymously.
 ANONYMOUS_USER_TOKEN = "anonymous"  # nosec
+
+User = get_user_model()
 
 
 @database_sync_to_async
@@ -37,7 +40,7 @@ def get_user(token):
     else:
         try:
             return get_user_from_jwt_token(token)
-        except TokenError:
+        except (TokenError, User.DoesNotExist):
             return
 
 

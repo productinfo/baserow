@@ -1,11 +1,11 @@
-import { getRefreshToken } from '@baserow/modules/core/utils/auth'
+import { getToken } from '@baserow/modules/core/utils/auth'
 
 export default function ({ store, req, app }) {
   // If nuxt generate, pass this middleware
   if (process.server && !req) return
 
   // Load the token
-  const refreshToken = getRefreshToken(app)
+  const refreshToken = getToken(app)
 
   // If there already is a token we will refresh it to check if it is valid and
   // to get fresh user information. This will probably happen on the server
