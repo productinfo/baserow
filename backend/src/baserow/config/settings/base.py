@@ -229,12 +229,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# We need the `AllowAllUsersModelBackend` in order to respond with a proper error
-# message when the user is not active. The only thing it does, is allowing non active
-# users to authenticate, but the user still can't obtain or use a JWT token or database
-# token because the user needs to be active to use that.
-AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.AllowAllUsersModelBackend"]
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
@@ -288,14 +282,41 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     CLIENT_UNDO_REDO_ACTION_GROUP_ID_HEADER,
 ]
 
+
+def get_env_timedelta(env_name: str, default: str) -> datetime.timedelta:
+    """
+    Returns the value of the environment variable with the given name as a timedelta.
+    It uses 'm' as suffix for minutes, 'h' for hours, 'd' for days and 's' for seconds.
+    If the environment variable is not set then the default value is returned.
+    """
+
+    value = os.getenv(env_name, default)
+    if isinstance(value, str):
+        if value.endswith("s"):
+            return datetime.timedelta(seconds=int(value))
+        elif value.endswith("m"):
+            return datetime.timedelta(minutes=int(value[:-1]))
+        elif value.endswith("h"):
+            return datetime.timedelta(hours=int(value[:-1]))
+        elif value.endswith("d"):
+            return datetime.timedelta(days=int(value[:-1]))
+        else:
+            raise ValueError(
+                "Invalid time format. Use and interger plus a suffix between s, m, h and d."
+            )
+    return value
+
+
+ACCESS_TOKEN_LIFETIME = get_env_timedelta("BASEROW_ACCESS_TOKEN_LIFETIME", "10m")
+REFRESH_TOKEN_LIFETIME = get_env_timedelta("BASEROW_REFRESH_TOKEN_LIFETIME", "7d")
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=10),
-    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
+    "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
     "VERIFYING_KEY": None,
     "AUDIENCE": None,
     "ISSUER": None,
@@ -311,9 +332,17 @@ SIMPLE_JWT = {
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
     "JTI_CLAIM": "jti",
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": datetime.timedelta(minutes=10),
-    "SLIDING_TOKEN_REFRESH_LIFETIME": datetime.timedelta(days=1),
+    "SLIDING_TOKEN_LIFETIME": None,
+    "SLIDING_TOKEN_REFRESH_LIFETIME": None,
 }
+
+BASEROW_JWT_SIGNING_KEY = os.getenv("BASEROW_JWT_SIGNING_KEY")
+if BASEROW_JWT_SIGNING_KEY:
+    SIMPLE_JWT["SIGNING_KEY"] = BASEROW_JWT_SIGNING_KEY
+elif "SECRET_KEY" in os.environ:
+    # SECURITY WARNING: BASEROW_JWT_SIGNING_KEY default to the SECRET_KEY value.
+    # Set it to a different value to prevent the SECRET_KEY from being compromised.
+    SIMPLE_JWT["SIGNING_KEY"] = os.getenv("SECRET_KEY")
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Baserow API spec",

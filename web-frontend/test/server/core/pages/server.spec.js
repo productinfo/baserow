@@ -15,7 +15,12 @@ describe('index redirect', () => {
     // refresh endpoint is stubbed so that it will always provide a valid
     // unexpired token.
     mock.onPost('http://localhost/api/user/token-refresh/').reply(200, {
-      token:
+      access:
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ1c2' +
+        'VybmFtZSI6InRlc3RAdGVzdCIsImV4cCI6MTk5OTk5OTk5OSwiZW1haWwiO' +
+        'iJ0ZXN0QHRlc3QubmwiLCJvcmlnX2lhdCI6MTU2Mjc3MzQxNH0.2i0gqrcH' +
+        '5uy7mk4kf3LoLpZYXoyMrOfi0fDQneVcaFE',
+      refresh:
         'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ1c2' +
         'VybmFtZSI6InRlc3RAdGVzdCIsImV4cCI6MTk5OTk5OTk5OSwiZW1haWwiO' +
         'iJ0ZXN0QHRlc3QubmwiLCJvcmlnX2lhdCI6MTU2Mjc3MzQxNH0.2i0gqrcH' +

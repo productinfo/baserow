@@ -1,6 +1,6 @@
 import { isSecureURL } from '@baserow/modules/core/utils/string'
 
-const cookieTokenName = 'jwt_refresh_token'
+const cookieTokenName = 'jwt_token'
 
 export const setToken = (token, { $cookies, $env }, key = cookieTokenName) => {
   if (process.SERVER_BUILD) return

@@ -7,10 +7,13 @@ from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer,
     TokenRefreshSerializer,
 )
+from rest_framework_simplejwt.tokens import TokenError
 
-from baserow.api.authentication import get_user_from_jwt_token
 from baserow.api.groups.invitations.serializers import UserGroupInvitationSerializer
-from baserow.api.user.registries import user_data_registry
+from baserow.api.user.jwt import (
+    get_all_user_data_serialized,
+    get_all_user_data_serialized_from_jwt_token,
+)
 from baserow.api.user.validators import language_validation, password_validation
 from baserow.core.models import Template
 from baserow.core.user.handler import UserHandler
@@ -160,10 +163,8 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
         # In the future, when migrating away from the JWT implementation, we want to
         # respond with machine readable error codes when authentication fails.
         validated_data = super().validate(attrs)
-        validated_data["user"] = UserSerializer(self.user).data
-        request = self.context["request"]
         validated_data.update(
-            **user_data_registry.get_all_user_data(self.user, request)
+            **get_all_user_data_serialized(self.user, self.context["request"])
         )
         UserHandler().user_signed_in(self.user)
 
@@ -173,19 +174,18 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
 class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
         validated_data = super().validate(attrs)
-        # Add the user to the payload so that the frontend can use it
+        refresh_token = validated_data["refresh"]
         try:
-            user = get_user_from_jwt_token(validated_data["refresh"], self.token_class)
-        except User.DoesNotExist:
-            # this can happen if the user has been deleted in the meantime
+            user_data = get_all_user_data_serialized_from_jwt_token(
+                refresh_token, self.token_class, self.context["request"]
+            )
+        except TokenError:
+            # can happen if the user has been deleted/disabled in the meantime
             raise AuthenticationFailed(
                 self.error_messages["no_active_account"],
                 "no_active_account",
             )
-        validated_data["user"] = UserSerializer(user).data
-        validated_data.update(
-            **user_data_registry.get_all_user_data(user, self.context["request"])
-        )
+        validated_data.update(**user_data)
         return validated_data
 
 

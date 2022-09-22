@@ -1,16 +1,9 @@
-from typing import Optional, Type
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractBaseUser
-
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework import exceptions
 from rest_framework_simplejwt.authentication import (
     JWTAuthentication as JWTJSONWebTokenAuthentication,
 )
 from rest_framework_simplejwt.exceptions import InvalidToken
-from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import AccessToken, Token
 
 from baserow.api.sessions import (
     set_client_undo_redo_action_group_id_from_request_or_raise_if_invalid,
@@ -75,23 +68,3 @@ class JSONWebTokenAuthenticationExtension(OpenApiAuthenticationExtension):
             "scheme": "bearer",
             "bearerFormat": "JWT your_token",
         }
-
-
-def get_user_from_jwt_token(
-    token: str, token_class: Optional[Type[Token]] = None
-) -> AbstractBaseUser:
-    """
-    Returns the user that is associated with the given JWT token.
-
-    :param token: The JWT token
-    :return: The user that is associated with the token
-    :raises TokenError: If the token is invalid or if the user does not exist.
-    :raises User.DoesNotExist: If the user does not exist.
-    """
-
-    if token_class is None:
-        token_class = AccessToken
-
-    payload = token_class(token).token_backend.decode(token)
-    user_id = payload.get(api_settings.USER_ID_CLAIM)
-    return get_user_model().objects.get(pk=user_id)
