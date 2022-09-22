@@ -7,9 +7,15 @@
         "label": "Copied!"
     },
     "sidebarApplication": {
-        "renameApplication": "Rename {type}",
+        "rename": "Rename",
+        "duplicate": "Duplicate",
         "viewTrash": "View trash",
-        "deleteApplication": "Delete {type}"
+        "delete": "Delete",
+        "snapshots": "Snapshots"
+    },
+    "duplicateApplicationJobType": {
+        "duplicating": "Duplicating",
+        "duplicatedTitle": "Application duplicated"
     },
     "sidebar": {
         "createGroup": "Create group",
@@ -46,6 +52,26 @@
         "submitButton": "Change password",
         "errorInvalidOldPasswordTitle": "Invalid password",
         "errorInvalidOldPasswordMessage": "Could not change your password because your old password is invalid."
+    },
+    "deleteAccountSettings": {
+        "title": "Delete account",
+        "description": "You can schedule the deletion of your account by entering your current password and clicking the button. Your account will be permanently deleted after {days} days. In the meantime, if you log in again, your account deletion will be cancelled.",
+        "groupNotice": "Orphan groups will be deleted",
+        "groupNoticeDescription": "When your account is permanently deleted, all groups and associated data for which you are the last active user with Admin permissions will also be deleted. The groups shown below are the ones that will be deleted because you are the only admin. To prevent them being deleted you must first give another user admin before deleting your account.",
+        "orphanGroups": "Will also be permanently deleted after the grace time",
+        "orphanGroupMemberCount": "shared with nobody|shared with one user|shared with {count} users",
+        "password": "Password",
+        "passwordConfirm": "Repeat password",
+        "repeatPasswordMatchError": "This field must match the first password field.",
+        "submitButton": "Delete account",
+        "errorInvalidPasswordTitle": "Invalid password",
+        "errorInvalidPasswordMessage": "Could not delete your account because your password is invalid.",
+        "errorUserIsLastAdminTitle": "Last administrator",
+        "errorUserIsLastAdminMessage": "Could not delete your account because your are the last administrator of this Baserow instance.",
+        "accountDeletedSuccessTitle": "Account deletion scheduled",
+        "accountDeletedSuccessMessage": "Your account has been scheduled to be deleted.",
+        "groupLoadingError": "Groups checking has failed",
+        "groupLoadingErrorDescription": "Checking the groups to be deleted failed, please refresh the page."
     },
     "error": {
         "alreadyExistsTitle": "User already exists",
@@ -91,6 +117,7 @@
         "invitationDescription": "invited {since} ago",
         "sendInvite": "Send invite",
         "userAlreadyInGroupTitle": "User is already in the group.",
+        "userDescriptionPendingDeletion": "{user} - pending deletion",
         "userAlreadyInGroupText": "It is not possible to send an invitation when the user is already a member of the group."
     },
     "groupInviteForm": {
@@ -145,6 +172,7 @@
         "fromParent": "from {parent}",
         "name": "{user} deleted {type} {title} {parent}",
         "restore": "Restore",
+        "andMore": "... and {count} more",
         "unnamed": "Unnamed {type} {id}"
     },
     "trashModal": {
@@ -196,6 +224,10 @@
         "title": "Pasting...",
         "content": "Preparing your data"
     },
+    "clearingNotification": {
+        "title": "Clearing...",
+        "content": "Preparing your data"
+    },
     "undoRedoNotification": {
         "undoingTitle": "Undoing...",
         "undoingText": "Undoing your action",
@@ -221,18 +253,27 @@
     "dashboard": {
         "title": "Dashboard",
         "alertTitle": "We need your help!",
-        "alertText": "If you find Baserow useful then sponsoring, starring or sharing us is greatly appreciated. By sponsoring us on GitHub you will get early access to the premium features!",
+        "alertText": "If you find Baserow useful then starring or sharing us is greatly appreciated. By sharing Baserow you are helping us to improve the product and to make it more useful for you.",
         "tweetContent": "Check out @baserow an open source no-code database tool and Airtable alternative!",
         "redditTitle": "'Baserow - An open source no-code database",
         "noGroupTitle": "No groups found",
         "noGroupText": "You aren’t a member of any group. Applications like databases belong to a group, so in order to create them you need to create a group.",
         "createGroup": "Create group",
         "becomeGithubSponsor": "Become a GitHub sponsor",
-        "starOnGitlab": "Star us on Gitlab",
+        "starOnGitlab": "Star us on GitLab",
         "shareOnTwitter": "Tweet about Baserow",
         "shareOnReddit": "Share on Reddit",
         "shareOnFacebook": "Share on Facebook",
         "shareOnLinkedIn": "Share on LinkedIn"
+    },
+    "dashboardSidebar": {
+        "groups": "Groups",
+        "links": "Links",
+        "knowledgeBase": "Knowledge base",
+        "tutorials": "Tutorials",
+        "userSettings": "User settings",
+        "trash": "Trash",
+        "logoff": "Logoff"
     },
     "login": {
         "title": "Login",
@@ -255,7 +296,9 @@
         "headTitle": "Create new account",
         "title": "Sign up",
         "disabled": "Sign up is disabled",
-        "disabledMessage": "It's not possible to create an account because it has been disabled."
+        "disabledMessage": "It's not possible to create an account because it has been disabled.",
+        "requireFirstUser": "Welcome to Baserow!",
+        "requireFirstUserMessage": "Please fill the form below to create the admin user."
     },
     "forgotPassword": {
         "title": "Forgot password",
@@ -277,6 +320,10 @@
         "settingAllowNewAccountsDescription": "By default, any user visiting your Baserow domain can sign up for a new account.",
         "settingAllowSignupsViaGroupInvitationsName": "Allow signups via group invitations",
         "settingAllowSignupsViaGroupInvitationDescription": "Even if the creation of new accounts is disabled, this option permits directly invited users to still create an account.",
+        "userDeletionGraceDelay": "User deletion",
+        "settingUserDeletionGraceDelay": "Grace delay",
+        "settingUserDeletionGraceDelayDescription": "This is the number of days without a login after which an account scheduled for deletion is permanently deleted.",
+        "invalidAccountDeletionGraceDelay": "This value is required and must be a positive integer smaller than 32000",
         "enabled": "enabled"
     },
     "formSidebar": {
@@ -290,7 +337,7 @@
         "modal": {
             "title": "Pre-fill values dynamically",
             "descriptionPartOne": "Forms can be prefilled in order to help the user fill in the form faster.",
-            "descriptionPartTwo": "All fields which are availbale in the form can be prefilled.",
+            "descriptionPartTwo": "All fields which are available in the form can be prefilled.",
             "howToPrefill": {
                 "title": "How to prefill a form",
                 "description": "If you want to prefill a form with data you can do so via query parameters added to the public form url. These query parameters are prefixed with `prefill` to avoid any collision with potential future query parameters."
@@ -340,5 +387,18 @@
                 }
             }
         }
+    },
+    "job": {
+        "statePending": "Waiting to start...",
+        "stateStarted": "Started...",
+        "stateFinished": "Finished",
+        "stateFailed": "Failed",
+        "errorJobAlreadyRunningTitle": "Already running",
+        "errorJobAlreadyRunningDescription": "Another import job is already running. You need to wait for that one to finish before starting another."
+    },
+    "datetime": {
+        "daysAgo": "0 days ago | 1 day ago | {n} days ago",
+        "monthsAgo": "0 months ago | 1 month ago | {n} months ago",
+        "yearsAgo": "0 years ago | 1 year ago | {n} years ago"
     }
 }

@@ -3,39 +3,40 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+
+import pytest
 from itsdangerous.exc import BadSignature
 
 from baserow.contrib.database.models import Database
 from baserow.core.exceptions import (
-    UserNotInGroup,
-    ApplicationTypeDoesNotExist,
+    ApplicationDoesNotExist,
     ApplicationNotInGroup,
+    ApplicationTypeDoesNotExist,
+    BaseURLHostnameNotAllowed,
     GroupDoesNotExist,
+    GroupInvitationDoesNotExist,
+    GroupInvitationEmailMismatch,
+    GroupUserAlreadyExists,
     GroupUserDoesNotExist,
     GroupUserIsLastAdmin,
-    ApplicationDoesNotExist,
-    UserInvalidGroupPermissionsError,
-    BaseURLHostnameNotAllowed,
-    GroupInvitationEmailMismatch,
-    GroupInvitationDoesNotExist,
-    GroupUserAlreadyExists,
     IsNotAdminError,
-    TemplateFileDoesNotExist,
     TemplateDoesNotExist,
+    TemplateFileDoesNotExist,
+    UserInvalidGroupPermissionsError,
+    UserNotInGroup,
 )
 from baserow.core.handler import CoreHandler
 from baserow.core.models import (
-    Settings,
-    Group,
-    GroupUser,
-    GroupInvitation,
+    GROUP_USER_PERMISSION_ADMIN,
     Application,
+    Group,
+    GroupInvitation,
+    GroupUser,
+    Settings,
     Template,
     TemplateCategory,
-    GROUP_USER_PERMISSION_ADMIN,
 )
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.user_files.models import UserFile
@@ -268,6 +269,7 @@ def test_leave_group(send_mock, data_fixture):
     user_2 = data_fixture.create_user()
     user_3 = data_fixture.create_user()
     user_4 = data_fixture.create_user()
+    user_5 = data_fixture.create_user(to_be_deleted=True)
     group_1 = data_fixture.create_group()
     group_2 = data_fixture.create_group()
     data_fixture.create_user_group(user=user_1, group=group_1, permissions="ADMIN")
@@ -275,6 +277,8 @@ def test_leave_group(send_mock, data_fixture):
         user=user_2, group=group_1, permissions="ADMIN"
     )
     data_fixture.create_user_group(user=user_3, group=group_1, permissions="USER")
+    # Add a pending deletion user
+    data_fixture.create_user_group(user=user_5, group=group_1, permissions="ADMIN")
     data_fixture.create_user_group(user=user_3, group=group_2, permissions="USER")
     data_fixture.create_user_group(user=user_4, group=group_2, permissions="USER")
 
@@ -943,7 +947,7 @@ def test_get_template(data_fixture):
         )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_export_import_group_application(data_fixture):
     group = data_fixture.create_group()
     imported_group = data_fixture.create_group()

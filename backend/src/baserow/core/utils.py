@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import math
 import os
 import random
@@ -10,7 +11,7 @@ import string
 from collections import namedtuple
 from decimal import Decimal
 from itertools import islice
-from typing import List, Optional, Iterable
+from typing import Iterable, List, Optional, Tuple
 
 from django.db.models import ForeignKey
 from django.db.models.fields import NOT_PROVIDED
@@ -288,6 +289,28 @@ def split_comma_separated_string(comma_separated_string: str) -> List[str]:
     )
 
 
+def list_to_comma_separated_string(value_list: List[str]) -> str:
+    """
+    Converts the given list to a CSV compatible value. The result string can be parsed
+    by a proper CSV parser. This function does the reverse as the previous one.
+
+    :param value_list: List of value to convert.
+    :return: A comma separated string.
+    """
+
+    out = io.StringIO()
+
+    # Use python csv handler to convert the list to a string
+    csv_writer = csv.writer(out, delimiter=",", quotechar='"', escapechar="\\")
+    csv_writer.writerow(value_list)
+
+    out.seek(0)
+    result = out.read()
+
+    # Strip removes the extra end line
+    return result.strip()
+
+
 def get_model_reference_field_name(lookup_model, target_model):
     """
     Figures out what the name of the field related to the `target_model` is in the
@@ -333,6 +356,83 @@ def remove_invalid_surrogate_characters(content: bytes) -> str:
     """
 
     return re.sub(r"\\u(d|D)([a-z|A-Z|0-9]{3})", "", content.decode("utf-8", "ignore"))
+
+
+def split_ending_number(name: str) -> Tuple[str, str]:
+    """
+    Splits a string into two parts, the first part is the string before the last
+    number, the second part is the last number.
+
+    :param string: The string to split.
+    :return: A tuple with the first part and the second part.
+    """
+
+    match = re.search(r"(.+) (\d+)$", name)
+    if match:
+        return match.group(1), match.group(2)
+    return name, ""
+
+
+def find_unused_name(
+    variants_to_try: Iterable[str],
+    existing_names: Iterable[str],
+    max_length: int = None,
+    suffix: str = " {0}",
+):
+    """
+    Finds an unused name among the existing names. If no names in the provided
+    variants_to_try list are available then the last name in that list will
+    have a number appended which ensures it is an available unique name.
+    Respects the maximally allowed name length. In case the variants_to_try
+    are longer than that, they will get truncated to the maximally allowed length.
+
+    :param variants_to_try: An iterable of name variant we want to try.
+    :param existing_names: An iterable of all pre existing values.
+    :param max_length: Set this value if you have a length limit to the new name.
+    :param suffix: The suffix you want to append to the name to avoid
+      duplicate. The string is going to be formated with a number.
+    :return: The first available unused name.
+    """
+
+    existing_names_set = set(existing_names)
+
+    if max_length is not None:
+        variants_to_try = [item[0:max_length] for item in variants_to_try]
+
+    remaining_names = set(variants_to_try) - existing_names_set
+    # Some variants to try remain, let's return the first one
+    if remaining_names:
+        # Loop over to ensure we maintain the ordering provided by
+        # variant_to_try, so we always return the first available name and
+        # not any.
+        for name in variants_to_try:
+            if name in remaining_names:
+                return name
+
+    # None of the names in the param list are available, now using the last one lets
+    # append a number to the name until we find a free one.
+    original_name = variants_to_try[-1]
+
+    i = 2
+    while True:
+        suffix_to_append = suffix.format(i)
+        suffix_length = len(suffix_to_append)
+        length_of_original_name_with_suffix = len(original_name) + suffix_length
+
+        # At this point we know, that the original_name can only
+        # be maximally the length of max_length. Therefore
+        # if the length_of_original_name_with_suffix is longer
+        # we can further truncate the name by the length of the
+        # suffix.
+        if max_length is not None and length_of_original_name_with_suffix > max_length:
+            name = f"{original_name[:-suffix_length]}{suffix_to_append}"
+        else:
+            name = f"{original_name}{suffix_to_append}"
+
+        if name not in existing_names_set:
+            return name
+
+        i += 1
 
 
 def grouper(n: int, iterable: Iterable):
@@ -514,3 +614,21 @@ class ChildProgressBuilder:
             return parent.create_child(represents_progress, child_total)
         else:
             return Progress(child_total)
+
+
+class MirrorDict(dict):
+    """
+    This dict will always return the same value as the key. It can be used to
+    replicate non existing mapping that must return the same values
+
+    d = MirrorDict()
+    d['test'] == 'test'
+    d[1] == 1
+    d.get('test') == 'test'
+    """
+
+    def __getitem__(self, key):
+        return key
+
+    def get(self, key, default=None):
+        return key

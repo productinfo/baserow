@@ -1,4 +1,6 @@
 import pytest
+
+from baserow.contrib.database.action.scopes import ViewActionScopeType
 from baserow.contrib.database.views.actions import (
     CreateViewSortActionType,
     DeleteViewSortActionType,
@@ -7,10 +9,10 @@ from baserow.contrib.database.views.actions import (
 from baserow.contrib.database.views.models import ViewSort
 from baserow.core.action.handler import ActionHandler
 from baserow.core.action.registries import action_type_registry
-from baserow.core.action.scopes import ViewActionScopeType
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_creating_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)
@@ -37,6 +39,7 @@ def test_can_undo_creating_view_sort(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_creating_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)
@@ -73,6 +76,7 @@ def test_can_undo_redo_creating_view_sort(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_updating_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)
@@ -101,6 +105,7 @@ def test_can_undo_updating_view_sort(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_updating_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)
@@ -134,6 +139,7 @@ def test_can_undo_redo_updating_view_sort(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_deleting_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)
@@ -165,6 +171,7 @@ def test_can_undo_deleting_view_sort(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_deleting_view_sort(data_fixture):
     session_id = "1010"
     user = data_fixture.create_user(session_id=session_id)

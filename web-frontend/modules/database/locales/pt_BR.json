@@ -288,10 +288,6 @@
     "tableForm": {
         "name": ""
     },
-    "tableImporterPreview": {
-        "label": "",
-        "remaining": ""
-    },
     "tableXMLImporter": {
         "fileLabel": "",
         "fileDescription": "",
@@ -318,7 +314,7 @@
         "firstRowHeader": "",
         "limitError": ""
     },
-    "createTableModal": {
+    "importFileModal": {
         "title": "",
         "importLabel": "",
         "newTable": "",

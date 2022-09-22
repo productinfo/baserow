@@ -3,21 +3,22 @@ from django.urls import re_path
 from baserow.contrib.database.views.registries import view_type_registry
 
 from .views import (
-    ViewsView,
-    ViewView,
+    DuplicateViewView,
     OrderViewsView,
+    PublicViewAuthView,
+    PublicViewInfoView,
+    PublicViewLinkRowFieldLookupView,
+    RotateViewSlugView,
+    ViewDecorationsView,
+    ViewDecorationView,
+    ViewFieldOptionsView,
     ViewFiltersView,
     ViewFilterView,
     ViewSortingsView,
     ViewSortView,
-    ViewDecorationsView,
-    ViewDecorationView,
-    ViewFieldOptionsView,
-    RotateViewSlugView,
-    PublicViewAuthView,
-    PublicViewLinkRowFieldLookupView,
+    ViewsView,
+    ViewView,
 )
-
 
 app_name = "baserow.contrib.database.api.views"
 
@@ -46,6 +47,11 @@ urlpatterns = view_type_registry.api_urls + [
     ),
     re_path(r"(?P<view_id>[0-9]+)/$", ViewView.as_view(), name="item"),
     re_path(
+        r"(?P<view_id>[0-9]+)/duplicate/$",
+        DuplicateViewView.as_view(),
+        name="duplicate",
+    ),
+    re_path(
         r"(?P<view_id>[0-9]+)/filters/$", ViewFiltersView.as_view(), name="list_filters"
     ),
     re_path(
@@ -72,5 +78,10 @@ urlpatterns = view_type_registry.api_urls + [
         r"(?P<slug>[-\w]+)/public/auth/$",
         PublicViewAuthView.as_view(),
         name="public_auth",
+    ),
+    re_path(
+        r"(?P<slug>[-\w]+)/public/info/$",
+        PublicViewInfoView.as_view(),
+        name="public_info",
     ),
 ]

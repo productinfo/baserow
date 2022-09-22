@@ -56,7 +56,6 @@
       v-if="!readOnly"
       ref="rowCreateModal"
       :table="table"
-      :primary="primary"
       :primary-is-sortable="true"
       :visible-fields="cardFields"
       :hidden-fields="hiddenFields"
@@ -72,14 +71,15 @@
     ></RowCreateModal>
     <RowEditModal
       ref="rowEditModal"
+      :database="database"
       :table="table"
-      :primary="primary"
       :primary-is-sortable="true"
       :visible-fields="cardFields"
       :hidden-fields="hiddenFields"
       :rows="allRows"
       :read-only="false"
       :show-hidden-fields="showHiddenFieldsInRowModal"
+      @hidden="$emit('selected-row', undefined)"
       @toggle-hidden-fields-visibility="
         showHiddenFieldsInRowModal = !showHiddenFieldsInRowModal
       "
@@ -116,16 +116,14 @@ import RowEditModal from '@baserow/modules/database/components/row/RowEditModal'
 import bufferedRowsDragAndDrop from '@baserow/modules/database/mixins/bufferedRowsDragAndDrop'
 import viewHelpers from '@baserow/modules/database/mixins/viewHelpers'
 import viewDecoration from '@baserow/modules/database/mixins/viewDecoration'
+import { populateRow } from '@baserow/modules/database/store/view/grid'
+import { clone } from '@baserow/modules/core/utils/object'
 
 export default {
   name: 'GalleryView',
   components: { RowCard, RowCreateModal, RowEditModal },
   mixins: [viewHelpers, bufferedRowsDragAndDrop, viewDecoration],
   props: {
-    primary: {
-      type: Object,
-      required: true,
-    },
     fields: {
       type: Array,
       required: true,
@@ -148,6 +146,10 @@ export default {
     },
     storePrefix: {
       type: String,
+      required: true,
+    },
+    row: {
+      validator: (prop) => typeof prop === 'object' || prop === null,
       required: true,
     },
   },
@@ -182,25 +184,19 @@ export default {
      */
     cardFields() {
       const fieldOptions = this.fieldOptions
-      return [this.primary]
-        .concat(this.fields)
+      return this.fields
         .filter(filterVisibleFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
     hiddenFields() {
       const fieldOptions = this.fieldOptions
-      return [this.primary]
-        .concat(this.fields)
+      return this.fields
         .filter(filterHiddenFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
     coverImageField() {
       const fieldId = this.view.card_cover_image_field
-      return (
-        [this.primary]
-          .concat(this.fields)
-          .find((field) => field.id === fieldId) || null
-      )
+      return this.fields.find((field) => field.id === fieldId) || null
     },
   },
   watch: {
@@ -275,6 +271,11 @@ export default {
       }
     }
     this.$refs.scroll.addEventListener('scroll', this.$el.scrollEvent)
+
+    if (this.row !== null) {
+      const rowClone = populateRow(clone(this.row))
+      this.$refs.rowEditModal.show(this.row.id, rowClone)
+    }
   },
   beforeDestroy() {
     this.$el.resizeObserver.unobserve(this.$el)
@@ -372,7 +373,6 @@ export default {
             view: this.view,
             table: this.table,
             fields: this.fields,
-            primary: this.primary,
             values: row,
           }
         )
@@ -389,7 +389,6 @@ export default {
             table: this.table,
             view: this.view,
             fields: this.fields,
-            primary: this.primary,
             row,
             field,
             value,
@@ -406,6 +405,7 @@ export default {
      */
     rowClick(row) {
       this.$refs.rowEditModal.show(row.id)
+      this.$emit('selected-row', row.id)
     },
     /**
      * Calls the fieldCreated callback and shows the hidden fields section

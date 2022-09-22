@@ -31,14 +31,12 @@ different from the Baserow Formula language, but generates a Baserow Formula AST
 allowing use of that language in Baserow easily.
 """
 
-from baserow.contrib.database.formula.ast.tree import (
-    BaserowExpression,
-)
+from baserow.contrib.database.formula.ast.tree import BaserowExpression
 from baserow.contrib.database.formula.exceptions import BaserowFormulaException
 from baserow.contrib.database.formula.handler import FormulaHandler
 from baserow.contrib.database.formula.parser.exceptions import (
-    MaximumFormulaSizeError,
     BaserowFormulaSyntaxError,
+    MaximumFormulaSizeError,
 )
 from baserow.contrib.database.formula.parser.generated.BaserowFormula import (
     BaserowFormula,
@@ -47,20 +45,22 @@ from baserow.contrib.database.formula.parser.generated.BaserowFormulaVisitor imp
     BaserowFormulaVisitor,
 )
 from baserow.contrib.database.formula.types.formula_type import (
-    BaserowFormulaType,
     BaserowFormulaInvalidType,
+    BaserowFormulaType,
 )
 from baserow.contrib.database.formula.types.formula_types import (
-    BaserowFormulaTextType,
-    BaserowFormulaNumberType,
-    BaserowFormulaCharType,
-    BaserowFormulaDateType,
-    BaserowFormulaBooleanType,
+    BASEROW_FORMULA_ARRAY_TYPE_CHOICES,
     BASEROW_FORMULA_TYPE_ALLOWED_FIELDS,
     BASEROW_FORMULA_TYPE_CHOICES,
     BaserowFormulaArrayType,
+    BaserowFormulaBooleanType,
+    BaserowFormulaCharType,
+    BaserowFormulaDateType,
+    BaserowFormulaLinkType,
+    BaserowFormulaNumberType,
     BaserowFormulaSingleSelectType,
-    BASEROW_FORMULA_ARRAY_TYPE_CHOICES,
+    BaserowFormulaTextType,
+    literal,
 )
 
 __all__ = [
@@ -72,6 +72,7 @@ __all__ = [
     BaserowFormulaTextType,
     BaserowFormulaNumberType,
     BaserowFormulaCharType,
+    BaserowFormulaLinkType,
     BaserowFormulaDateType,
     BaserowFormulaBooleanType,
     BaserowFormulaArrayType,
@@ -83,4 +84,5 @@ __all__ = [
     BASEROW_FORMULA_TYPE_ALLOWED_FIELDS,
     BASEROW_FORMULA_TYPE_CHOICES,
     BASEROW_FORMULA_ARRAY_TYPE_CHOICES,
+    literal,
 ]

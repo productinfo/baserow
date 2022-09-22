@@ -1,6 +1,7 @@
 <template>
   <div class="form-view">
     <FormViewSidebar
+      :database="database"
       :table="table"
       :view="view"
       :fields="disabledFields"
@@ -11,6 +12,7 @@
       @refresh="$emit('refresh', $event)"
     ></FormViewSidebar>
     <FormViewPreview
+      :database="database"
       :table="table"
       :view="view"
       :fields="enabledFields"
@@ -33,10 +35,6 @@ export default {
   components: { FormViewSidebar, FormViewPreview },
   mixins: [formViewHelpers],
   props: {
-    primary: {
-      type: Object,
-      required: true,
-    },
     fields: {
       type: Array,
       required: true,
@@ -61,7 +59,6 @@ export default {
   computed: {
     sortedFields() {
       const fields = this.fields.slice()
-      fields.unshift(this.primary)
       return fields.sort((a, b) => {
         const orderA = this.getFieldOption(a.id, 'order', maxPossibleOrderValue)
         const orderB = this.getFieldOption(b.id, 'order', maxPossibleOrderValue)

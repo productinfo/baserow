@@ -1,18 +1,22 @@
 import pytest
+from pytest_unordered import unordered
 
-from baserow.core.action.scopes import GroupActionScopeType
 from baserow.core.action.handler import ActionHandler
 from baserow.core.action.registries import action_type_registry
+from baserow.core.action.scopes import GroupActionScopeType
 from baserow.core.actions import (
-    UpdateApplicationActionType,
-    DeleteApplicationActionType,
-    OrderApplicationsActionType,
     CreateApplicationActionType,
+    DeleteApplicationActionType,
+    DuplicateApplicationActionType,
+    OrderApplicationsActionType,
+    UpdateApplicationActionType,
 )
 from baserow.core.models import Application
+from baserow.test_utils.helpers import assert_undo_redo_actions_are_valid
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_order_applications(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -43,7 +47,8 @@ def test_can_undo_redo_order_applications(data_fixture, django_assert_num_querie
 
 
 @pytest.mark.django_db
-def test_can_undo_creating_application(data_fixture, django_assert_num_queries):
+@pytest.mark.undo_redo
+def test_can_undo_create_application(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -62,7 +67,8 @@ def test_can_undo_creating_application(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
-def test_can_undo_redo_creating_application(data_fixture, django_assert_num_queries):
+@pytest.mark.undo_redo
+def test_can_undo_redo_create_application(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -84,7 +90,8 @@ def test_can_undo_redo_creating_application(data_fixture, django_assert_num_quer
 
 
 @pytest.mark.django_db
-def test_can_undo_deleteing_application(data_fixture):
+@pytest.mark.undo_redo
+def test_can_undo_delete_application(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -107,7 +114,8 @@ def test_can_undo_deleteing_application(data_fixture):
 
 
 @pytest.mark.django_db
-def test_can_undo_redo_deleting_application(data_fixture, django_assert_num_queries):
+@pytest.mark.undo_redo
+def test_can_undo_redo_delete_application(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -134,7 +142,8 @@ def test_can_undo_redo_deleting_application(data_fixture, django_assert_num_quer
 
 
 @pytest.mark.django_db
-def test_can_undo_updating_application(data_fixture, django_assert_num_queries):
+@pytest.mark.undo_redo
+def test_can_undo_update_application(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -160,7 +169,8 @@ def test_can_undo_updating_application(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
-def test_can_undo_redo_updating_application(data_fixture, django_assert_num_queries):
+@pytest.mark.undo_redo
+def test_can_undo_redo_update_application(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     group = data_fixture.create_group(user=user)
@@ -187,3 +197,64 @@ def test_can_undo_redo_updating_application(data_fixture, django_assert_num_quer
     )
 
     assert Application.objects.get(pk=application.id).name == application_name_new
+
+
+@pytest.mark.django_db
+@pytest.mark.undo_redo
+def test_can_undo_duplicate_simple_application(data_fixture):
+    session_id = "session-id"
+    user = data_fixture.create_user(session_id=session_id)
+    group = data_fixture.create_group(user=user)
+    application_name = "My Application"
+
+    application = data_fixture.create_database_application(
+        user, group=group, name=application_name
+    )
+
+    new_application = action_type_registry.get_by_type(
+        DuplicateApplicationActionType
+    ).do(user, application)
+
+    assert new_application.name.startswith(application_name)
+    assert Application.objects.count() == 2
+
+    actions_undone = ActionHandler.undo(
+        user, [GroupActionScopeType.value(group_id=group.id)], session_id
+    )
+
+    assert_undo_redo_actions_are_valid(actions_undone, [DuplicateApplicationActionType])
+    assert Application.objects.count() == 1
+    assert Application.objects.first().name == application_name
+
+
+@pytest.mark.django_db
+@pytest.mark.undo_redo
+def test_can_undo_redo_duplicate_simple_application(data_fixture):
+    session_id = "session-id"
+    user = data_fixture.create_user(session_id=session_id)
+    group = data_fixture.create_group(user=user)
+    application_name = "My Application"
+
+    application = data_fixture.create_database_application(
+        user, group=group, name=application_name
+    )
+
+    new_application = action_type_registry.get_by_type(
+        DuplicateApplicationActionType
+    ).do(user, application)
+
+    assert new_application.name.startswith(application_name)
+    assert Application.objects.count() == 2
+
+    ActionHandler.undo(
+        user, [GroupActionScopeType.value(group_id=group.id)], session_id
+    )
+
+    actions_redone = ActionHandler.redo(
+        user, [GroupActionScopeType.value(group_id=group.id)], session_id
+    )
+    assert_undo_redo_actions_are_valid(actions_redone, [DuplicateApplicationActionType])
+    assert Application.objects.count() == 2
+    assert list(Application.objects.values_list("name", flat=True)) == unordered(
+        [application_name, f"{application_name} 2"]
+    )

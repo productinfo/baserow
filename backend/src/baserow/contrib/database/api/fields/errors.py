@@ -1,4 +1,8 @@
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+from rest_framework.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+)
 
 from baserow.contrib.database.fields.constants import RESERVED_BASEROW_FIELD_NAMES
 
@@ -12,7 +16,7 @@ ERROR_CANNOT_CHANGE_FIELD_TYPE = "ERROR_CANNOT_CHANGE_FIELD_TYPE"
 ERROR_LINK_ROW_TABLE_NOT_PROVIDED = (
     "ERROR_LINK_ROW_TABLE_NOT_PROVIDED",
     HTTP_400_BAD_REQUEST,
-    "The `link_row_table` must be provided.",
+    "The `link_row_table_id` must be provided.",
 )
 ERROR_LINK_ROW_TABLE_NOT_IN_SAME_DATABASE = "ERROR_LINK_ROW_TABLE_NOT_IN_SAME_DATABASE"
 ERROR_FIELD_NOT_IN_TABLE = (
@@ -40,6 +44,11 @@ ERROR_INCOMPATIBLE_PRIMARY_FIELD_TYPE = (
     "ERROR_INCOMPATIBLE_PRIMARY_FIELD_TYPE",
     HTTP_400_BAD_REQUEST,
     "The field type {e.field_type} is not compatible with the primary field.",
+)
+ERROR_SELF_REFERENCING_LINK_ROW_CANNOT_HAVE_RELATED_FIELD = (
+    "ERROR_SELF_REFERENCING_LINK_ROW_CANNOT_HAVE_RELATED_FIELD",
+    HTTP_400_BAD_REQUEST,
+    "A self referencing link row field cannot have a related field.",
 )
 ERROR_MAX_FIELD_COUNT_EXCEEDED = "ERROR_MAX_FIELD_COUNT_EXCEEDED"
 ERROR_MAX_FIELD_NAME_LENGTH_EXCEEDED = (
@@ -96,13 +105,14 @@ ERROR_INVALID_LOOKUP_TARGET_FIELD = (
     "The provided target field does not exist or is in a different table to the table"
     " linked to by the through field.",
 )
-ERROR_INVALID_SELECT_OPTION_VALUES = (
-    "ERROR_INVALID_SELECT_OPTION_VALUES",
-    HTTP_400_BAD_REQUEST,
-    "The provided select option ids {e.ids} are not valid select options.",
-)
 ERROR_INCOMPATIBLE_FIELD_TYPE_FOR_UNIQUE_VALUES = (
     "ERROR_INCOMPATIBLE_FIELD_TYPE_FOR_UNIQUE_VALUES",
     HTTP_400_BAD_REQUEST,
     "The requested field type is not compatible with generating unique values.",
+)
+ERROR_FAILED_TO_LOCK_FIELD_DUE_TO_CONFLICT = (
+    "ERROR_FAILED_TO_LOCK_FIELD_DUE_TO_CONFLICT",
+    HTTP_409_CONFLICT,
+    "The requested field is already being updated or used by another operation, "
+    "please try again after other concurrent operations have finished.",
 )

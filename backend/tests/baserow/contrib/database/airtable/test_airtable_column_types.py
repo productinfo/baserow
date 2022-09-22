@@ -1,46 +1,45 @@
 import pytest
 import responses
-
 from pytz import UTC, timezone
 
-from baserow.contrib.database.fields.models import (
-    TextField,
-    LongTextField,
-    URLField,
-    NumberField,
-    RatingField,
-    BooleanField,
-    DateField,
-    LastModifiedField,
-    CreatedOnField,
-    LinkRowField,
-    EmailField,
-    FileField,
-    SingleSelectField,
-    MultipleSelectField,
-    PhoneNumberField,
-)
 from baserow.contrib.database.airtable.airtable_column_types import (
-    TextAirtableColumnType,
-    DateAirtableColumnType,
-    NumberAirtableColumnType,
-    SelectAirtableColumnType,
-    RatingAirtableColumnType,
-    FormulaAirtableColumnType,
     CheckboxAirtableColumnType,
-    PhoneAirtableColumnType,
+    DateAirtableColumnType,
     ForeignKeyAirtableColumnType,
+    FormulaAirtableColumnType,
     MultilineTextAirtableColumnType,
     MultipleAttachmentAirtableColumnType,
-    RichTextTextAirtableColumnType,
     MultiSelectAirtableColumnType,
+    NumberAirtableColumnType,
+    PhoneAirtableColumnType,
+    RatingAirtableColumnType,
+    RichTextTextAirtableColumnType,
+    SelectAirtableColumnType,
+    TextAirtableColumnType,
 )
 from baserow.contrib.database.airtable.registry import airtable_column_type_registry
+from baserow.contrib.database.fields.models import (
+    BooleanField,
+    CreatedOnField,
+    DateField,
+    EmailField,
+    FileField,
+    LastModifiedField,
+    LinkRowField,
+    LongTextField,
+    MultipleSelectField,
+    NumberField,
+    PhoneNumberField,
+    RatingField,
+    SingleSelectField,
+    TextField,
+    URLField,
+)
 
 
 @pytest.mark.django_db
 @responses.activate
-def test_unkown_column_type():
+def test_unknown_column_type():
     airtable_field = {"id": "fldTn59fpliSFcwpFA9", "name": "Unknown", "type": "unknown"}
     (
         baserow_field,
@@ -198,6 +197,12 @@ def test_airtable_import_date_column(data_fixture, api_client):
             {}, airtable_field, baserow_field, "2022-01-03T14:51:00.000Z", UTC, {}
         )
         == "2022-01-03"
+    )
+    assert (
+        airtable_column_type.to_baserow_export_serialized_value(
+            {}, airtable_field, baserow_field, "0999-02-04T14:51:00.000Z", UTC, {}
+        )
+        == "0999-02-04"
     )
     assert (
         airtable_column_type.to_baserow_export_serialized_value(
@@ -665,6 +670,7 @@ def test_airtable_import_foreign_key_column(data_fixture, api_client):
         == [1, 2]
     )
 
+    # link to same table row
     airtable_field = {
         "id": "fldQcEaGEe7xuhUEuPL",
         "name": "Link to Users",
@@ -682,8 +688,10 @@ def test_airtable_import_foreign_key_column(data_fixture, api_client):
     ) = airtable_column_type_registry.from_airtable_column_to_serialized(
         {"id": "tblRpq315qnnIcg5IjI"}, airtable_field, UTC
     )
-    assert baserow_field is None
-    assert airtable_column_type is None
+    assert isinstance(baserow_field, LinkRowField)
+    assert isinstance(airtable_column_type, ForeignKeyAirtableColumnType)
+    assert baserow_field.link_row_table_id == "tblRpq315qnnIcg5IjI"
+    assert baserow_field.link_row_related_field_id == "fldQcEaGEe7xuhUEuPL"
 
 
 @pytest.mark.django_db

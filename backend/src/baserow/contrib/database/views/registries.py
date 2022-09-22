@@ -3,53 +3,54 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
+    List,
     Optional,
+    Set,
+    Tuple,
     Type,
     Union,
-    List,
-    Iterable,
-    Tuple,
 )
 from zipfile import ZipFile
 
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import Storage
 from django.db import models as django_models
+
 from rest_framework.fields import CharField
 from rest_framework.serializers import Serializer
 
+from baserow.contrib.database.fields.field_filters import OptionallyAnnotatedQ
 from baserow.core.registry import (
-    Instance,
-    Registry,
-    ModelInstanceMixin,
-    ModelRegistryMixin,
+    APIUrlsInstanceMixin,
+    APIUrlsRegistryMixin,
     CustomFieldsInstanceMixin,
     CustomFieldsRegistryMixin,
-    APIUrlsRegistryMixin,
-    APIUrlsInstanceMixin,
     ImportExportMixin,
+    Instance,
     MapAPIExceptionsInstanceMixin,
+    ModelInstanceMixin,
+    ModelRegistryMixin,
+    Registry,
 )
-from baserow.contrib.database.fields.field_filters import OptionallyAnnotatedQ
 
 from .exceptions import (
-    ViewTypeAlreadyRegistered,
-    ViewTypeDoesNotExist,
-    ViewFilterTypeAlreadyRegistered,
-    ViewFilterTypeDoesNotExist,
-    AggregationTypeDoesNotExist,
     AggregationTypeAlreadyRegistered,
+    AggregationTypeDoesNotExist,
+    DecoratorTypeAlreadyRegistered,
+    DecoratorTypeDoesNotExist,
     DecoratorValueProviderTypeAlreadyRegistered,
     DecoratorValueProviderTypeDoesNotExist,
-    DecoratorTypeDoesNotExist,
-    DecoratorTypeAlreadyRegistered,
+    ViewFilterTypeAlreadyRegistered,
+    ViewFilterTypeDoesNotExist,
+    ViewTypeAlreadyRegistered,
+    ViewTypeDoesNotExist,
 )
-
 
 if TYPE_CHECKING:
     from baserow.contrib.database.fields.models import Field
     from baserow.contrib.database.table.models import Table
-    from baserow.contrib.database.views.models import View
+    from baserow.contrib.database.views.models import FormView, View
 
 
 class ViewType(
@@ -123,6 +124,12 @@ class ViewType(
     Indicates if the view supports being shared via a public link.
     """
 
+    has_public_info = False
+    """
+    Indicates if the view supports public information being returned by
+    the PublicViewInfoView.
+    """
+
     field_options_model_class = None
     """
     The model class of the through table that contains the field options. The model
@@ -150,6 +157,12 @@ class ViewType(
     and view events will be available to subscribe to and sent to said subscribers.
     """
 
+    field_options_allowed_fields = []
+    """
+    The field names that are allowed to set when creating and updating the field
+    options
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.can_share:
@@ -168,7 +181,10 @@ class ViewType(
             }
 
     def export_serialized(
-        self, view: "View", files_zip: ZipFile, storage: Optional[Storage] = None
+        self,
+        view: "View",
+        files_zip: Optional[ZipFile] = None,
+        storage: Optional[Storage] = None,
     ) -> Dict[str, Any]:
         """
         Exports the view to a serialized dict that can be imported by the
@@ -231,7 +247,7 @@ class ViewType(
         table: "Table",
         serialized_values: Dict[str, Any],
         id_mapping: Dict[str, Any],
-        files_zip: ZipFile,
+        files_zip: Optional[ZipFile] = None,
         storage: Optional[Storage] = None,
     ) -> "View":
         """
@@ -250,7 +266,7 @@ class ViewType(
         :return: The newly created view instance.
         """
 
-        from .models import ViewFilter, ViewSort, ViewDecoration
+        from .models import ViewDecoration, ViewFilter, ViewSort
 
         if "database_views" not in id_mapping:
             id_mapping["database_views"] = {}
@@ -271,33 +287,45 @@ class ViewType(
 
         if self.can_filter:
             for view_filter in filters:
-                view_filter_type = view_filter_type_registry.get(view_filter["type"])
-                view_filter_copy = view_filter.copy()
-                view_filter_id = view_filter_copy.pop("id")
-                view_filter_copy["field_id"] = id_mapping["database_fields"][
-                    view_filter_copy["field_id"]
-                ]
-                view_filter_copy[
-                    "value"
-                ] = view_filter_type.set_import_serialized_value(
-                    view_filter_copy["value"], id_mapping
-                )
-                view_filter_object = ViewFilter.objects.create(
-                    view=view, **view_filter_copy
-                )
-                id_mapping["database_view_filters"][
-                    view_filter_id
-                ] = view_filter_object.id
+                try:
+                    view_filter_type = view_filter_type_registry.get(
+                        view_filter["type"]
+                    )
+                    view_filter_copy = view_filter.copy()
+                    view_filter_id = view_filter_copy.pop("id")
+                    view_filter_copy["field_id"] = id_mapping["database_fields"][
+                        view_filter_copy["field_id"]
+                    ]
+                    view_filter_copy[
+                        "value"
+                    ] = view_filter_type.set_import_serialized_value(
+                        view_filter_copy["value"], id_mapping
+                    )
+                    view_filter_object = ViewFilter.objects.create(
+                        view=view, **view_filter_copy
+                    )
+                    id_mapping["database_view_filters"][
+                        view_filter_id
+                    ] = view_filter_object.id
+                except KeyError:
+                    pass
 
         if self.can_sort:
-            for view_decoration in sortings:
-                view_sort_copy = view_decoration.copy()
-                view_sort_id = view_sort_copy.pop("id")
-                view_sort_copy["field_id"] = id_mapping["database_fields"][
-                    view_sort_copy["field_id"]
-                ]
-                view_sort_object = ViewSort.objects.create(view=view, **view_sort_copy)
-                id_mapping["database_view_sortings"][view_sort_id] = view_sort_object.id
+            for view_sorting in sortings:
+                try:
+                    view_sort_copy = view_sorting.copy()
+                    view_sort_id = view_sort_copy.pop("id")
+                    view_sort_copy["field_id"] = id_mapping["database_fields"][
+                        view_sort_copy["field_id"]
+                    ]
+                    view_sort_object = ViewSort.objects.create(
+                        view=view, **view_sort_copy
+                    )
+                    id_mapping["database_view_sortings"][
+                        view_sort_id
+                    ] = view_sort_object.id
+                except KeyError:
+                    pass
 
         if self.can_decorate:
             for view_decoration in decorations:
@@ -390,22 +418,41 @@ class ViewType(
             attrs,
         )
 
-    def before_field_options_update(self, view, field_options, fields):
+    def before_field_options_update(
+        self, view: "View", field_options: Dict[str, Any], fields: List["Field"]
+    ) -> Dict[str, Any]:
         """
         Called before the field options are updated related to the provided view.
 
         :param view: The view for which the field options need to be updated.
-        :type view: View
         :param field_options: A dict with the field ids as the key and a dict
             containing the values that need to be updated as value.
-        :type field_options: dict
         :param fields: Optionally a list of fields can be provided so that they don't
             have to be fetched again.
         :return: The updated field options.
-        :rtype: dict
         """
 
         return field_options
+
+    def after_field_options_update(
+        self,
+        view: "View",
+        field_options: Dict[str, Any],
+        fields: List["Field"],
+        update_field_option_instances: List[Any],
+    ):
+        """
+        Called after the field options have been updated. This hook can be used to
+        update values that haven't been updated.
+
+        :param view: The view for which the field options need to be updated.
+        :param field_options: A dict with the field ids as the key and a dict
+            containing the values that need to be updated as value.
+        :param fields: Optionally a list of fields can be provided so that they don't
+            have to be fetched again.
+        :param update_field_option_instances: The instances of the field options that
+            have been updated.
+        """
 
     def after_field_type_change(self, field: "Field") -> None:
         """
@@ -413,6 +460,24 @@ class ViewType(
         possibility to check compatibility with view stuff like specific field options.
 
         :param field: The concerned field.
+        """
+
+    def before_view_create(self, values: dict, table: "Table", user: AbstractUser):
+        """
+        Hook that's called before the view is created.
+
+        :param values: The raw view values that were provided by the users.
+        :param table: The table where the view is going to be created in.
+        :param user: The user on whose behalf the view is created.
+        """
+
+    def before_view_update(self, values: dict, view: "View", user: AbstractUser):
+        """
+        Hook that's called before the view is updated.
+
+        :param values: The raw view values that were provided by the users.
+        :param view: The view that's going to be updated.
+        :param user: The user on whose behalf the view is updated.
         """
 
     def prepare_values(
@@ -455,21 +520,6 @@ class ViewType(
         raise NotImplementedError(
             "An exportable or publicly sharable view must implement "
             "`get_visible_field_options_in_order`"
-        )
-
-    def get_hidden_field_options(self, view: "View") -> django_models.QuerySet:
-        """
-        Should return a queryset of all field options which are hidden in the
-        provided view.
-
-        :param view: The view to query.
-        :type view: View
-        :return: A queryset of the views specific view options which are 'hidden'.
-        """
-
-        raise NotImplementedError(
-            "An exportable or publicly sharable view must implement "
-            "`get_hidden_field_options`"
         )
 
     def get_aggregations(
@@ -538,6 +588,59 @@ class ViewType(
         values.update({key: getattr(view, key) for key in self.allowed_fields})
 
         return values
+
+    def enhance_queryset(
+        self, queryset: django_models.QuerySet
+    ) -> django_models.QuerySet:
+        """
+        This hook can be used to enhance a queryset when fetching multiple views of a
+        table. It will only be applied on the specific model queryset of the view.
+        This is for example used by the signal when needs to fetch all the public
+        views and figure out which fields are hidden. Meaning if you apply the
+        `prefetch_related` and `select_related` here, they will be available in the
+        `get_hidden_fields` method.
+
+        :param queryset: The specific queryset that must be enhanced.
+        :return: The enhanced queryset.
+        """
+
+        return queryset
+
+    def enhance_field_options_queryset(
+        self, queryset: django_models.QuerySet
+    ) -> django_models.QuerySet:
+        """
+        This hook can be used to enhance the fetch field options queryset. If the
+        field options have a relationship, `select_related` or `prefetch_related` can
+        be applied here to improve performance.
+
+        :param queryset: The queryset that must be enhanced.
+        :return: The enhanced queryset.
+        """
+
+        return queryset
+
+    def get_hidden_fields(
+        self,
+        view: "View",
+        field_ids_to_check: Optional[List[int]] = None,
+    ) -> Set[int]:
+        """
+        Should be implemented to return the set of fields ids which are not hidden
+        in the provided view of this type. A hidden field as defined
+        by this function will be completely excluded from any publicly
+        shared version of this view.
+
+        :param view: The view to find hidden field ids for.
+        :param field_ids_to_check: An optional list of field ids to restrict the check
+            down to.
+        :return: A set of field ids which are hidden in this view.
+        """
+
+        raise NotImplementedError(
+            "An exportable or publicly sharable view must implement "
+            "`get_hidden_fields`"
+        )
 
 
 class ViewTypeRegistry(
@@ -875,7 +978,7 @@ class DecoratorValueProviderType(CustomFieldsInstanceMixin, Instance):
         # Add meta ref name to avoid name collision
         return super().get_serializer_class(
             *args,
-            meta_ref_name=f"Generetad{self.type.capitalize()}{kwargs['base_class'].__name__}",
+            meta_ref_name=f"Generated{self.type.capitalize()}{kwargs['base_class'].__name__}",
             **kwargs,
         )
 
@@ -910,6 +1013,44 @@ class DecoratorValueProviderTypeRegistry(Registry):
     already_registered_exception_class = DecoratorValueProviderTypeAlreadyRegistered
 
 
+class FormViewModeType(Instance):
+    def before_form_create(self, values: dict, table: "Table", user: AbstractUser):
+        """
+        Hook that's called before the form view is created.
+
+        :param values: The raw form view values that were provided by the users.
+        :param table: The table where the form view is going to be created in.
+        :param user: The user on whose behalf the form view is created.
+        """
+
+    def before_form_update(self, values: dict, form: "FormView", user: AbstractUser):
+        """
+        Hook that's called before the form view is updated.
+
+        :param values: The raw form view values that were provided by the users.
+        :param view: The view that's going to be updated.
+        :param user: The user on whose behalf the form view is updated.
+        """
+
+
+class FormViewModeRegistry(Registry):
+    """
+    This registry holds all the user configurable form mode types. It doesn't offer
+    any functionality at the moment, apart from validation.
+    """
+
+    name = "form_view_mode"
+
+    def get_default_type(self):
+        return list(self.get_all())[0]
+
+    def get_default_choice(self) -> str:
+        return str(self.get_types()[0])
+
+    def get_choices(self) -> List[Tuple[str, str]]:
+        return [(t, t) for t in form_view_mode_registry.get_types()]
+
+
 # A default view type registry is created here, this is the one that is used
 # throughout the whole Baserow application to add a new view type.
 view_type_registry = ViewTypeRegistry()
@@ -917,3 +1058,4 @@ view_filter_type_registry = ViewFilterTypeRegistry()
 view_aggregation_type_registry = ViewAggregationTypeRegistry()
 decorator_type_registry = DecoratorTypeRegistry()
 decorator_value_provider_type_registry = DecoratorValueProviderTypeRegistry()
+form_view_mode_registry = FormViewModeRegistry()

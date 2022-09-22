@@ -1,4 +1,5 @@
 import { ViewDecoratorType } from '@baserow/modules/database/viewDecorators'
+import PremiumModal from '@baserow_premium/components/PremiumModal'
 import { PremiumPlugin } from '@baserow_premium/plugins'
 
 import {
@@ -42,12 +43,16 @@ export class LeftBorderColorViewDecoratorType extends ViewDecoratorType {
     return i18n.t('viewDecoratorType.onlyForPremium')
   }
 
-  isDeactivated() {
+  getDeactivatedClickModal() {
+    return PremiumModal
+  }
+
+  isDeactivated(groupId) {
     const { store } = this.app
 
     const additionalUserData = store.getters['auth/getAdditionalUserData']
 
-    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData)) {
+    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData, groupId)) {
       return false
     }
     return true
@@ -62,13 +67,8 @@ export class LeftBorderColorViewDecoratorType extends ViewDecoratorType {
     return [true]
   }
 
-  getComponent() {
-    const { store } = this.app
-
-    // Read from the store
-    const additionalUserData = store.getters['auth/getAdditionalUserData']
-
-    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData)) {
+  getComponent(groupId) {
+    if (!this.isDeactivated(groupId)) {
       return LeftBorderColorViewDecorator
     }
 
@@ -83,7 +83,7 @@ export class LeftBorderColorViewDecoratorType extends ViewDecoratorType {
         GridViewType.getType(),
         GalleryViewType.getType(),
         KanbanViewType.getType(),
-      ].includes(view.type) && !store.getters['view/grid/isPublic']
+      ].includes(view.type) && !store.getters['page/view/public/getIsPublic']
     )
   }
 }
@@ -111,13 +111,8 @@ export class BackgroundColorViewDecoratorType extends ViewDecoratorType {
     return 'wrapper'
   }
 
-  getComponent() {
-    const { store } = this.app
-
-    // Read from the store
-    const additionalUserData = store.getters['auth/getAdditionalUserData']
-
-    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData)) {
+  getComponent(groupId) {
+    if (!this.isDeactivated(groupId)) {
       return BackgroundColorViewDecorator
     }
 
@@ -132,7 +127,7 @@ export class BackgroundColorViewDecoratorType extends ViewDecoratorType {
         GridViewType.getType(),
         GalleryViewType.getType(),
         KanbanViewType.getType(),
-      ].includes(view.type) && !store.getters['view/grid/isPublic']
+      ].includes(view.type) && !store.getters['page/view/public/getIsPublic']
     )
   }
 
@@ -141,12 +136,16 @@ export class BackgroundColorViewDecoratorType extends ViewDecoratorType {
     return i18n.t('viewDecoratorType.onlyForPremium')
   }
 
-  isDeactivated() {
+  getDeactivatedClickModal() {
+    return PremiumModal
+  }
+
+  isDeactivated(groupId) {
     const { store } = this.app
 
     const additionalUserData = store.getters['auth/getAdditionalUserData']
 
-    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData)) {
+    if (PremiumPlugin.hasValidPremiumLicense(additionalUserData, groupId)) {
       return false
     }
     return true

@@ -67,8 +67,12 @@ class PluginNameConfig(AppConfig):
 Don't forget to create and apply the migrations because we have created a new model.
 
 ```
-$ baserow makemigrations my_baserow_plugin
-$ baserow migrate 
+# Set these env vars to make sure mounting your source code into the container uses
+# the correct user and permissions.
+export PLUGIN_BUILD_UID=$(id -u)
+export PLUGIN_BUILD_GID=$(id -g)
+docker-compose run my-baserow-plugin /baserow.sh backend-cmd manage makemigrations
+docker-compose run my-baserow-plugin /baserow.sh backend-cmd manage migrate
 ```
 
 ## Web frontend
@@ -114,7 +118,7 @@ export default {
 ```
 
 You can inspect the `web-frontend/modules/database/viewTypes.js::ViewType` for all the
-methods and properties that can be overriden here. The component that is returned by
+methods and properties that can be overridden here. The component that is returned by
 the `getComponent` method is will be added to the body of the page when a view of this
 type is selected.
 

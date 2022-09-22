@@ -1,12 +1,16 @@
 from django.conf import settings
 
 from baserow.config.celery import app
-from .action.tasks import setup_periodic_action_tasks, cleanup_old_actions
+
+from .action.tasks import cleanup_old_actions, setup_periodic_action_tasks
+from .snapshots.tasks import delete_expired_snapshots
 from .trash.tasks import (
-    permanently_delete_marked_trash,
     mark_old_trash_for_permanent_deletion,
+    permanently_delete_marked_trash,
     setup_period_trash_tasks,
 )
+from .usage.tasks import run_calculate_storage
+from .user.tasks import check_pending_account_deletion
 
 
 @app.task(
@@ -27,4 +31,7 @@ __all__ = [
     "cleanup_old_actions",
     "setup_periodic_action_tasks",
     "sync_templates_task",
+    "run_calculate_storage",
+    "check_pending_account_deletion",
+    "delete_expired_snapshots",
 ]

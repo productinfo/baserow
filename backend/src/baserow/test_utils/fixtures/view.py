@@ -1,24 +1,25 @@
 from rest_framework import serializers
 
 from baserow.contrib.database.fields.models import Field
+from baserow.contrib.database.views.exceptions import DecoratorTypeAlreadyRegistered
 from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.views.models import (
-    GridView,
-    GridViewFieldOptions,
-    GalleryView,
-    GalleryViewFieldOptions,
     FormView,
     FormViewFieldOptions,
+    FormViewFieldOptionsCondition,
+    GalleryView,
+    GalleryViewFieldOptions,
+    GridView,
+    GridViewFieldOptions,
+    ViewDecoration,
     ViewFilter,
     ViewSort,
-    ViewDecoration,
 )
-from baserow.contrib.database.views.exceptions import DecoratorTypeAlreadyRegistered
 from baserow.contrib.database.views.registries import (
-    decorator_type_registry,
-    decorator_value_provider_type_registry,
     DecoratorType,
     DecoratorValueProviderType,
+    decorator_type_registry,
+    decorator_value_provider_type_registry,
 )
 
 
@@ -87,7 +88,7 @@ class ViewFixtures:
             grid_view=grid_view, field=field, **kwargs
         )
 
-    def create_gallery_view(self, user=None, **kwargs):
+    def create_gallery_view(self, user=None, create_options=True, **kwargs):
         if "table" not in kwargs:
             kwargs["table"] = self.create_database_table(user=user)
 
@@ -98,7 +99,8 @@ class ViewFixtures:
             kwargs["order"] = 0
 
         gallery_view = GalleryView.objects.create(**kwargs)
-        self.create_gallery_view_field_options(gallery_view)
+        if create_options:
+            self.create_gallery_view_field_options(gallery_view)
         return gallery_view
 
     def create_gallery_view_field_options(self, gallery_view, **kwargs):
@@ -136,6 +138,24 @@ class ViewFixtures:
         return FormViewFieldOptions.objects.create(
             form_view=form_view, field=field, **kwargs
         )
+
+    def create_form_view_field_options_condition(self, user=None, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = self.create_text_field(table=kwargs["view"].table)
+
+        if "field_option" not in kwargs:
+            form_view = self.create_form_view(user)
+            kwargs["field_options"] = self.create_form_view_field_option(
+                form_view=form_view, field=kwargs["field"]
+            )
+
+        if "type" not in kwargs:
+            kwargs["type"] = "equal"
+
+        if "value" not in kwargs:
+            kwargs["value"] = self.fake.name()
+
+        return FormViewFieldOptionsCondition.objects.create(**kwargs)
 
     def create_view_filter(self, user=None, **kwargs):
         if "view" not in kwargs:

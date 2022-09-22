@@ -4,6 +4,34 @@
 > [community](https://community.baserow.io/) or contribute the change yourself at
 > https://gitlab.com/bramw/baserow/-/tree/develop/docs .
 
+## Quickstart
+
+The following config is the easiest way of deploying Baserow with docker-compose and
+just uses the all-in-one image and a single container. If you use this config then you
+should instead refer to the [Install with Docker](./install-with-docker.md)
+guide on the specifics of how to work with this image.
+
+```yaml
+version: "3.4"
+services:
+  baserow:
+    container_name: baserow
+    image: baserow/baserow:1.12.1
+    environment:
+      BASEROW_PUBLIC_URL: 'http://localhost'
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - baserow_data:/baserow/data
+volumes:
+  baserow_data:
+```
+
+The rest of this guide will instead deal with the default `docker-compose.yml`
+found in the root of our git repository which runs each Baserow service as a separate
+container.
+
 ## Installing requirements
 
 If you haven't already installed docker and docker-compose on your computer you can do
@@ -12,25 +40,6 @@ https://docs.docker.com/compose/install/.
 
 > Docker-compose version 3.4 and Docker version 19.03 are the minimum versions
 > required by our provided files.
-
-If you want to get the docker-compose.yml via git then you can install it by following
-https://www.linode.com/docs/development/version-control/how-to-install-git-on-linux-mac-and-windows/
-.
-
-After installing all the required software you should be able to run the following
-commands in your terminal.
-
-```bash
-$ docker -v
-Docker version 20.10.12, build e91ed57
-$ docker-compose -v
-docker-compose version 1.26.2, build eefe0d31
-$ git --version
-git version 2.25.1
-```
-
-If all commands return something similar as described in the example, then you are ready
-to proceed!
 
 ## Downloading the Baserow example docker-compose.yml
 
@@ -48,18 +57,15 @@ docker-compose up -d
 or by directly cloning our git repo so you can get updates easier:
 
 ```bash
-$ cd ~/baserow
-$ git clone --depth=1 --branch master https://gitlab.com/bramw/baserow.git
-$ cd baserow
-$ docker-compose up -d
+cd ~/baserow
+git clone --depth=1 --branch master https://gitlab.com/bramw/baserow.git
+cd baserow
+docker-compose up -d
 # To update to the latest run:
 docker-compose down
 git pull
 docker-compose up -d
 ```
-
-> Baserow will take a couple of minutes on your first startup before it works. This is
-> because the templates need to be installed.
 
 > There is a security flaw with docker and the ufw firewall.
 > By default docker when exposing ports on 0.0.0.0 will bypass any ufw firewall rules
@@ -71,11 +77,10 @@ docker-compose up -d
 
 ## Usage
 
-To use this docker-compose.yml to run Baserow you must set the three required
-environment variables in the `x-backend-required-variables` section inside the
-`docker-compose.yml` and review the variables in the `x-common-important-variables`
-section. If you receive the following error it is because you need to set the required
-environment variables first:
+To use this docker-compose.yml to run Baserow you must set the three  
+environment variables `SECRET_KEY`, `DATABASE_PASSWORD` and `REDIS_PASSWORD`. See the
+section below for more details. If you receive the following error it is because you
+need to set the required environment variables first:
 
 ```
 ERROR: Missing mandatory value for "environment" option interpolating

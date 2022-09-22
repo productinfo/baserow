@@ -1,38 +1,38 @@
+import typing
 from typing import NewType
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.functional import cached_property
-from django.core.validators import MinValueValidator, MaxValueValidator
+
 from baserow.contrib.database.fields.mixins import (
-    BaseDateMixin,
-    TimezoneMixin,
     DATE_FORMAT_CHOICES,
     DATE_TIME_FORMAT_CHOICES,
-)
-from baserow.contrib.database.table.cache import (
-    invalidate_table_in_model_cache,
+    BaseDateMixin,
+    TimezoneMixin,
 )
 from baserow.contrib.database.formula import (
+    BASEROW_FORMULA_ARRAY_TYPE_CHOICES,
     BASEROW_FORMULA_TYPE_CHOICES,
     FormulaHandler,
-    BASEROW_FORMULA_ARRAY_TYPE_CHOICES,
 )
 from baserow.contrib.database.mixins import ParentFieldTrashableModelMixin
-
+from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
+from baserow.core.jobs.mixins import JobWithUndoRedoIds, JobWithWebsocketId
+from baserow.core.jobs.models import Job
 from baserow.core.mixins import (
+    CreatedAndUpdatedOnMixin,
     OrderableMixin,
     PolymorphicContentTypeMixin,
-    CreatedAndUpdatedOnMixin,
     TrashableModelMixin,
 )
-from baserow.core.utils import (
-    to_snake_case,
-    remove_special_characters,
-)
+from baserow.core.utils import remove_special_characters, to_snake_case
 
 from .fields import SerialField
 
+if typing.TYPE_CHECKING:
+    from baserow.contrib.database.fields.dependencies.handler import FieldDependants
 
 NUMBER_MAX_DECIMAL_PLACES = 10
 
@@ -136,23 +136,28 @@ class Field(
         return name
 
     def invalidate_table_model_cache(self):
-        return invalidate_table_in_model_cache(
-            self.table_id, invalidate_related_tables=True
-        )
+        invalidate_table_in_model_cache(self.table_id)
 
     def dependant_fields_with_types(
-        self, field_cache, starting_via_path_to_starting_table=None
-    ):
+        self,
+        field_cache=None,
+        starting_via_path_to_starting_table=None,
+        associated_relation_changed=False,
+    ) -> "FieldDependants":
         from baserow.contrib.database.fields.dependencies.handler import (
             FieldDependencyHandler,
         )
 
         return FieldDependencyHandler.get_dependant_fields_with_type(
-            [self.id], field_cache, starting_via_path_to_starting_table
+            self.table_id,
+            [self.id],
+            associated_relation_changed,
+            field_cache,
+            starting_via_path_to_starting_table,
         )
 
     def save(self, *args, **kwargs):
-        kwargs.pop("field_lookup_cache", None)
+        kwargs.pop("field_cache", None)
         kwargs.pop("raise_if_invalid", None)
         save = super().save(*args, **kwargs)
         self.invalidate_table_model_cache()
@@ -317,6 +322,14 @@ class LinkRowField(Field):
         except Field.DoesNotExist:
             return None
 
+    @property
+    def is_self_referencing(self):
+        return self.link_row_table_id == self.table_id
+
+    @property
+    def link_row_table_has_related_field(self):
+        return self.link_row_related_field_id is not None
+
 
 class EmailField(Field):
     pass
@@ -404,9 +417,7 @@ class FormulaField(Field):
     def cached_formula_type(self):
         return FormulaHandler.get_formula_type_from_field(self)
 
-    def recalculate_internal_fields(
-        self, raise_if_invalid=False, field_lookup_cache=None
-    ):
+    def recalculate_internal_fields(self, raise_if_invalid=False, field_cache=None):
         try:
             # noinspection PyPropertyAccess
             del self.cached_untyped_expression
@@ -414,7 +425,7 @@ class FormulaField(Field):
             # It has not been cached yet so nothing to deleted.
             pass
         expression = FormulaHandler.recalculate_formula_field_cached_properties(
-            self, field_lookup_cache
+            self, field_cache
         )
         expression_type = expression.expression_type
         # Update the cached properties
@@ -424,13 +435,29 @@ class FormulaField(Field):
         if raise_if_invalid:
             expression_type.raise_if_invalid()
 
+    def mark_as_invalid_and_save(self, error: str):
+
+        from baserow.contrib.database.formula import BaserowFormulaInvalidType
+
+        try:
+            # noinspection PyPropertyAccess
+            del self.cached_typed_internal_expression
+        except AttributeError:
+            # It has not been cached yet so nothing to deleted.
+            pass
+
+        invalid_type = BaserowFormulaInvalidType(error)
+        invalid_type.persist_onto_formula_field(self)
+        setattr(self, "cached_formula_type", invalid_type)
+        self.save(recalculate=False, raise_if_invalid=False)
+
     def save(self, *args, **kwargs):
         recalculate = kwargs.pop("recalculate", not self.trashed)
-        field_lookup_cache = kwargs.pop("field_lookup_cache", None)
+        field_cache = kwargs.pop("field_cache", None)
         raise_if_invalid = kwargs.pop("raise_if_invalid", False)
         if recalculate:
             self.recalculate_internal_fields(
-                field_lookup_cache=field_lookup_cache, raise_if_invalid=raise_if_invalid
+                field_cache=field_cache, raise_if_invalid=raise_if_invalid
             )
         super().save(*args, **kwargs)
 
@@ -481,6 +508,43 @@ class LookupField(FormulaField):
             + f"error={self.error},\n"
             + ")"
         )
+
+
+class MultipleCollaboratorsField(Field):
+    THROUGH_DATABASE_TABLE_PREFIX = "database_multiplecollaborators_"
+
+    @property
+    def through_table_name(self):
+        """
+        Generating a unique through table name based on the relation id.
+
+        :return: The table name of the through model.
+        :rtype: string
+        """
+
+        return f"{self.THROUGH_DATABASE_TABLE_PREFIX}{self.id}"
+
+
+class DuplicateFieldJob(JobWithWebsocketId, JobWithUndoRedoIds, Job):
+
+    original_field = models.ForeignKey(
+        Field,
+        null=True,
+        related_name="duplicated_by_jobs",
+        on_delete=models.SET_NULL,
+        help_text="The Baserow field to duplicate.",
+    )
+    duplicate_data = models.BooleanField(
+        default=False,
+        help_text="Indicates if the data of the field should be duplicated.",
+    )
+    duplicated_field = models.OneToOneField(
+        Field,
+        null=True,
+        related_name="duplicated_from_jobs",
+        on_delete=models.SET_NULL,
+        help_text="The duplicated Baserow field.",
+    )
 
 
 SpecificFieldForUpdate = NewType("SpecificFieldForUpdate", Field)

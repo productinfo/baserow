@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 
 from baserow.contrib.database.table.handler import TableHandler
 
@@ -10,7 +10,7 @@ from baserow.contrib.database.table.handler import TableHandler
 def test_table_created(mock_broadcast_to_group, data_fixture):
     user = data_fixture.create_user()
     database = data_fixture.create_database_application(user=user)
-    table = TableHandler().create_table(user=user, database=database, name="Test")
+    table, _ = TableHandler().create_table(user=user, database=database, name="Test")
 
     mock_broadcast_to_group.delay.assert_called_once()
     args = mock_broadcast_to_group.delay.call_args

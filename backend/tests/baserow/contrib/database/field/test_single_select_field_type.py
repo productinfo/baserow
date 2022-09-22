@@ -1,28 +1,23 @@
-import pytest
-
 from io import BytesIO
 
+from django.core.exceptions import ValidationError
+from django.shortcuts import reverse
+
+import pytest
+from faker import Faker
 from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
 
-from django.shortcuts import reverse
-from django.core.exceptions import ValidationError
-
-from faker import Faker
-
-from baserow.core.handler import CoreHandler
-from baserow.contrib.database.fields.handler import FieldHandler
-from baserow.contrib.database.fields.models import (
-    SelectOption,
-    SingleSelectField,
+from baserow.contrib.database.api.rows.serializers import (
+    RowSerializer,
+    get_row_serializer_class,
 )
 from baserow.contrib.database.fields.field_types import SingleSelectFieldType
+from baserow.contrib.database.fields.handler import FieldHandler
+from baserow.contrib.database.fields.models import SelectOption, SingleSelectField
 from baserow.contrib.database.fields.registries import field_type_registry
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.contrib.database.views.handler import ViewHandler
-from baserow.contrib.database.api.rows.serializers import (
-    get_row_serializer_class,
-    RowSerializer,
-)
+from baserow.core.handler import CoreHandler
 
 
 @pytest.mark.django_db
@@ -756,7 +751,7 @@ def test_import_export_single_select_field(data_fixture):
     assert imported_select_option.order == select_option.order
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_get_set_export_serialized_value_single_select_field(data_fixture):
     user = data_fixture.create_user()
     group = data_fixture.create_group(user=user)

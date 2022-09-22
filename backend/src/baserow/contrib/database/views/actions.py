@@ -1,28 +1,28 @@
 import dataclasses
-
 from collections import defaultdict
 from copy import deepcopy
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from baserow.contrib.database.action.scopes import TableActionScopeType
+from django.contrib.auth.models import AbstractUser
+
+from baserow.contrib.database.action.scopes import (
+    TableActionScopeType,
+    ViewActionScopeType,
+)
 from baserow.contrib.database.fields.handler import FieldHandler
-
 from baserow.contrib.database.fields.models import Field
 from baserow.contrib.database.table.handler import TableHandler
 from baserow.contrib.database.table.models import Table
 from baserow.contrib.database.views.handler import FieldOptionsDict, ViewHandler
 from baserow.contrib.database.views.models import (
     View,
+    ViewDecoration,
     ViewFilter,
     ViewSort,
-    ViewDecoration,
 )
 from baserow.contrib.database.views.registries import view_type_registry
 from baserow.core.action.models import Action
 from baserow.core.action.registries import ActionScopeStr, ActionType
-from baserow.core.action.scopes import ViewActionScopeType
-from django.contrib.auth.models import AbstractUser
-
 from baserow.core.trash.handler import TrashHandler
 
 
@@ -480,7 +480,7 @@ class OrderViewsActionType(ActionType):
         """
         Updates the order of the views in the given table.
         See baserow.contrib.views.handler.ViewsHandler.order_views for further details.
-        The order of the views that are not in the `order` parameter set set to `0`.
+        The order of the views that are not in the `order` parameter set to `0`.
         Undoing this action restores the original order of the views.
         Redoing this action reorders the views to the new order.
 
@@ -737,6 +737,51 @@ class CreateViewActionType(ActionType):
             user=user,
             params=cls.Params(view.id),
             scope=cls.scope(table.id),
+        )
+
+        return view
+
+    @classmethod
+    def scope(cls, table_id: int) -> ActionScopeStr:
+        return TableActionScopeType.value(table_id)
+
+    @classmethod
+    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+        ViewHandler().delete_view_by_id(user, params.view_id)
+
+    @classmethod
+    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+        TrashHandler.restore_item(user, "view", params.view_id)
+
+
+class DuplicateViewActionType(ActionType):
+    type = "duplicate_view"
+
+    @dataclasses.dataclass
+    class Params:
+        view_id: int
+
+    @classmethod
+    def do(cls, user: AbstractUser, original_view: View) -> View:
+        """
+        Duplicate an existing view.
+
+        Undoing this action deletes the new view.
+        Redoing this action restores the view.
+
+        :param user: The user creating the view.
+        :param original_view: The view to duplicate.
+        """
+
+        view = ViewHandler().duplicate_view(
+            user,
+            original_view,
+        )
+
+        cls.register_action(
+            user=user,
+            params=cls.Params(view.id),
+            scope=cls.scope(original_view.table.id),
         )
 
         return view

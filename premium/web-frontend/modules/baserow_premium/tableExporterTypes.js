@@ -3,15 +3,21 @@ import { GridViewType } from '@baserow/modules/database/viewTypes'
 import { PremiumPlugin } from '@baserow_premium/plugins'
 import TableJSONExporter from '@baserow_premium/components/exporter/TableJSONExporter'
 import TableXMLExporter from '@baserow_premium/components/exporter/TableXMLExporter'
+import PremiumModal from '@baserow_premium/components/PremiumModal'
 
 class PremiumTableExporterType extends TableExporterType {
   getDeactivatedText() {
     return this.app.i18n.t('premium.deactivated')
   }
 
-  isDeactivated() {
+  getDeactivatedClickModal() {
+    return PremiumModal
+  }
+
+  isDeactivated(groupId) {
     return !PremiumPlugin.hasValidPremiumLicense(
-      this.app.store.getters['auth/getAdditionalUserData']
+      this.app.store.getters['auth/getAdditionalUserData'],
+      groupId
     )
   }
 }

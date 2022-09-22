@@ -1,18 +1,14 @@
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from drf_spectacular.utils import extend_schema_field
-from drf_spectacular.openapi import OpenApiTypes
-
 from baserow.contrib.database.api.webhooks.validators import (
-    url_validation,
     http_header_validation,
+    url_validation,
 )
-from baserow.contrib.database.webhooks.models import (
-    TableWebhook,
-    TableWebhookCall,
-)
-from baserow.contrib.database.webhooks.registries import webhook_event_type_registry
 from baserow.contrib.database.webhooks.handler import WebhookHandler
+from baserow.contrib.database.webhooks.models import TableWebhook, TableWebhookCall
+from baserow.contrib.database.webhooks.registries import webhook_event_type_registry
 
 
 class TableWebhookEventsSerializer(serializers.ListField):
@@ -53,7 +49,13 @@ class TableWebhookCreateRequestSerializer(serializers.ModelSerializer):
 class TableWebhookUpdateRequestSerializer(serializers.ModelSerializer):
     events = serializers.ListField(
         required=False,
-        child=serializers.ChoiceField(choices=webhook_event_type_registry.get_types()),
+        child=serializers.ChoiceField(
+            choices=[
+                t
+                for t in webhook_event_type_registry.get_types()
+                if t not in ["row.created", "row.updated", "row.deleted"]
+            ]
+        ),
         help_text="A list containing the events that will trigger this webhook.",
     )
     headers = serializers.DictField(
@@ -153,6 +155,11 @@ class TableWebhookTestCallRequestSerializer(serializers.ModelSerializer):
         validators=[http_header_validation],
         help_text="The additional headers as an object where the key is the name and "
         "the value the value.",
+    )
+    url = serializers.URLField(
+        max_length=2000,
+        validators=[url_validation],
+        help_text="The URL that must be called when the webhook is triggered.",
     )
 
     class Meta:

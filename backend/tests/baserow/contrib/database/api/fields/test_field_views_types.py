@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-import pytest
 from django.shortcuts import reverse
+
+import pytest
 from faker import Faker
 from freezegun import freeze_time
 from pytz import timezone
@@ -11,18 +12,18 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import (
     CreatedOnField,
-    LastModifiedField,
-    LongTextField,
-    MultipleSelectField,
-    SelectOption,
-    URLField,
     DateField,
     EmailField,
     FileField,
+    FormulaField,
+    LastModifiedField,
+    LongTextField,
+    LookupField,
+    MultipleSelectField,
     NumberField,
     PhoneNumberField,
-    FormulaField,
-    LookupField,
+    SelectOption,
+    URLField,
 )
 
 
@@ -475,7 +476,7 @@ def test_file_field_type(api_client, data_fixture):
     )
     response_json = response.json()
     assert response.status_code == HTTP_400_BAD_REQUEST
-    assert response_json["error"] == "ERROR_USER_FILE_DOES_NOT_EXIST"
+    assert response_json["error"] == "ERROR_REQUEST_BODY_VALIDATION"
     assert (
         response_json["detail"] == "The user files ['not_existing.jpg'] do not exist."
     )
@@ -1238,10 +1239,10 @@ def test_multiple_select_field_type(api_client, data_fixture):
     )
     response_json = response.json()
     assert response.status_code == HTTP_400_BAD_REQUEST
-    assert response_json["error"] == "ERROR_INVALID_SELECT_OPTION_VALUES"
+    assert response_json["error"] == "ERROR_REQUEST_BODY_VALIDATION"
     assert (
         response_json["detail"]
-        == "The provided select option ids [999999] are not valid select options."
+        == "The provided select option id [999999] is not a valid select option."
     )
 
     response = api_client.post(

@@ -1,16 +1,17 @@
 from datetime import datetime
 from unittest.mock import patch
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.shortcuts import reverse
+
+import pytest
 from freezegun import freeze_time
 from pytz import timezone
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework_jwt.settings import api_settings
 
 from baserow.core.models import UserLogEntry
-from baserow.core.registries import plugin_registry, Plugin
+from baserow.core.registries import Plugin, plugin_registry
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
@@ -109,6 +110,20 @@ def test_token_auth(api_client, data_fixture):
     json = response.json()
     assert response.status_code == HTTP_400_BAD_REQUEST
     assert json["non_field_errors"][0] == "User account is disabled."
+
+    # Check that a login cancel user deletion
+    user_to_be_deleted = data_fixture.create_user(
+        email="test3@test.nl", password="password", to_be_deleted=True
+    )
+    response = api_client.post(
+        reverse("api:user:token_auth"),
+        {"username": "test3@test.nl", "password": "password"},
+        format="json",
+    )
+
+    user_to_be_deleted.refresh_from_db()
+
+    assert user_to_be_deleted.profile.to_be_deleted is False
 
 
 @pytest.mark.django_db

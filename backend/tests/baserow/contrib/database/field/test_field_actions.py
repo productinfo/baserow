@@ -1,24 +1,28 @@
 from decimal import Decimal
 from typing import cast
 
-import pytest
 from django.db import connection, transaction
 from django.urls import reverse
+
+import pytest
 from pytest_unordered import unordered
 from rest_framework.status import HTTP_200_OK
 
-from baserow.contrib.database.fields.actions import UpdateFieldActionType
-from baserow.contrib.database.fields.field_types import (
-    TextFieldType,
+from baserow.contrib.database.fields.actions import (
+    DuplicateFieldActionType,
+    UpdateFieldActionType,
 )
+from baserow.contrib.database.fields.exceptions import FieldDoesNotExist
+from baserow.contrib.database.fields.field_types import TextFieldType
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import (
-    TextField,
+    Field,
     LinkRowField,
-    NumberField,
     MultipleSelectField,
+    NumberField,
     RatingField,
     SpecificFieldForUpdate,
+    TextField,
 )
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.core.action.handler import ActionHandler
@@ -26,10 +30,16 @@ from baserow.core.action.models import Action
 from baserow.core.action.registries import action_type_registry
 from baserow.core.models import GROUP_USER_PERMISSION_ADMIN
 from baserow.core.trash.handler import TrashHandler
-from baserow.test_utils.helpers import setup_interesting_test_table
+from baserow.test_utils.helpers import (
+    assert_serialized_field_values_are_the_same,
+    assert_undo_redo_actions_are_valid,
+    extract_serialized_field_value,
+    setup_interesting_test_table,
+)
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_updating_field_name_only_doesnt_create_backup(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -39,17 +49,18 @@ def test_updating_field_name_only_doesnt_create_backup(data_fixture):
     field.refresh_from_db()
     assert field.name == "test"
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
-    assert action.params.backup_data is None
+    assert actions[0].params["backup_data"] is None
     field.refresh_from_db()
     assert field.name == "field"
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_updating_formula_fields_formula_doesnt_make_backup(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -66,6 +77,7 @@ def test_updating_formula_fields_formula_doesnt_make_backup(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_updating_formula_field_to_other_type_doesnt_make_backup(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -81,13 +93,8 @@ def test_updating_formula_field_to_other_type_doesnt_make_backup(data_fixture):
     assert created_action.params["backup_data"] is None
 
 
-def assert_is_valid_update_field_action(action):
-    assert action is not None
-    assert not action.error
-    assert action.type == UpdateFieldActionType.type
-
-
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_updating_field_name_only_and_undoing_after_naming_collisions_works(
     data_fixture,
 ):
@@ -111,15 +118,16 @@ def test_updating_field_name_only_and_undoing_after_naming_collisions_works(
         user2, field.table, TextFieldType.type, name=starting_field_name
     )
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     field.refresh_from_db()
     assert field.name == starting_field_name + " (From undo)"
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_updating_field_name_only_and_redoing_after_naming_collisions_works(
     data_fixture,
 ):
@@ -139,26 +147,27 @@ def test_updating_field_name_only_and_redoing_after_naming_collisions_works(
         user, field, name=new_field_name
     )
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     # Create a new field which clashes with the redo
     FieldHandler().create_field(
         user2, field.table, TextFieldType.type, name=new_field_name
     )
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
 
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     field.refresh_from_db()
     assert field.name == new_field_name + " (From redo)"
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_updating_field(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -192,10 +201,10 @@ def test_can_undo_updating_field(data_fixture, django_assert_num_queries):
         Decimal("3"),
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     undone_field = FieldHandler().get_field(field.id, TextField)
     assert undone_field.text_default == original_text_default
@@ -212,6 +221,7 @@ def test_can_undo_updating_field(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_and_redo_converting_link_row_to_other_type_related(
     data_fixture, api_client, django_assert_num_queries
 ):
@@ -254,10 +264,10 @@ def test_can_undo_and_redo_converting_link_row_to_other_type_related(
         None,
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(related_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     related_field = LinkRowField.objects.get(id=related_field_id)
     link_field = related_field.link_row_related_field
@@ -305,7 +315,8 @@ def test_can_undo_and_redo_converting_link_row_to_other_type_related(
     assert response.status_code == HTTP_200_OK
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
+@pytest.mark.undo_redo(transaction=True)
 def test_undoing_link_row_type_change_can_still_insert_new_relations_after(
     data_fixture,
 ):
@@ -331,10 +342,10 @@ def test_undoing_link_row_type_change_can_still_insert_new_relations_after(
         user, link_field, new_type_name="text"
     )
     with transaction.atomic():
-        action = ActionHandler.undo(
+        actions = ActionHandler.undo(
             user, [UpdateFieldActionType.scope(link_field.table_id)], session_id
         )
-        assert_is_valid_update_field_action(action)
+        assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     with transaction.atomic():
         RowHandler().update_row(
@@ -348,6 +359,43 @@ def test_undoing_link_row_type_change_can_still_insert_new_relations_after(
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
+@pytest.mark.field_link_row
+def test_can_undo_and_redo_linkrow_deleting_one_side_relationships(data_fixture):
+    session_id = "session-id"
+    user = data_fixture.create_user(session_id=session_id)
+    table_a, table_b, link_field = data_fixture.create_two_linked_tables(user=user)
+
+    action_type_registry.get_by_type(UpdateFieldActionType).do(
+        user, link_field, name="A->B", has_related_field=False
+    )
+
+    link_field.refresh_from_db()
+    assert link_field.link_row_related_field_id is None
+    assert table_a.linkrowfield_set.count() == 0
+
+    actions = ActionHandler.undo(
+        user, [UpdateFieldActionType.scope(link_field.table_id)], session_id
+    )
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
+    # Make sure that the link field was restored to the other table
+    link_field.refresh_from_db()
+    assert link_field.link_row_related_field_id is not None
+    assert table_a.linkrowfield_set.count() == 1
+
+    actions = ActionHandler.redo(
+        user, [UpdateFieldActionType.scope(link_field.table_id)], session_id
+    )
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
+    # Make sure that the link field was deleted again in the other table
+    link_field.refresh_from_db()
+    assert link_field.link_row_related_field_id is None
+    assert table_a.linkrowfield_set.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.undo_redo
+@pytest.mark.field_link_row
 def test_can_undo_and_redo_converting_link_row_to_other_type(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -382,10 +430,10 @@ def test_can_undo_and_redo_converting_link_row_to_other_type(data_fixture):
         None,
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(link_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     link_field = LinkRowField.objects.get(id=link_field.id)
     # Make sure that the link field was restored to the other table
     assert table_b.field_set.filter(id=link_field.link_row_related_field.id).exists()
@@ -401,10 +449,10 @@ def test_can_undo_and_redo_converting_link_row_to_other_type(data_fixture):
         getattr(row_a_2, f"field_{link_field.id}").values_list("id", flat=True)
     ) == [row_b_2.id]
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(link_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     # Make sure that the link field was removed from the other table
     assert not table_b.field_set.filter(id=link_row_related_field_id).exists()
@@ -418,6 +466,7 @@ def test_can_undo_and_redo_converting_link_row_to_other_type(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_and_redo_converting_multi_select_to_other_type(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -459,10 +508,10 @@ def test_can_undo_and_redo_converting_multi_select_to_other_type(data_fixture):
         [],
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(multi_select_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     multi_select_field = MultipleSelectField.objects.get(id=multi_select_field.id)
 
     assert multi_select_field.select_options.count() == 2
@@ -486,10 +535,10 @@ def test_can_undo_and_redo_converting_multi_select_to_other_type(data_fixture):
         == []
     )
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(multi_select_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     assert not multi_select_field.select_options.exists()
 
@@ -502,9 +551,8 @@ def test_can_undo_and_redo_converting_multi_select_to_other_type(data_fixture):
 
 
 @pytest.mark.django_db
-def test_can_undo_and_redo_removing_multi_select_option(
-    data_fixture, django_assert_num_queries
-):
+@pytest.mark.undo_redo
+def test_can_undo_and_redo_removing_multi_select_option(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     table = data_fixture.create_database_table(user=user)
@@ -566,10 +614,10 @@ def test_can_undo_and_redo_removing_multi_select_option(
         == []
     )
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(multi_select_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     multi_select_field = MultipleSelectField.objects.get(id=multi_select_field.id)
 
     assert multi_select_field.select_options.count() == 2
@@ -593,10 +641,10 @@ def test_can_undo_and_redo_removing_multi_select_option(
         == []
     )
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(multi_select_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     assert multi_select_field.select_options.count() == 1
 
@@ -621,6 +669,7 @@ def test_can_undo_and_redo_removing_multi_select_option(
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_cleaning_up_undo_link_row_action_deletes_m2m_table(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -656,6 +705,7 @@ def test_cleaning_up_undo_link_row_action_deletes_m2m_table(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_still_cleanup_m2m_backup_after_field_perm_deleted(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -693,6 +743,7 @@ def test_can_still_cleanup_m2m_backup_after_field_perm_deleted(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_cleaning_up_undo_single_column_field_action_deletes_column(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -711,6 +762,7 @@ def test_cleaning_up_undo_single_column_field_action_deletes_column(data_fixture
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_cleaning_up_undo_single_column_perm_deleted_field_action_deletes_column(
     data_fixture,
 ):
@@ -733,6 +785,7 @@ def test_cleaning_up_undo_single_column_perm_deleted_field_action_deletes_column
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_cleaning_up_undo_single_column_perm_deleted_table_doesnt_crash(
     data_fixture,
 ):
@@ -760,6 +813,7 @@ def get_table_column_names(field):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_insert_row_when_backup_fields_exist(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -785,17 +839,18 @@ def test_can_insert_row_when_backup_fields_exist(data_fixture):
     action_type_registry.get_by_type(UpdateFieldActionType).do(
         user, option_field, new_type_name="file"
     )
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
-    assert action.params.backup_data is not None
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
+    assert actions[0].params["backup_data"] is not None
 
     row = RowHandler().create_row(user, option_field.table, {})
     assert row.id is not None
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 @pytest.mark.field_single_select
 def test_can_undo_redo_converting_away_from_single_select(
     data_fixture, django_assert_num_queries
@@ -832,10 +887,10 @@ def test_can_undo_redo_converting_away_from_single_select(
         [],
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     model = option_field.table.get_model(attribute_names=True)
     assert list(model.objects.values_list("singleselect", flat=True)) == [
@@ -845,10 +900,10 @@ def test_can_undo_redo_converting_away_from_single_select(
     ]
     assert option_field.select_options.count() == 2
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     model = option_field.table.get_model(attribute_names=True)
     assert list(model.objects.values_list("singleselect", flat=True)) == [[], [], []]
@@ -856,8 +911,9 @@ def test_can_undo_redo_converting_away_from_single_select(
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 @pytest.mark.field_single_select
-def test_can_undo_redo_adding_select_option(data_fixture, django_assert_num_queries):
+def test_can_undo_redo_adding_select_option(data_fixture):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
     user2 = data_fixture.create_user()
@@ -922,10 +978,10 @@ def test_can_undo_redo_adding_select_option(data_fixture, django_assert_num_quer
     assert option_field.select_options.count() == 4
     user2_option_made_after_undo = option_field.select_options.filter(value="t").get()
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     # The second users option has been destroyed as the undo just restores the snapshot
     # of all previous select options.
     assert option_field.select_options.count() == 2
@@ -954,10 +1010,10 @@ def test_can_undo_redo_adding_select_option(data_fixture, django_assert_num_quer
     )
     assert option_field.select_options.count() == 4
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     # The first users new select option is added back
     assert list(
@@ -975,6 +1031,7 @@ def test_can_undo_redo_adding_select_option(data_fixture, django_assert_num_quer
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 @pytest.mark.field_single_select
 def test_can_undo_redo_removing_select_option(data_fixture):
     session_id = "session-id"
@@ -1033,10 +1090,10 @@ def test_can_undo_redo_removing_select_option(data_fixture):
     assert option_field.select_options.count() == 2
     user2_option_made_after_undo = option_field.select_options.filter(value="t").get()
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     assert option_field.select_options.count() == 2
     # The first users new select option is added, and the one the second user made
     # has been destroyed by the snapshotting.
@@ -1064,10 +1121,10 @@ def test_can_undo_redo_removing_select_option(data_fixture):
     )
     assert option_field.select_options.count() == 4
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     # The first users new select option is removed again
     assert list(
@@ -1083,6 +1140,7 @@ def test_can_undo_redo_removing_select_option(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 @pytest.mark.field_single_select
 def test_can_undo_redo_updating_single_select(data_fixture):
     session_id = "session-id"
@@ -1149,10 +1207,10 @@ def test_can_undo_redo_updating_single_select(data_fixture):
     assert option_field.select_options.count() == 3
     user2_option_made_after_undo = option_field.select_options.filter(value="t").get()
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
     assert option_field.select_options.count() == 2
 
     assert list(
@@ -1181,10 +1239,10 @@ def test_can_undo_redo_updating_single_select(data_fixture):
     )
     assert option_field.select_options.count() == 4
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(option_field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     assert list(
         option_field.select_options.values_list("value", flat=True)
@@ -1201,11 +1259,12 @@ def test_can_undo_redo_updating_single_select(data_fixture):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 @pytest.mark.disabled_in_ci
 def test_can_undo_updating_field_every_type(data_fixture, django_assert_num_queries):
     session_id = "session-id"
 
-    table, user, row, _ = setup_interesting_test_table(
+    table, user, row, _, context = setup_interesting_test_table(
         data_fixture, user_kwargs={"session_id": session_id}
     )
     model = table.get_model(attribute_names=True)
@@ -1223,16 +1282,19 @@ def test_can_undo_updating_field_every_type(data_fixture, django_assert_num_quer
         action_type_registry.get_by_type(UpdateFieldActionType).do(
             user, field, new_type_name="number"
         )
-        action = ActionHandler.undo(
+        actions = ActionHandler.undo(
             user, [UpdateFieldActionType.scope(field.table_id)], session_id
         )
-        assert_is_valid_update_field_action(action), f"Failed for {before_serialized}"
+        assert_undo_redo_actions_are_valid(
+            actions, [UpdateFieldActionType]
+        ), f"Failed for {before_serialized}"
         new_field = FieldHandler().get_specific_field_for_update(field.id)
         after_serialized = field_type.export_serialized(new_field)
         assert before_serialized == after_serialized
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_updating_max_value_of_rating_field(
     data_fixture, django_assert_num_queries
 ):
@@ -1263,10 +1325,10 @@ def test_can_undo_updating_max_value_of_rating_field(
         Decimal("1"),
     ]
 
-    action = ActionHandler.undo(
+    actions = ActionHandler.undo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     undone_field = FieldHandler().get_field(field.id, RatingField)
     assert undone_field.max_value == original_max_value
@@ -1279,10 +1341,10 @@ def test_can_undo_updating_max_value_of_rating_field(
         1,
     ]
 
-    action = ActionHandler.redo(
+    actions = ActionHandler.redo(
         user, [UpdateFieldActionType.scope(field.table_id)], session_id
     )
-    assert_is_valid_update_field_action(action)
+    assert_undo_redo_actions_are_valid(actions, [UpdateFieldActionType])
 
     assert list(model.objects.values_list("field", flat=True)) == [
         Decimal("2"),
@@ -1290,3 +1352,62 @@ def test_can_undo_updating_max_value_of_rating_field(
         Decimal("2"),
         Decimal("1"),
     ]
+
+
+@pytest.mark.django_db
+@pytest.mark.undo_redo
+def test_can_undo_redo_duplicate_fields_of_interesting_table(api_client, data_fixture):
+    session_id = "session-id"
+    user, token = data_fixture.create_user_and_token(session_id=session_id)
+    database = data_fixture.create_database_application(user=user)
+    field_handler = FieldHandler()
+
+    table, _, _, _, context = setup_interesting_test_table(data_fixture, user, database)
+    original_field_set = list(table.field_set.all())
+
+    for field in original_field_set:
+        duplicated_field, updated_fields = action_type_registry.get_by_type(
+            DuplicateFieldActionType
+        ).do(user, field, duplicate_data=True)
+
+        assert field_handler.get_field(duplicated_field.id).name == f"{field.name} 2"
+
+        actions_undone = ActionHandler.undo(
+            user, [DuplicateFieldActionType.scope(table_id=field.table_id)], session_id
+        )
+
+        assert_undo_redo_actions_are_valid(actions_undone, [DuplicateFieldActionType])
+        with pytest.raises(FieldDoesNotExist):
+            field_handler.get_field(duplicated_field.id)
+
+        actions_redone = ActionHandler.redo(
+            user, [DuplicateFieldActionType.scope(table_id=field.table_id)], session_id
+        )
+
+        assert_undo_redo_actions_are_valid(actions_redone, [DuplicateFieldActionType])
+        assert field_handler.get_field(duplicated_field.id).name == f"{field.name} 2"
+
+    # check that the field values have been duplicated correctly
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    assert len(response_json["results"]) > 0
+    assert table.field_set.count() == len(original_field_set) * 2
+    for row in response_json["results"]:
+        for field in original_field_set:
+            row_1_value = extract_serialized_field_value(row[field.db_column])
+            duplicated_field = Field.objects.get(
+                table_id=table.id, name=f"{field.name} 2"
+            )
+            row_2_value = extract_serialized_field_value(
+                row[duplicated_field.db_column]
+            )
+            assert_serialized_field_values_are_the_same(
+                row_1_value,
+                row_2_value,
+                field_name=field.name,
+            )

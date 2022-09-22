@@ -3,66 +3,69 @@ import json
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import NewType, cast, List
-from urllib.parse import urlparse, urljoin
-from zipfile import ZipFile, ZIP_DEFLATED
+from typing import Any, Dict, List, NewType, Optional, cast
+from urllib.parse import urljoin, urlparse
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Count, Prefetch, Q, QuerySet
 from django.utils import translation
+
 from itsdangerous import URLSafeSerializer
 from tqdm import tqdm
 
 from baserow.core.user.utils import normalize_email_address
-from baserow.core.utils import (
-    ChildProgressBuilder,
-)
+
 from .emails import GroupInvitationEmail
 from .exceptions import (
-    UserNotInGroup,
-    GroupDoesNotExist,
     ApplicationDoesNotExist,
     ApplicationNotInGroup,
     BaseURLHostnameNotAllowed,
-    GroupInvitationEmailMismatch,
+    GroupDoesNotExist,
     GroupInvitationDoesNotExist,
-    GroupUserDoesNotExist,
+    GroupInvitationEmailMismatch,
     GroupUserAlreadyExists,
+    GroupUserDoesNotExist,
     GroupUserIsLastAdmin,
     IsNotAdminError,
-    TemplateFileDoesNotExist,
     TemplateDoesNotExist,
+    TemplateFileDoesNotExist,
+    UserNotInGroup,
 )
 from .models import (
-    Settings,
-    Group,
-    GroupUser,
-    GroupInvitation,
+    GROUP_USER_PERMISSION_ADMIN,
+    GROUP_USER_PERMISSION_CHOICES,
     Application,
+    Group,
+    GroupInvitation,
+    GroupUser,
+    Settings,
     Template,
     TemplateCategory,
-    GROUP_USER_PERMISSION_CHOICES,
-    GROUP_USER_PERMISSION_ADMIN,
 )
 from .registries import application_type_registry
 from .signals import (
     application_created,
-    application_updated,
     application_deleted,
+    application_updated,
     applications_reordered,
+    before_group_deleted,
+    before_group_user_deleted,
+    before_group_user_updated,
     group_created,
-    group_updated,
     group_deleted,
-    group_user_updated,
+    group_updated,
+    group_user_added,
     group_user_deleted,
+    group_user_updated,
     groups_reordered,
 )
 from .trash.handler import TrashHandler
-from .utils import set_allowed_attrs
+from .utils import ChildProgressBuilder, find_unused_name, set_allowed_attrs
 
 User = get_user_model()
 
@@ -110,6 +113,7 @@ class CoreHandler:
                 "allow_new_signups",
                 "allow_signups_via_group_invitations",
                 "allow_reset_password",
+                "account_deletion_grace_delay",
             ],
             settings_instance,
         )
@@ -148,6 +152,22 @@ class CoreHandler:
             raise GroupDoesNotExist(f"The group with id {group_id} does not exist.")
 
         return group
+
+    def get_groupuser_group_queryset(self) -> QuerySet[GroupUser]:
+        """
+        Returns GroupUser queryset that will prefetch groups and their users.
+        """
+
+        groupusers_with_user_and_profile = GroupUser.objects.select_related(
+            "user"
+        ).select_related("user__profile")
+        groupuser_groups = GroupUser.objects.select_related("group").prefetch_related(
+            Prefetch(
+                "group__groupuser_set",
+                queryset=groupusers_with_user_and_profile,
+            )
+        )
+        return groupuser_groups
 
     def create_group(self, user: User, name: str) -> GroupUser:
         """
@@ -220,7 +240,9 @@ class CoreHandler:
             group_user.permissions == GROUP_USER_PERMISSION_ADMIN
             and GroupUser.objects.filter(
                 group=group, permissions=GROUP_USER_PERMISSION_ADMIN
-            ).count()
+            )
+            .exclude(user__profile__to_be_deleted=True)
+            .count()
             == 1
         ):
             raise GroupUserIsLastAdmin(
@@ -228,12 +250,19 @@ class CoreHandler:
                 "leave it."
             )
 
+        before_group_user_deleted.send(
+            self, user=user, group=group, group_user=group_user
+        )
+
         # If the user is not the last admin, we can safely delete the user from the
         # group.
         group_user_id = group_user.id
         group_user.delete()
         group_user_deleted.send(
-            self, group_user_id=group_user_id, group_user=group_user, user=user
+            self,
+            group_user_id=group_user_id,
+            group_user=group_user,
+            user=user,
         )
 
     def delete_group_by_id(self, user: AbstractUser, group_id: int):
@@ -271,6 +300,10 @@ class CoreHandler:
         # along with the signal.
         group_id = group.id
         group_users = list(group.users.all())
+
+        before_group_deleted.send(
+            self, group_id=group_id, group=group, group_users=group_users, user=user
+        )
 
         TrashHandler.trash(user, group, None, group)
 
@@ -347,6 +380,9 @@ class CoreHandler:
             raise ValueError("The group user is not an instance of GroupUser.")
 
         group_user.group.has_user(user, "ADMIN", raise_error=True)
+
+        before_group_user_updated.send(self, group_user=group_user, **kwargs)
+
         group_user = set_allowed_attrs(kwargs, ["permissions"], group_user)
         group_user.save()
 
@@ -368,11 +404,19 @@ class CoreHandler:
             raise ValueError("The group user is not an instance of GroupUser.")
 
         group_user.group.has_user(user, "ADMIN", raise_error=True)
+
+        before_group_user_deleted.send(
+            self, user=group_user.user, group=group_user.group, group_user=group_user
+        )
+
         group_user_id = group_user.id
         group_user.delete()
 
         group_user_deleted.send(
-            self, group_user_id=group_user_id, group_user=group_user, user=user
+            self,
+            group_user_id=group_user_id,
+            group_user=group_user,
+            user=user,
         )
 
     def get_group_invitation_signer(self):
@@ -643,25 +687,48 @@ class CoreHandler:
                 "permissions": invitation.permissions,
             },
         )
+
+        group_user_added.send(
+            self, group_user_id=group_user.id, group_user=group_user, user=user
+        )
+
         invitation.delete()
 
         return group_user
 
-    def get_application(self, application_id, base_queryset=None):
+    def get_user_application(
+        self,
+        user: AbstractUser,
+        application_id: int,
+        base_queryset: Optional[QuerySet] = None,
+    ) -> Application:
+        """
+        Returns the application with the given id if the user has the right permissions.
+        :param user: The user on whose behalf the application is requested.
+        :param application_id: The identifier of the application that must be returned.
+        :param base_queryset: The base queryset from where to select the application
+            object. This can for example be used to do a `select_related`.
+        :raises UserNotInGroup: If the user does not belong to the group of the
+            application.
+        :return: The requested application instance of the provided id.
+        """
+
+        application = self.get_application(application_id, base_queryset=base_queryset)
+        application.group.has_user(user, raise_error=True)
+        return application
+
+    def get_application(
+        self, application_id: int, base_queryset: Optional[QuerySet] = None
+    ) -> Application:
         """
         Selects an application with a given id from the database.
 
-        :param user: The user on whose behalf the application is requested.
-        :type user: User
         :param application_id: The identifier of the application that must be returned.
-        :type application_id: int
         :param base_queryset: The base queryset from where to select the application
             object. This can for example be used to do a `select_related`.
-        :type base_queryset: Queryset
         :raises ApplicationDoesNotExist: When the application with the provided id
             does not exist.
         :return: The requested application instance of the provided id.
-        :rtype: Application
         """
 
         if base_queryset is None:
@@ -682,6 +749,22 @@ class CoreHandler:
             )
 
         return application
+
+    def list_applications_in_group(
+        self, group_id: int, base_queryset: Optional[QuerySet] = None
+    ) -> QuerySet:
+        """
+        Return a list of applications in a group.
+
+        :param group: The group to list the applications from.
+        :param base_queryset: The base queryset from where to select the application
+        :return: A list of applications in the group.
+        """
+
+        if base_queryset is None:
+            base_queryset = Application.objects
+
+        return base_queryset.filter(group_id=group_id, group__trashed=False)
 
     def create_application(
         self, user: AbstractUser, group: Group, type_name: str, name: str
@@ -710,6 +793,22 @@ class CoreHandler:
 
         return instance
 
+    def find_unused_application_name(self, group_id: int, proposed_name: str) -> str:
+        """
+        Finds an unused name for an application.
+
+        :param group_id: The group id that the application belongs to.
+        :param proposed_name: The name that is proposed to be used.
+        :return: A unique name to use.
+        """
+
+        existing_applications_names = self.list_applications_in_group(
+            group_id
+        ).values_list("name", flat=True)
+        return find_unused_name(
+            [proposed_name], existing_applications_names, max_length=255
+        )
+
     def update_application(
         self, user: AbstractUser, application: Application, name: str
     ) -> Application:
@@ -725,19 +824,72 @@ class CoreHandler:
         application.group.has_user(user, raise_error=True)
 
         application.name = name
-
         application.save()
 
         application_updated.send(self, application=application, user=user)
 
         return application
 
+    def duplicate_application(
+        self,
+        user: AbstractUser,
+        application: Application,
+        progress_builder: Optional[ChildProgressBuilder] = None,
+    ) -> Application:
+        """
+        Duplicates an existing application instance.
+
+        :param user: The user on whose behalf the application is duplicated.
+        :param application: The application instance that needs to be duplicated.
+        :return: The new (duplicated) application instance.
+        """
+
+        group = application.group
+        group.has_user(user, raise_error=True)
+
+        start_progress, export_progress, import_progress = 10, 30, 60
+        progress = ChildProgressBuilder.build(progress_builder, child_total=100)
+        progress.increment(by=start_progress)
+
+        # export the application
+        specific_application = application.specific
+        application_type = application_type_registry.get_by_model(specific_application)
+        serialized = application_type.export_serialized(specific_application)
+        progress.increment(by=export_progress)
+
+        # Set a new unique name for the new application
+        serialized["name"] = self.find_unused_application_name(
+            group.id, serialized["name"]
+        )
+        serialized["order"] = application_type.model_class.get_last_order(group)
+
+        # import it back as a new application
+        id_mapping: Dict[str, Any] = {}
+        new_application_clone = application_type.import_serialized(
+            group,
+            serialized,
+            id_mapping,
+            progress_builder=progress.create_child_builder(
+                represents_progress=import_progress
+            ),
+        )
+
+        # broadcast the application_created signal
+        application_created.send(
+            self,
+            application=new_application_clone,
+            user=user,
+            type_name=application_type.type,
+        )
+
+        return new_application_clone
+
     def order_applications(
-        self, user: User, group: Group, order: List[int]
+        self, user: AbstractUser, group: Group, order: List[int]
     ) -> List[int]:
         """
         Updates the order of the applications in the given group. The order of the
-        applications that are not in the `order` parameter set set to `0`.
+        applications that are not in the `order` parameter set to `0`.
 
         :param user: The user on whose behalf the tables are ordered.
         :param group: The group of which the applications must be updated.
@@ -811,9 +963,10 @@ class CoreHandler:
             for a in applications:
                 application = a.specific
                 application_type = application_type_registry.get_by_model(application)
-                exported_application = application_type.export_serialized(
-                    application, files_zip, storage
-                )
+                with application_type.export_safe_transaction_context(application):
+                    exported_application = application_type.export_serialized(
+                        application, files_zip, storage
+                    )
                 exported_applications.append(exported_application)
 
         return exported_applications

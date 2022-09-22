@@ -43,6 +43,11 @@
             "title": "Webhook is uitgeschakeld",
             "content": "Deze webhook is uitgeschakeld omdat er te veel opeenvolgende mislukkingen zijn geweest. Controleer het call log voor meer details. Klik op de knop hieronder om de webhook weer te activeren. Vergeet niet om de webhook op te slaan na het activeren.",
             "activate": "Activeren"
+        },
+        "deprecatedEventType": {
+            "title": "Verouderd gebeurtenistype",
+            "description": "Deze webhook ontvangt geen informatie over alle gewijzigde rijen tegelijk. Converteer het naar een batch-stijl evenement type. Dit verandert de JSON body payload naar een formaat dat meerdere rijen bevat.",
+            "convert": "Omzetten"
         }
     },
     "webhook": {
@@ -138,7 +143,8 @@
         "filterLink": "Een lijst van alle filters is hier beschikbaar.",
         "filterType": "- `AND`: Geeft aan dat de rijen aan alle opgegeven filters moeten voldoen.\n- `OR`: Geeft aan dat de rijen slechts aan één van de filters hoeven te voldoen.\n\n Dit werkt alleen als er twee of meer filters zijn opgegeven.",
         "include": "Alle velden worden standaard opgenomen in het antwoord. U kunt een sub-set van velden selecteren om op te nemen door de include query parameter op te geven.\n\n#### Met `user_field_names`:\n\n`include` moet een door komma's gescheiden lijst zijn van veldnamen die moeten worden opgenomen in de resultaten. Als u bijvoorbeeld de volgende GET-parameter opgeeft: `include=My Field,-My Field 2` dan zullen alleen die velden worden opgenomen (tenzij ze expliciet zijn uitgesloten)\n\n#### Zonder `user_field_names`:\n\n`include` moet een door komma's gescheiden lijst zijn van `field_` gevolgd door de id van het veld dat moet worden meegenomen in de resultaten. Bijvoorbeeld: Als je de volgende GET parameter `exclude=field_1,field_2` opgeeft, dan worden alleen de velden met id `1` en id `2`meegenomen (tenzij ze expliciet worden uitgesloten).",
-        "exclude": "Alle velden worden standaard opgenomen in het antwoord. Je kunt een sub-set van velden selecteren voor uitsluiting door de exclude query parameter op te geven.\n\n#### Met `user_field_names`:\n\n`exclude` moet een door komma's gescheiden lijst zijn van veldnamen die moeten worden uitgesloten van de resultaten. Als je bijvoorbeeld de volgende GET-parameter opgeeft: `exclude=My Field,-My Field 2` dan zullen die velden worden uitgesloten\n\n#### Zonder `user_field_names`:\n\n`exclude` moet een door komma's gescheiden lijst zijn van `field_` gevolgd door de id van het veld dat moet worden uitgesloten van de resultaten. Bijvoorbeeld: Als je de volgende GET parameter `exclude=field_1,field_2` opgeeft, dan worden de velden met id `1` en id `2` uitgesloten."
+        "exclude": "Alle velden worden standaard opgenomen in het antwoord. Je kunt een sub-set van velden selecteren voor uitsluiting door de exclude query parameter op te geven.\n\n#### Met `user_field_names`:\n\n`exclude` moet een door komma's gescheiden lijst zijn van veldnamen die moeten worden uitgesloten van de resultaten. Als je bijvoorbeeld de volgende GET-parameter opgeeft: `exclude=My Field,-My Field 2` dan zullen die velden worden uitgesloten\n\n#### Zonder `user_field_names`:\n\n`exclude` moet een door komma's gescheiden lijst zijn van `field_` gevolgd door de id van het veld dat moet worden uitgesloten van de resultaten. Bijvoorbeeld: Als je de volgende GET parameter `exclude=field_1,field_2` opgeeft, dan worden de velden met id `1` en id `2` uitgesloten.",
+        "viewId": "Standaard worden geen filters en sorteringen toegepast die buiten de query parameters zijn gedefinieerd. U kunt de filters en sorteringen van een view toevoegen door zijn `id` in de `view_id` GET parameter op te geven. Bijvoorbeeld, als u de volgende GET parameter `view_id=1` opgeeft, dan zullen de filters en sorteringen die zijn gedefinieerd in de view met id `1` worden toegepast. U kunt de `view_id` vinden in het context menu van een gegeven view. Het is het getal tussen haakjes achter de view naam. \n\n #### Met `filter__{field}__{filter}` \n\n Zowel het filter dat in de query parameter is opgegeven als de filters die in de view zijn gedefinieerd zullen worden toegepast.\n\n #### Met `order_by` \n\n Als `order_by` wordt meegegeven dan zal de sortering gedefinieerd in de view worden genegeerd."
     },
     "apiDocsIntro": {
         "intro": "De {name} database biedt een gemakkelijke manier om de gegevens te integreren met elk extern systeem. De API volgt REST semantiek, gebruikt JSON om objecten te coderen, en is gebaseerd op standaard HTTP codes, machineleesbare en door mensen leesbare fouten om operatie-uitkomsten te signaleren.",
@@ -207,7 +213,8 @@
     },
     "fieldLinkRowSubForm": {
         "noTable": "Je hebt minstens één andere tabel in dezelfde database nodig om naar te linken.",
-        "selectTableLabel": "Selecteer een tabel om naar te linken"
+        "selectTableLabel": "Selecteer een tabel om naar te linken",
+        "hasRelatedFieldLabel": "Maak gerelateerd veld"
     },
     "fieldSelectOptions": {
         "add": "Een optie toevoegen"
@@ -221,7 +228,9 @@
     },
     "fieldContext": {
         "editField": "Veld bewerken",
-        "deleteField": "Veld verwijderen"
+        "deleteField": "Veld verwijderen",
+        "hideField": "Veld verbergen",
+        "showField": "Toon veld"
     },
     "fieldForm": {
         "name": "Naam",
@@ -253,7 +262,9 @@
         "search": "Zoek rijen"
     },
     "rowEditModal": {
-        "addField": "veld toevoegen"
+        "addField": "veld toevoegen",
+        "showHiddenFields": "Verborgen velden weergeven",
+        "hideHiddenFields": "Verborgen velden verbergen"
     },
     "rowEditFieldMultipleSelect": {
         "addOption": "Een andere optie toevoegen"
@@ -288,10 +299,6 @@
     "tableForm": {
         "name": "Naam"
     },
-    "tableImporterPreview": {
-        "label": "Snelle voorbeeldweergave",
-        "remaining": "{remaining} andere rijen"
-    },
     "tableXMLImporter": {
         "fileLabel": "Kies XML-bestand",
         "fileDescription": "Je kunt een bestaande XML importeren door het .XML-bestand met gegevens in tabelvorm te uploaden, d.w.z:",
@@ -318,11 +325,30 @@
         "firstRowHeader": "Eerste rij is header",
         "limitError": "Het is niet mogelijk om meer dan {limit} rijen te importeren."
     },
-    "createTableModal": {
+    "importFileModal": {
         "title": "Nieuwe tabel maken",
         "importLabel": "Wil je bestaande gegevens importeren?",
         "newTable": "Begin met een nieuwe tabel",
-        "addButton": "Tabel toevoegen"
+        "addButton": "Tabel toevoegen",
+        "uploading": "Uploaden...",
+        "preparing": "Voorbereiden van data...",
+        "showReport": "Foutrapport tonen",
+        "reportTitleFailure": "Mislukte rijen",
+        "openCreatedTable": "Open aangemaakte tabel",
+        "reportTitleSuccess": "Import succesvol, maar...",
+        "importError": "Er is iets misgegaan tijdens het importeren van het bestand",
+        "stateRowCreation": "Importeren...",
+        "reportMessage": "De volgende rij indexen konden niet worden geïmporteerd:",
+        "stateCreateTable": "Tabel maken...",
+        "statePreValidation": "Valideren van gegevens...",
+        "additionalImportTitle": "Importeren in {table}",
+        "showTable": "toon tabel",
+        "importButton": "Importeren",
+        "fieldMappingTitle": "Veld vertaling",
+        "fieldMappingDescription": "Wij hebben de kolommen van de Baserow-velden in uw tabel automatisch toegewezen. U kunt ze hieronder wijzigen. Elke niet-compatibele cel zal leeg blijven na de import.",
+        "selectImportMessage": "Selecteer gegevens om te importeren.",
+        "filePreview": "Voorbeeld van bestandsinhoud",
+        "importPreview": "Importvoorbeeld"
     },
     "formulaAdvancedEditContext": {
         "textAreaFormulaInputPlaceholder": "Klik om de formule te bewerken",
@@ -358,7 +384,9 @@
         "noFilterText": "Met filters kun je rijen tonen die aan je voorwaarden voldoen.",
         "where": "Waar",
         "and": "En",
-        "or": "Of"
+        "or": "Of",
+        "relatedFieldNotFound": "Het gerelateerde veld is niet gevonden.",
+        "filterTypeNotFound": "Het filtertype is niet compatibel."
     },
     "viewFilterTypeFileTypeDropdown": {
         "image": "afbeelding",
@@ -412,7 +440,9 @@
         "exportView": "Weergave exporteren",
         "renameView": "Weergave hernoemen",
         "deleteView": "Weergave verwijderen",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "duplicateView": "View dupliceren",
+        "importFile": "Bestand importeren"
     },
     "deleteViewModal": {
         "title": "Verwijder {name}",
@@ -433,7 +463,8 @@
         "sortField": "Sorteren",
         "hideField": "Veld verbergen",
         "insertLeft": "Links invoegen",
-        "insertRight": "Rechts invoegen"
+        "insertRight": "Rechts invoegen",
+        "duplicate": "Dupliceer veld"
     },
     "gridViewRow": {
         "rowNotMatchingFilters": "Rij komt niet overeen met filters",
@@ -445,14 +476,18 @@
         "insertRowBelow": "Voeg rij hieronder in",
         "enlargeRow": "Vergroot rij",
         "deleteRow": "Rij verwijderen",
-        "rowCount": "Geen rijen | 1 rij | {count} rijen"
+        "rowCount": "Geen rijen | 1 rij | {count} rijen",
+        "duplicateRow": "Rij dupliceren",
+        "selectRow": "Rij selecteren",
+        "deleteRows": "Rijen verwijderen",
+        "copyCells": "Kopieer cellen"
     },
     "gridViewFieldLinkRow": {
         "unnamed": "onbenoemde rij {value}"
     },
     "gridViewIdentifierOptions": {
-        "id": "",
-        "count": ""
+        "id": "Rij identificatie",
+        "count": "Tellen"
     },
     "previewAny": {
         "externalWarning": "Als je een bestand opent via een externe dienst, wordt je bestand blootgesteld aan hun servers."
@@ -542,7 +577,8 @@
         "stateImporting": "Importeren",
         "stateImportingTable": "Importeren van tabel {table}",
         "errorJobAlreadyRunningTitle": "Al bezig",
-        "errorJobAlreadyRunningDescription": "Er loopt al een andere import taak. U moet wachten tot die klaar is voordat u een andere start."
+        "errorJobAlreadyRunningDescription": "Er loopt al een andere import taak. U moet wachten tot die klaar is voordat u een andere start.",
+        "linkError": "De link moet er als volgt uitzien: https://airtable.com/shrxxxxxxxxxxxxxx"
     },
     "chooseSingleSelectField": {
         "addSelectField": "enkelvoudig keuzeveld toevoegen"
@@ -574,5 +610,109 @@
             "incorrectPasswordTitle": "Onjuist wachtwoord",
             "incorrectPasswordText": "Het opgegeven wachtwoord is onjuist."
         }
+    },
+    "apiDocsTableDeleteRows": {
+        "description": "Verwijdert bestaande {name} rijen.",
+        "items": "Een array van rij-ids die moeten worden verwijderd."
+    },
+    "apiDocsTableUpdateRows": {
+        "description": "Werkt bestaande {name} rijen bij.",
+        "id": "De rij id."
+    },
+    "apiDocsTableCreateRows": {
+        "description": "Maak nieuwe {name} rijen.",
+        "before": "Indien meegegeven dan zullen de nieuw aangemaakte rijen voor de rij met het meegegeven id geplaatst worden."
+    },
+    "importer": {
+        "decoding": "Gegevens decoderen",
+        "loading": "Bestand laden",
+        "inProgress": "In uitvoering...",
+        "parsing": "Gegevens parseren",
+        "preparing": "Gegevens voorbereiden",
+        "fieldDefaultName": "Veld {count}"
+    },
+    "databaseDashboardSidebarLinks": {
+        "apiDocumentation": "API-documentatie"
+    },
+    "formViewField": {
+        "required": "verplicht",
+        "showWhenMatchingConditions": "tonen wanneer aan de voorwaarden is voldaan",
+        "addCondition": "Voorwaarde toevoegen",
+        "descriptionPlaceholder": "Beschrijving"
+    },
+    "duplicateFieldContext": {
+        "duplicate": "Dupliceer veld",
+        "cloneData": "Gegevens kopiëren",
+        "soon": "Binnenkort beschikbaar",
+        "readOnlyField": "De celwaarden worden automatisch ingevuld."
+    },
+    "formViewMeta": {
+        "includeRowId": "Gebruik {row_id} om de nieuw aangemaakte rij id in de URL op te nemen."
+    },
+    "snapshotsModal": {
+        "title": "snapshots",
+        "description": "Snapshots zijn een volledige kopie van uw database van het moment waarop ze werden aangemaakt. Een duplicaat van die gegevens wordt gemaakt bij het terugzetten. Snapshots worden na een jaar automatisch verwijderd.",
+        "descriptionLimits": "U kunt een maximum aan {n} snapshots per groep hebben. | U kunt een maximum van {n} snapshot per groep hebben. | U kunt een maximum aan {n} snapshots per groep hebben.",
+        "reset": "Maak een andere",
+        "limitReached": "Het limiet van het maximum aantal snapshots is bereikt.",
+        "snapshotDeletedErrorMessage": "De momentopname kon niet worden verwijderd. probeer het later opnieuw.",
+        "snapshot": "Snapshot",
+        "snapshotRestoredErrorTitle": "Fout opgetreden",
+        "createLabel": "Maak een nieuwe snapshot",
+        "create": "Snapshot maken",
+        "snapshotRestoredErrorMessage": "De snapshot kan niet worden hersteld. probeer het later opnieuw.",
+        "snapshotDeletedErrorTitle": "Fout opgetreden",
+        "importingState": "Maken"
+    },
+    "deleteSnapshotModal": {
+        "title": "Snapshot verwijderen",
+        "content": "Weet u zeker dat u momentopname {name} permanent wilt verwijderen?",
+        "confirm": "Verwijderen"
+    },
+    "snapshotListItem": {
+        "delete": "verwijderen",
+        "created": "gemaakt",
+        "restore": "herstellen"
+    },
+    "table": {
+        "chooseView": "Kies weergave"
+    },
+    "fieldmultipleCollaboratorsDropdown": {
+        "notFound": "Medewerker niet gevonden"
+    },
+    "formViewModeType": {
+        "form": "Formulier",
+        "formDescription": "Alle velden zijn zichtbaar en verticaal gestapeld."
+    },
+    "formViewHeader": {
+        "mode": "Modus",
+        "preview": "Voorbeeld",
+        "fields": "Velden"
+    },
+    "rowEditFieldMultipleCollaborators": {
+        "addCollaborator": "Een medewerker toevoegen"
+    },
+    "formViewModePreviewForm": {
+        "addCoverImage": "Een omslagafbeelding toevoegen",
+        "addLogo": "Logo toevoegen",
+        "noFields": "Dit formulier heeft nog geen velden. Klik op een veld in de linker zijbalk om er een toe te voegen.",
+        "descriptionPlaceholder": "Beschrijving",
+        "titlePlaceholder": "Titel"
+    },
+    "gridViewFieldFile": {
+        "dropHere": "Laat hier los",
+        "dropFileHere": "Laat bestanden hier los"
+    },
+    "apiDocsUploadFile": {
+        "file": "De `file` multipart met de inhoud van het bestand.",
+        "description": "Upload een bestand naar Baserow door de inhoud van het bestand direct te uploaden. Er wordt een `file` multipart verwacht met de inhoud van het bestand. Het antwoord kan vervolgens worden gebruikt om [een bestand naar een rij te uploaden]({PUBLIC_BACKEND_URL}/api/redoc/#tag/Database-table-rows/operation/update_database_table_row)."
+    },
+    "apiDocsUploadFileViaURL": {
+        "url": "De URL die Baserow namens u moet downloaden en uploaden.",
+        "description": "Upload een bestand naar Baserow door het te downloaden van de opgegeven URL. Het antwoord kan vervolgens worden gebruikt om [een bestand naar een rij te uploaden]({PUBLIC_BACKEND_URL}/api/redoc/#tag/Database-table-rows/operation/update_database_table_row)."
+    },
+    "duplicateTableJobType": {
+        "duplicatedTitle": "Tabel dupliceerd",
+        "duplicating": "Dupliceren"
     }
 }

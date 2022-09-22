@@ -1,14 +1,14 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from baserow.contrib.database.fields.registries import field_type_registry
 
 
 def construct_all_possible_field_kwargs(
-    link_table, decimal_link_table, file_link_table
+    table, link_table, decimal_link_table, file_link_table
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Some baserow field types have multiple different 'modes' which result in
-    different different database columns and modes of operation being
+    different database columns and modes of operation being
     created. This function creates a dictionary of field type to a list of
     kwarg dicts, one for each interesting possible 'subtype' of the field.
     """
@@ -104,6 +104,16 @@ def construct_all_possible_field_kwargs(
         ],
         "link_row": [
             {"name": "link_row", "link_row_table": link_table},
+            {
+                "name": "self_link_row",
+                "link_row_table": table,
+                "has_related_field": False,
+            },
+            {
+                "name": "link_row_without_related",
+                "link_row_table": link_table,
+                "has_related_field": False,
+            },
             {"name": "decimal_link_row", "link_row_table": decimal_link_table},
             {"name": "file_link_row", "link_row_table": file_link_table},
         ],
@@ -127,9 +137,27 @@ def construct_all_possible_field_kwargs(
                 ],
             }
         ],
+        "multiple_collaborators": [
+            {
+                "name": "multiple_collaborators",
+            }
+        ],
         "phone_number": [{"name": "phone_number"}],
         "formula": [
-            {"name": "formula", "formula": "CONCAT('test ', UPPER('formula'))"}
+            # Make one for each Baserow formula type!
+            {"name": "formula_text", "formula": "CONCAT('test ', UPPER('formula'))"},
+            {"name": "formula_int", "formula": "1"},
+            {"name": "formula_bool", "formula": "true"},
+            {"name": "formula_decimal", "formula": "100/3"},
+            {"name": "formula_dateinterval", "formula": "date_interval('1 day')"},
+            {"name": "formula_date", "formula": "todate('20200101', 'YYYYMMDD')"},
+            {"name": "formula_singleselect", "formula": "field('single_select')"},
+            {"name": "formula_email", "formula": "field('email')"},
+            {
+                "name": "formula_link_with_label",
+                "formula": "button('https://google.com', 'label')",
+            },
+            {"name": "formula_link_url_only", "formula": "link('https://google.com')"},
         ],
         "lookup": [
             {

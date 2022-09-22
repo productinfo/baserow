@@ -35,14 +35,19 @@
           :table="table"
         ></SidebarItem>
       </ul>
-      <a class="tree__sub-add" @click="$refs.createTableModal.show()">
+      <ul v-if="pendingJobs.length" class="tree__subs">
+        <SidebarItemPendingJob
+          v-for="job in pendingJobs"
+          :key="job.id"
+          :job="job"
+        >
+        </SidebarItemPendingJob>
+      </ul>
+      <a class="tree__sub-add" @click="$refs.importFileModal.show()">
         <i class="fas fa-plus"></i>
         {{ $t('sidebar.createTable') }}
       </a>
-      <CreateTableModal
-        ref="createTableModal"
-        :application="application"
-      ></CreateTableModal>
+      <ImportFileModal ref="importFileModal" :database="application" />
     </template>
   </SidebarApplication>
 </template>
@@ -50,12 +55,18 @@
 <script>
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import SidebarItem from '@baserow/modules/database/components/sidebar/SidebarItem'
-import CreateTableModal from '@baserow/modules/database/components/table/CreateTableModal'
+import SidebarItemPendingJob from '@baserow/modules/database/components/sidebar/SidebarItemPendingJob'
+import ImportFileModal from '@baserow/modules/database/components/table/ImportFileModal'
 import SidebarApplication from '@baserow/modules/core/components/sidebar/SidebarApplication'
 
 export default {
   name: 'Sidebar',
-  components: { SidebarApplication, SidebarItem, CreateTableModal },
+  components: {
+    SidebarApplication,
+    SidebarItem,
+    SidebarItemPendingJob,
+    ImportFileModal,
+  },
   props: {
     application: {
       type: Object,
@@ -71,6 +82,13 @@ export default {
       return this.application.tables
         .map((table) => table)
         .sort((a, b) => a.order - b.order)
+    },
+    pendingJobs() {
+      return this.$store.getters['job/getAll'].filter((job) =>
+        this.$registry
+          .get('job', job.type)
+          .isJobPartOfApplication(job, this.application)
+      )
     },
   },
   methods: {

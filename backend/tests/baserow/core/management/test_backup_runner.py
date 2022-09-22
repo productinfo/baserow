@@ -1,17 +1,16 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, call
+from unittest.mock import call, patch
+
+from django.db import connection, transaction
 
 import pytest
-from django.db import connection
 from freezegun import freeze_time
 
 from baserow.contrib.database.table.models import Table
 from baserow.core.management.backup.backup_runner import BaserowBackupRunner
-from baserow.core.management.backup.exceptions import (
-    InvalidBaserowBackupArchive,
-)
+from baserow.core.management.backup.exceptions import InvalidBaserowBackupArchive
 from baserow.core.trash.handler import TrashHandler
 
 
@@ -51,7 +50,8 @@ def test_can_backup_and_restore_baserow_reverting_changes(data_fixture, environ)
         # Add a new row after we took the back-up that we want to reset by restoring.
         model.objects.create(**{"name": "E"})
         # Delete a table to check it is recreated.
-        TrashHandler.permanently_delete(table_to_delete)
+        with transaction.atomic():
+            TrashHandler.permanently_delete(table_to_delete)
 
         assert model.objects.count() == 5
         assert Table.objects.count() == 1

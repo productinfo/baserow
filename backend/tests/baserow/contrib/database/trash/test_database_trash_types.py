@@ -1,32 +1,33 @@
 from unittest.mock import patch
 
-import pytest
 from django.conf import settings
 from django.db import connection
 from django.urls import reverse
 from django.utils import timezone
+
+import pytest
 from freezegun import freeze_time
 from rest_framework.status import HTTP_200_OK
 
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import (
     Field,
-    TextField,
+    FormulaField,
     LinkRowField,
     LookupField,
-    FormulaField,
+    TextField,
 )
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.contrib.database.table.cache import invalidate_table_in_model_cache
 from baserow.contrib.database.table.models import Table
-from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.trash.models import TrashedRows
+from baserow.contrib.database.views.handler import ViewHandler
 from baserow.core.models import TrashEntry
 from baserow.core.trash.exceptions import (
+    CannotRestoreChildBeforeParent,
     ParentIdMustBeProvidedException,
     ParentIdMustNotBeProvidedException,
     RelatedTableTrashedException,
-    CannotRestoreChildBeforeParent,
 )
 from baserow.core.trash.handler import TrashHandler
 
@@ -67,8 +68,8 @@ def test_perm_deleting_many_rows_at_once_only_looks_up_the_model_once(
 
     TrashEntry.objects.update(should_be_permanently_deleted=True)
 
-    invalidate_table_in_model_cache(table.id, invalidate_related_tables=True)
-    with django_assert_num_queries(13):
+    invalidate_table_in_model_cache(table.id)
+    with django_assert_num_queries(14):
         TrashHandler.permanently_delete_marked_trash()
 
     row_2 = handler.create_row(user=user, table=table)
@@ -86,7 +87,7 @@ def test_perm_deleting_many_rows_at_once_only_looks_up_the_model_once(
 
     TrashEntry.objects.update(should_be_permanently_deleted=True)
 
-    invalidate_table_in_model_cache(table.id, invalidate_related_tables=True)
+    invalidate_table_in_model_cache(table.id)
     # We only want seven more queries when deleting 2 rows instead of 1 compared to
     # above:
     # 1. An extra query to open the second trash entries savepoint
@@ -98,7 +99,7 @@ def test_perm_deleting_many_rows_at_once_only_looks_up_the_model_once(
     # 7. An extra query to close the second trash entries savepoint
     # If we weren't caching the table models an extra number of queries would be first
     # performed to lookup the table information which breaks this assertion.
-    with django_assert_num_queries(20):
+    with django_assert_num_queries(21):
         TrashHandler.permanently_delete_marked_trash()
 
 
@@ -475,16 +476,18 @@ def test_trash_and_restore_rows_in_batch(send_mock, data_fixture):
     customers_primary_field = field_handler.create_field(
         user=user, table=customers_table, type_name="text", name="Name", primary=True
     )
-    row1 = row_handler.create_row(
-        user=user,
-        table=customers_table,
-        values={f"field_{customers_primary_field.id}": "Row A"},
-    )
-    row2 = row_handler.create_row(
-        user=user,
-        table=customers_table,
-        values={f"field_{customers_primary_field.id}": ""},
-    )
+
+    with patch("baserow.contrib.database.rows.signals.rows_created.send"):
+        row1 = row_handler.create_row(
+            user=user,
+            table=customers_table,
+            values={f"field_{customers_primary_field.id}": "Row A"},
+        )
+        row2 = row_handler.create_row(
+            user=user,
+            table=customers_table,
+            values={f"field_{customers_primary_field.id}": ""},
+        )
 
     trashed_rows = TrashedRows.objects.create(
         table=customers_table, row_ids=[row1.id, row2.id]
@@ -615,7 +618,7 @@ def test_restoring_a_trashed_link_field_restores_the_opposing_field_also(
         name="Customer",
         link_row_table=customers_table,
     )
-    TrashHandler.trash(user, database.group, database, link_field_1)
+    FieldHandler().delete_field(user, link_field_1)
 
     assert LinkRowField.trash.count() == 2
 
@@ -1021,18 +1024,21 @@ def test_a_restored_field_will_have_its_name_changed_to_ensure_it_is_unique(
     row_handler = RowHandler()
 
     # Create a primary field and some example data for the customers table.
-    customers_primary_field = field_handler.create_field(
-        user=user, table=customers_table, type_name="text", name="Name", primary=True
+    customers_field = field_handler.create_field(
+        user=user,
+        table=customers_table,
+        type_name="text",
+        name="Name",
     )
     row_handler.create_row(
         user=user,
         table=customers_table,
-        values={f"field_{customers_primary_field.id}": "John"},
+        values={f"field_{customers_field.id}": "John"},
     )
     row_handler.create_row(
         user=user,
         table=customers_table,
-        values={f"field_{customers_primary_field.id}": "Jane"},
+        values={f"field_{customers_field.id}": "Jane"},
     )
 
     link_field_1 = field_handler.create_field(
@@ -1042,8 +1048,8 @@ def test_a_restored_field_will_have_its_name_changed_to_ensure_it_is_unique(
         name="Customer",
         link_row_table=customers_table,
     )
-    TrashHandler.trash(user, database.group, database, link_field_1)
-    TrashHandler.trash(user, database.group, database, customers_primary_field)
+    field_handler.delete_field(user, link_field_1)
+    field_handler.delete_field(user, customers_field)
 
     assert LinkRowField.trash.count() == 2
 
@@ -1073,13 +1079,13 @@ def test_a_restored_field_will_have_its_name_changed_to_ensure_it_is_unique(
     assert link_field_2.link_row_related_field.name == "Table"
     assert link_field_1.link_row_related_field.name == "Table (Restored)"
 
-    TrashHandler.restore_item(user, "field", customers_primary_field.id)
-    customers_primary_field.refresh_from_db()
+    TrashHandler.restore_item(user, "field", customers_field.id)
+    customers_field.refresh_from_db()
 
     assert TextField.objects.count() == 3
     assert clashing_field.name == "Name"
     assert another_clashing_field.name == "Name (Restored)"
-    assert customers_primary_field.name == "Name (Restored) 2"
+    assert customers_field.name == "Name (Restored) 2"
 
     # Check that a normal trash and restore when there aren't any naming conflicts will
     # return the old names.
@@ -1125,9 +1131,7 @@ def test_perm_delete_related_link_row_field(data_fixture):
         link_row_table=customers_table,
     )
 
-    TrashHandler.trash(
-        user, database.group, database, link_field_1.link_row_related_field
-    )
+    field_handler.delete_field(user, link_field_1.link_row_related_field)
     assert TrashEntry.objects.count() == 1
     link_field_1.refresh_from_db()
     assert link_field_1.trashed
@@ -1559,3 +1563,61 @@ def test_trash_restore_view(data_fixture):
     view.refresh_from_db()
 
     assert view.trashed is False
+
+
+@pytest.mark.django_db
+def test_can_perm_delete_application_with_linked_tables(data_fixture):
+    def test(table_1_order, table_2_order):
+        user = data_fixture.create_user()
+        database = data_fixture.create_database_application(user=user)
+        table_a = data_fixture.create_database_table(
+            user=user, database=database, order=table_1_order
+        )
+        table_b = data_fixture.create_database_table(
+            user=user, database=database, order=table_2_order
+        )
+
+        FieldHandler().create_field(
+            user, table_a, "link_row", link_row_table=table_b, name="link_row"
+        )
+
+        TrashHandler.trash(user, database.group, database, database)
+
+        TrashEntry.objects.update(should_be_permanently_deleted=True)
+
+        TrashHandler.permanently_delete_marked_trash()
+
+        assert (
+            table_a.get_database_table_name()
+            not in connection.introspection.table_names()
+        )
+        assert (
+            table_b.get_database_table_name()
+            not in connection.introspection.table_names()
+        )
+        assert TrashEntry.objects.count() == 0
+
+    test(table_1_order=0, table_2_order=1)
+    test(table_1_order=1, table_2_order=0)
+
+
+@pytest.mark.django_db
+def test_can_perm_delete_application_which_links_to_self(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table_a = data_fixture.create_database_table(user=user, database=database)
+
+    FieldHandler().create_field(
+        user, table_a, "link_row", link_row_table=table_a, name="link_row"
+    )
+
+    TrashHandler.trash(user, database.group, database, database)
+
+    TrashEntry.objects.update(should_be_permanently_deleted=True)
+
+    TrashHandler.permanently_delete_marked_trash()
+
+    assert (
+        table_a.get_database_table_name() not in connection.introspection.table_names()
+    )
+    assert TrashEntry.objects.count() == 0

@@ -18,6 +18,12 @@ export const routes = [
       p.viewId = p.viewId ? parseInt(p.viewId) : null
       return p
     },
+    children: [
+      {
+        path: 'row/:rowId',
+        name: 'database-table-row',
+      },
+    ],
   },
   // These redirect exist because the original api docs path was `/api/docs`, but
   // they have been renamed.
@@ -48,7 +54,12 @@ export const routes = [
   {
     name: 'database-public-grid-view',
     path: '/public/grid/:slug',
-    component: path.resolve(__dirname, 'pages/publicGridView.vue'),
+    component: path.resolve(__dirname, 'pages/publicView.vue'),
+  },
+  {
+    name: 'database-public-gallery-view',
+    path: '/public/gallery/:slug',
+    component: path.resolve(__dirname, 'pages/publicView.vue'),
   },
   {
     name: 'database-public-view-auth',

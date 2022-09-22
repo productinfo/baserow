@@ -1,18 +1,19 @@
 <template>
   <Modal ref="modal">
     <form @submit.prevent="create">
-      <h2 v-if="primary !== undefined" class="box__title">
+      <h2 class="box__title">
         {{ heading }}
       </h2>
       <Error :error="error"></Error>
       <RowEditModalFieldsList
         :primary-is-sortable="primaryIsSortable"
         :fields="visibleFields"
-        :sortable="true"
+        :sortable="sortable"
         :hidden="false"
         :read-only="false"
         :row="row"
         :table="table"
+        :can-modify-fields="canModifyFields"
         @field-updated="$emit('field-updated', $event)"
         @field-deleted="$emit('field-deleted')"
         @order-fields="$emit('order-fields', $event)"
@@ -34,6 +35,7 @@
           :read-only="false"
           :row="row"
           :table="table"
+          :can-modify-fields="canModifyFields"
           @field-updated="$emit('field-updated', $event)"
           @field-deleted="$emit('field-deleted')"
           @toggle-field-visibility="$emit('toggle-field-visibility', $event)"
@@ -62,6 +64,7 @@ import modal from '@baserow/modules/core/mixins/modal'
 import error from '@baserow/modules/core/mixins/error'
 import RowEditModalFieldsList from './RowEditModalFieldsList.vue'
 import RowEditModalHiddenFieldsSection from './RowEditModalHiddenFieldsSection.vue'
+import { getPrimaryOrFirstField } from '@baserow/modules/database/utils/field'
 
 export default {
   name: 'RowCreateModal',
@@ -75,15 +78,20 @@ export default {
       type: Object,
       required: true,
     },
-    primary: {
-      type: Object,
-      required: false,
-      default: undefined,
-    },
     primaryIsSortable: {
       type: Boolean,
       required: false,
       default: false,
+    },
+    sortable: {
+      type: Boolean,
+      required: false,
+      default: true,
+    },
+    canModifyFields: {
+      type: Boolean,
+      required: false,
+      default: true,
     },
     visibleFields: {
       type: Array,
@@ -111,11 +119,17 @@ export default {
       return this.visibleFields.concat(this.hiddenFields)
     },
     heading() {
-      const name = `field_${this.primary.id}`
+      const field = getPrimaryOrFirstField(this.visibleFields)
+
+      if (!field) {
+        return null
+      }
+
+      const name = `field_${field.id}`
       if (Object.prototype.hasOwnProperty.call(this.row, name)) {
         return this.$registry
-          .get('field', this.primary.type)
-          .toHumanReadableString(this.primary, this.row[name])
+          .get('field', field.type)
+          .toHumanReadableString(field, this.row[name])
       } else {
         return null
       }

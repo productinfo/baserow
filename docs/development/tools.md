@@ -4,10 +4,7 @@
 
 ### PostgreSQL
 
-By default Baserow uses PostgreSQL for persistent storage. In the near future MySQL and 
-SQLite are also going to by supported, but this is not yet the case. Most things will
-probably work with the other engines, but it will probably fail when converting a field
-to another type. However, it hasn't yet been tested if the other engines work.
+Baserow uses PostgreSQL for persistent storage.
 
 https://www.postgresql.org/
 
@@ -112,7 +109,7 @@ https://stylelint.io/
 
 ### ESLint
 
-ESLint is used to make sure all the Javascript code is in the correct format. It is 
+ESLint is used to make sure all the JavaScript code is in the correct format. It is 
 used when the `make eslint` is called and it runs live in the development environment
 via prettier.
 

@@ -1,7 +1,11 @@
 import datetime
+import importlib
 import os
+import re
 from decimal import Decimal
-from urllib.parse import urlparse, urljoin
+from ipaddress import ip_network
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import dj_database_url
 from celery.schedules import crontab
@@ -10,6 +14,20 @@ from corsheaders.defaults import default_headers
 from baserow.version import VERSION
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+BASEROW_PLUGIN_DIR_PATH = Path(os.environ.get("BASEROW_PLUGIN_DIR", "/baserow/plugins"))
+
+if BASEROW_PLUGIN_DIR_PATH.exists():
+    BASEROW_PLUGIN_FOLDERS = [
+        file
+        for file in BASEROW_PLUGIN_DIR_PATH.iterdir()
+        if file.is_dir() and Path(file, "backend").exists()
+    ]
+else:
+    BASEROW_PLUGIN_FOLDERS = []
+
+BASEROW_BACKEND_PLUGIN_NAMES = [d.name for d in BASEROW_PLUGIN_FOLDERS]
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 if "SECRET_KEY" in os.environ:
@@ -35,20 +53,27 @@ INSTALLED_APPS = [
     "health_check",
     "health_check.db",
     "health_check.cache",
-    "health_check.storage",
     "health_check.contrib.migrations",
-    "health_check.contrib.psutil",
     "health_check.contrib.redis",
     "baserow.core",
     "baserow.api",
     "baserow.ws",
     "baserow.contrib.database",
     "baserow_premium",
+    "baserow_enterprise",
 ]
 
-ADDITIONAL_APPS = os.getenv("ADDITIONAL_APPS", None)
+BASEROW_FULL_HEALTHCHECKS = os.getenv("BASEROW_FULL_HEALTHCHECKS", None)
+if BASEROW_FULL_HEALTHCHECKS is not None:
+    INSTALLED_APPS += ["health_check.storage", "health_check.contrib.psutil"]
+
+ADDITIONAL_APPS = os.getenv("ADDITIONAL_APPS", "").split(",")
 if ADDITIONAL_APPS is not None:
-    INSTALLED_APPS += ADDITIONAL_APPS.split(",")
+    INSTALLED_APPS += [app.strip() for app in ADDITIONAL_APPS if app.strip() != ""]
+
+if BASEROW_BACKEND_PLUGIN_NAMES:
+    print(f"Loaded backend plugins: {','.join(BASEROW_BACKEND_PLUGIN_NAMES)}")
+    INSTALLED_APPS.extend(BASEROW_BACKEND_PLUGIN_NAMES)
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -93,6 +118,16 @@ REDIS_URL = os.getenv(
     f"{REDIS_PROTOCOL}://{REDIS_USERNAME}:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0",
 )
 
+BASEROW_GROUP_STORAGE_USAGE_ENABLED = (
+    os.getenv("BASEROW_GROUP_STORAGE_USAGE_ENABLED", "false") == "true"
+)
+
+BASEROW_GROUP_STORAGE_USAGE_QUEUE = os.getenv(
+    "BASEROW_GROUP_STORAGE_USAGE_QUEUE", "export"
+)
+
+BASEROW_COUNT_ROWS_ENABLED = os.getenv("BASEROW_COUNT_ROWS_ENABLED", "false") == "true"
+
 CELERY_BROKER_URL = REDIS_URL
 CELERY_TASK_ROUTES = {
     "baserow.contrib.database.export.tasks.run_export_job": {"queue": "export"},
@@ -101,7 +136,9 @@ CELERY_TASK_ROUTES = {
         "queue": "export"
     },
     "baserow.core.trash.tasks.permanently_delete_marked_trash": {"queue": "export"},
+    "baserow.core.usage.tasks": {"queue": BASEROW_GROUP_STORAGE_USAGE_QUEUE},
     "baserow.contrib.database.table.tasks.run_row_count_job": {"queue": "export"},
+    "baserow.core.jobs.tasks.clean_up_jobs": {"queue": "export"},
 }
 CELERY_SOFT_TIME_LIMIT = 60 * 5  # 5 minutes
 CELERY_TIME_LIMIT = CELERY_SOFT_TIME_LIMIT + 60  # 60 seconds
@@ -209,6 +246,7 @@ LANGUAGES = [
     ("de", "German"),
     ("es", "Spanish"),
     ("it", "Italian"),
+    ("pl", "Polish"),
 ]
 
 TIME_ZONE = "UTC"
@@ -239,10 +277,14 @@ CORS_ORIGIN_ALLOW_ALL = True
 CLIENT_SESSION_ID_HEADER = "ClientSessionId"
 MAX_CLIENT_SESSION_ID_LENGTH = 256
 
+CLIENT_UNDO_REDO_ACTION_GROUP_ID_HEADER = "ClientUndoRedoActionGroupId"
+MAX_UNDOABLE_ACTIONS_PER_ACTION_GROUP = 2
+
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "WebSocketId",
     PUBLIC_VIEW_AUTHORIZATION_HEADER,
     CLIENT_SESSION_ID_HEADER,
+    CLIENT_UNDO_REDO_ACTION_GROUP_ID_HEADER,
 ]
 
 JWT_AUTH = {
@@ -261,7 +303,7 @@ SPECTACULAR_SETTINGS = {
         "name": "MIT",
         "url": "https://gitlab.com/bramw/baserow/-/blob/master/LICENSE",
     },
-    "VERSION": "1.10.1",
+    "VERSION": "1.12.1",
     "SERVE_INCLUDE_SCHEMA": False,
     "TAGS": [
         {"name": "Settings"},
@@ -272,6 +314,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Templates"},
         {"name": "Trash"},
         {"name": "Applications"},
+        {"name": "Snapshots"},
+        {"name": "Jobs"},
         {"name": "Database tables"},
         {"name": "Database table fields"},
         {"name": "Database table views"},
@@ -286,7 +330,6 @@ SPECTACULAR_SETTINGS = {
         {"name": "Database table export"},
         {"name": "Database table webhooks"},
         {"name": "Database tokens"},
-        {"name": "Database airtable import"},
         {"name": "Admin"},
     ],
     "ENUM_NAME_OVERRIDES": {
@@ -339,6 +382,7 @@ SPECTACULAR_SETTINGS = {
             "date_not_equal",
             "date_equals_today",
             "date_equals_days_ago",
+            "date_equals_week",
             "date_equals_month",
             "date_equals_day_of_month",
             "date_equals_year",
@@ -352,7 +396,7 @@ SPECTACULAR_SETTINGS = {
             "multiple_select_has",
             "multiple_select_has_not",
         ],
-        "EventTypesEnum": ["row.created", "row.updated", "row.deleted"],
+        "EventTypesEnum": ["rows.created", "rows.updated", "rows.deleted"],
     },
 }
 
@@ -444,6 +488,10 @@ INITIAL_TABLE_DATA_LIMIT = None
 if "INITIAL_TABLE_DATA_LIMIT" in os.environ:
     INITIAL_TABLE_DATA_LIMIT = int(os.getenv("INITIAL_TABLE_DATA_LIMIT"))
 
+BASEROW_INITIAL_CREATE_SYNC_TABLE_DATA_LIMIT = int(
+    os.getenv("BASEROW_INITIAL_CREATE_SYNC_TABLE_DATA_LIMIT", 5000)
+)
+
 MEDIA_URL_PATH = "/media/"
 MEDIA_URL = os.getenv("MEDIA_URL", urljoin(PUBLIC_BACKEND_URL, MEDIA_URL_PATH))
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/baserow/media")
@@ -458,6 +506,8 @@ BASEROW_FILE_UPLOAD_SIZE_LIMIT_MB = int(
 EXPORT_FILES_DIRECTORY = "export_files"
 EXPORT_CLEANUP_INTERVAL_MINUTES = 5
 EXPORT_FILE_EXPIRE_MINUTES = 60
+
+USAGE_CALCULATION_INTERVAL = crontab(minute=0, hour=0)  # Midnight
 
 ROW_COUNT_INTERVAL = crontab(minute=0, hour=0)  # Midnight
 
@@ -513,11 +563,40 @@ DONT_UPDATE_FORMULAS_AFTER_MIGRATION = bool(
     os.getenv("DONT_UPDATE_FORMULAS_AFTER_MIGRATION", "")
 )
 
-WEBHOOKS_MAX_CONSECUTIVE_TRIGGER_FAILURES = 8
-WEBHOOKS_MAX_RETRIES_PER_CALL = 8
-WEBHOOKS_MAX_PER_TABLE = 20
-WEBHOOKS_MAX_CALL_LOG_ENTRIES = 10
-WEBHOOKS_REQUEST_TIMEOUT_SECONDS = 5
+BASEROW_WEBHOOKS_MAX_CONSECUTIVE_TRIGGER_FAILURES = int(
+    os.getenv("BASEROW_WEBHOOKS_MAX_CONSECUTIVE_TRIGGER_FAILURES", 8)
+)
+BASEROW_WEBHOOKS_MAX_RETRIES_PER_CALL = int(
+    os.getenv("BASEROW_WEBHOOKS_MAX_RETRIES_PER_CALL", 8)
+)
+BASEROW_WEBHOOKS_MAX_PER_TABLE = int(os.getenv("BASEROW_WEBHOOKS_MAX_PER_TABLE", 20))
+BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES = int(
+    os.getenv("BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES", 10)
+)
+BASEROW_WEBHOOKS_REQUEST_TIMEOUT_SECONDS = int(
+    os.getenv("BASEROW_WEBHOOKS_REQUEST_TIMEOUT_SECONDS", 5)
+)
+BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS = bool(
+    os.getenv("BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS", False)
+)
+BASEROW_WEBHOOKS_IP_BLACKLIST = [
+    ip_network(ip.strip())
+    for ip in os.getenv("BASEROW_WEBHOOKS_IP_BLACKLIST", "").split(",")
+    if ip.strip() != ""
+]
+BASEROW_WEBHOOKS_IP_WHITELIST = [
+    ip_network(ip.strip())
+    for ip in os.getenv("BASEROW_WEBHOOKS_IP_WHITELIST", "").split(",")
+    if ip.strip() != ""
+]
+BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST = [
+    re.compile(url_regex.strip())
+    for url_regex in os.getenv("BASEROW_WEBHOOKS_URL_REGEX_BLACKLIST", "").split(",")
+    if url_regex.strip() != ""
+]
+BASEROW_WEBHOOKS_URL_CHECK_TIMEOUT_SECS = int(
+    os.getenv("BASEROW_WEBHOOKS_URL_CHECK_TIMEOUT_SECS", "10")
+)
 
 # ======== WARNING ========
 # Please read and understand everything at:
@@ -542,8 +621,22 @@ BASEROW_BACKEND_DATABASE_LOG_LEVEL = os.getenv(
     "BASEROW_BACKEND_DATABASE_LOG_LEVEL", "ERROR"
 )
 
-BASEROW_AIRTABLE_IMPORT_SOFT_TIME_LIMIT = int(
-    os.getenv("BASEROW_AIRTABLE_IMPORT_SOFT_TIME_LIMIT", 60 * 30)  # 30 minutes
+
+BASEROW_JOB_EXPIRATION_TIME_LIMIT = int(
+    os.getenv("BASEROW_JOB_EXPIRATION_TIME_LIMIT", 30 * 24 * 60)  # 30 days
+)
+BASEROW_JOB_SOFT_TIME_LIMIT = int(
+    os.getenv("BASEROW_JOB_SOFT_TIME_LIMIT", 60 * 30)  # 30 minutes
+)
+BASEROW_JOB_CLEANUP_INTERVAL_MINUTES = int(
+    os.getenv("BASEROW_JOB_CLEANUP_INTERVAL_MINUTES", 5)  # 5 minutes
+)
+BASEROW_MAX_ROW_REPORT_ERROR_COUNT = int(
+    os.getenv("BASEROW_MAX_ROW_REPORT_ERROR_COUNT", 30)
+)
+BASEROW_MAX_SNAPSHOTS_PER_GROUP = int(os.getenv("BASEROW_MAX_SNAPSHOTS_PER_GROUP", -1))
+BASEROW_SNAPSHOT_EXPIRATION_TIME_DAYS = int(
+    os.getenv("BASEROW_SNAPSHOT_EXPIRATION_TIME_DAYS", 360)  # 360 days
 )
 
 # A comma separated list of feature flags used to enable in-progress or not ready
@@ -598,8 +691,6 @@ LOGGING = {
     },
 }
 
-BASEROW_COUNT_ROWS_ENABLED = os.getenv("BASEROW_COUNT_ROWS_ENABLED", "false") == "true"
-
 # Now incorrectly named old variable, previously we would run `sync_templates` prior
 # to starting the gunicorn server in Docker. This variable would prevent that from
 # happening. Now we sync_templates in an async job triggered after migration.
@@ -626,4 +717,33 @@ BASEROW_SYNC_TEMPLATES_TIME_LIMIT = int(
 
 APPEND_SLASH = False
 
+BASEROW_DISABLE_MODEL_CACHE = bool(os.getenv("BASEROW_DISABLE_MODEL_CACHE", ""))
+BASEROW_NOWAIT_FOR_LOCKS = not bool(
+    os.getenv("BASEROW_WAIT_INSTEAD_OF_409_CONFLICT_ERROR", False)
+)
+
+# Indicates whether we are running the tests or not. Set to True in the test.py settings
+# file used by pytest.ini
 TESTS = False
+
+
+# Allows accessing and setting values on a dictionary like an object. Using this
+# we can pass plugin authors a `settings` object which can modify the settings like
+# they expect (settings.SETTING = 'test') etc.
+class AttrDict(dict):
+    def __getattr__(self, item):
+        return super().__getitem__(item)
+
+    def __setattr__(self, item, value):
+        return super().__setitem__(item, value)
+
+
+for plugin in BASEROW_BACKEND_PLUGIN_NAMES:
+    try:
+        mod = importlib.import_module(plugin + ".config.settings.settings")
+        # The plugin should have a setup function which accepts a 'settings' object.
+        # This settings object is an AttrDict shadowing our local variables so the
+        # plugin can access the Django settings and modify them prior to startup.
+        result = mod.setup(AttrDict({k: v for k, v in vars().items() if k.isupper()}))
+    except ImportError:
+        pass

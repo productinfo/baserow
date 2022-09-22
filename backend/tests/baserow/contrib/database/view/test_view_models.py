@@ -1,12 +1,12 @@
 import pytest
 
 from baserow.contrib.database.views.models import (
+    FormViewFieldOptions,
+    GalleryViewFieldOptions,
+    GridViewFieldOptions,
+    ViewDecoration,
     ViewFilter,
     ViewSort,
-    GridViewFieldOptions,
-    GalleryViewFieldOptions,
-    FormViewFieldOptions,
-    ViewDecoration,
 )
 
 
@@ -217,6 +217,28 @@ def test_view_decoration_manager_view_trashed(data_fixture):
     view.save()
 
     assert ViewDecoration.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_form_view_field_options_conditions_manager_field_trashed(data_fixture):
+    form_view = data_fixture.create_form_view()
+    field = data_fixture.create_text_field(table=form_view.table)
+    field_2 = data_fixture.create_text_field(table=form_view.table)
+    options = data_fixture.create_form_view_field_option(form_view, field, enabled=True)
+    data_fixture.create_form_view_field_options_condition(
+        field_option=options, field=field_2
+    )
+
+    field_options = form_view.get_field_options()
+    conditions = field_options[0].conditions.all()
+    assert len(conditions) == 1
+
+    field_2.trashed = True
+    field_2.save()
+
+    field_options = form_view.get_field_options()
+    conditions = field_options[0].conditions.all()
+    assert len(conditions) == 0
 
 
 @pytest.mark.django_db

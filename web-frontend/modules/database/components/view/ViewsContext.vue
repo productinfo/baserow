@@ -28,6 +28,7 @@
           update: order,
           marginTop: -1.5,
         }"
+        :database="database"
         :view="view"
         :table="table"
         :read-only="readOnly"
@@ -42,6 +43,7 @@
         <CreateViewLink
           v-for="(viewType, type) in viewTypes"
           :key="type"
+          :database="database"
           :table="table"
           :view-type="viewType"
           @created="selectedView"
@@ -69,6 +71,10 @@ export default {
   },
   mixins: [context, dropdownHelpers],
   props: {
+    database: {
+      type: Object,
+      required: true,
+    },
     table: {
       type: Object,
       required: true,
@@ -92,6 +98,9 @@ export default {
   computed: {
     viewTypes() {
       return this.$registry.getAll('view')
+    },
+    selectedViews() {
+      return this.views.filter((item) => item._.selected)
     },
     ...mapState({
       isLoading: (state) => state.view.loading,
@@ -118,7 +127,7 @@ export default {
       In case there are no views, we don't need to do anything and can simply return.
     */
     scrollViewDropdownIfNeeded() {
-      if (this.views.length === 0) {
+      if (this.selectedViews.length === 0) {
         return
       }
       const dropdownElement = this.$refs.dropdown
@@ -138,8 +147,7 @@ export default {
      * view dom item based on whether or not it is selected.
      */
     getSelectedViewItem() {
-      const selectedViewArray = this.views.filter((item) => item._.selected)
-      const selectedViewItemID = selectedViewArray[0].id
+      const selectedViewItemID = this.selectedViews[0].id
       return this.$refs[`view-${selectedViewItemID}`][0].$el
     },
     /**

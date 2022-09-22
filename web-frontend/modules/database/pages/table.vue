@@ -1,21 +1,25 @@
 <template>
-  <Table
-    :database="database"
-    :table="table"
-    :fields="fields"
-    :primary="primary"
-    :views="views"
-    :view="view"
-    :table-loading="tableLoading"
-    store-prefix="page/"
-    @selected-view="selectedView"
-  ></Table>
+  <div>
+    <Table
+      :database="database"
+      :table="table"
+      :fields="fields"
+      :views="views"
+      :view="view"
+      :row="row"
+      :table-loading="tableLoading"
+      store-prefix="page/"
+      @selected-view="selectedView"
+      @selected-row="selectRow"
+    ></Table>
+  </div>
 </template>
 
 <script>
 import { mapState } from 'vuex'
 
 import Table from '@baserow/modules/database/components/table/Table'
+import RowService from '@baserow/modules/database/services/row'
 import { StoreItemLookupError } from '@baserow/modules/core/errors'
 
 /**
@@ -50,7 +54,7 @@ export default {
     const databaseId = parseInt(params.databaseId)
     const tableId = parseInt(params.tableId)
     let viewId = params.viewId ? parseInt(params.viewId) : null
-    const data = {}
+    const data = { row: null }
 
     // Try to find the table in the already fetched applications by the
     // groupsAndApplications middleware and select that one. By selecting the table, the
@@ -75,14 +79,20 @@ export default {
     // After selecting the table the fields become available which need to be added to
     // the data.
     data.fields = store.getters['field/getAll']
-    data.primary = store.getters['field/getPrimary']
     data.view = undefined
 
     // Because we do not have a dashboard for the table yet we're going to redirect to
     // the first available view.
     const firstView = store.getters['view/first']
     if (viewId === null && firstView !== null) {
-      viewId = firstView.id
+      const firstViewType = app.$registry.get('view', firstView.type)
+      // If the view is deactivated, it's not possible to open the view because it will
+      // put the user in an unrecoverable state. Therefore, it's better to not select a
+      // view, so that the user can choose which he wants to select in the top left
+      // corner.
+      if (!firstViewType.isDeactivated(data.database.group.id)) {
+        viewId = firstView.id
+      }
     }
 
     // If a view id is provided and the table is selected we can select the view. The
@@ -97,11 +107,11 @@ export default {
         // filled with initial data so we're going to call the fetch function here.
         const type = app.$registry.get('view', view.type)
 
-        if (type.isDeactivated()) {
+        if (type.isDeactivated(data.database.group.id)) {
           return error({ statusCode: 400, message: type.getDeactivatedText() })
         }
 
-        await type.fetch({ store }, view, data.fields, data.primary, 'page/')
+        await type.fetch({ store }, view, data.fields, 'page/')
       } catch (e) {
         // In case of a network error we want to fail hard.
         if (e.response === undefined && !(e instanceof StoreItemLookupError)) {
@@ -109,6 +119,18 @@ export default {
         }
 
         return error({ statusCode: 404, message: 'View not found.' })
+      }
+    }
+
+    if (params.rowId) {
+      try {
+        const { data: rowData } = await RowService(app.$client).get(
+          tableId,
+          params.rowId
+        )
+        data.row = rowData
+      } catch (e) {
+        return error({ statusCode: 404, message: 'Row not found.' })
       }
     }
 
@@ -157,6 +179,25 @@ export default {
           viewId: view.id,
         },
       })
+    },
+    selectRow(rowId) {
+      if (
+        this.$route.params.rowId !== undefined &&
+        this.$route.params.rowId === rowId
+      ) {
+        return
+      }
+
+      const newPath = this.$nuxt.$router.resolve({
+        name: rowId ? 'database-table-row' : 'database-table',
+        params: {
+          databaseId: this.database.id,
+          tableId: this.table.id,
+          viewId: this.view?.id,
+          rowId,
+        },
+      }).href
+      history.replaceState({}, null, newPath)
     },
   },
 }

@@ -1,88 +1,76 @@
-from django.db import transaction
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from baserow.api.decorators import map_exceptions, allowed_includes, validate_body
+from baserow.api.decorators import allowed_includes, map_exceptions, validate_body
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP
 from baserow.api.pagination import PageNumberPagination
 from baserow.api.schemas import get_error_schema
 from baserow.api.serializers import get_example_pagination_serializer_class
-from baserow.core.db import specific_iterator
-from baserow.contrib.database.api.rows.serializers import (
-    get_example_row_serializer_class,
-    get_example_row_metadata_field_serializer,
+from baserow.contrib.database.api.fields.errors import (
+    ERROR_FIELD_DOES_NOT_EXIST,
+    ERROR_FIELD_NOT_IN_TABLE,
+    ERROR_FILTER_FIELD_NOT_FOUND,
+    ERROR_ORDER_BY_FIELD_NOT_FOUND,
+    ERROR_ORDER_BY_FIELD_NOT_POSSIBLE,
 )
 from baserow.contrib.database.api.rows.serializers import (
-    get_row_serializer_class,
     RowSerializer,
+    get_example_row_metadata_field_serializer,
+    get_example_row_serializer_class,
+    get_row_serializer_class,
 )
 from baserow.contrib.database.api.utils import get_include_exclude_field_ids
 from baserow.contrib.database.api.views.errors import (
-    ERROR_VIEW_DOES_NOT_EXIST,
+    ERROR_AGGREGATION_TYPE_DOES_NOT_EXIST,
+    ERROR_NO_AUTHORIZATION_TO_PUBLICLY_SHARED_VIEW,
+    ERROR_VIEW_FILTER_TYPE_DOES_NOT_EXIST,
+    ERROR_VIEW_FILTER_TYPE_UNSUPPORTED_FIELD,
 )
 from baserow.contrib.database.api.views.grid.serializers import (
     GridViewFieldOptionsSerializer,
-    PublicGridViewInfoSerializer,
 )
-from baserow.contrib.database.api.views.serializers import (
-    FieldOptionsField,
-)
-from baserow.contrib.database.api.views.errors import (
-    ERROR_VIEW_FILTER_TYPE_DOES_NOT_EXIST,
-    ERROR_VIEW_FILTER_TYPE_UNSUPPORTED_FIELD,
-    ERROR_AGGREGATION_TYPE_DOES_NOT_EXIST,
-    ERROR_NO_AUTHORIZATION_TO_PUBLICLY_SHARED_VIEW,
-)
-from baserow.contrib.database.api.fields.errors import (
-    ERROR_FIELD_DOES_NOT_EXIST,
-    ERROR_ORDER_BY_FIELD_NOT_POSSIBLE,
-    ERROR_ORDER_BY_FIELD_NOT_FOUND,
-    ERROR_FILTER_FIELD_NOT_FOUND,
-    ERROR_FIELD_NOT_IN_TABLE,
-)
+from baserow.contrib.database.api.views.serializers import FieldOptionsField
 from baserow.contrib.database.api.views.utils import get_public_view_authorization_token
-from baserow.contrib.database.rows.registries import row_metadata_registry
-from baserow.contrib.database.views.exceptions import (
-    NoAuthorizationToPubliclySharedView,
-    ViewDoesNotExist,
+from baserow.contrib.database.fields.exceptions import (
+    FieldDoesNotExist,
+    FieldNotInTable,
+    FilterFieldNotFound,
+    OrderByFieldNotFound,
+    OrderByFieldNotPossible,
 )
-from baserow.contrib.database.views.handler import ViewHandler
-from baserow.contrib.database.views.models import GridView
-from baserow.contrib.database.views.registries import (
-    view_type_registry,
-    view_filter_type_registry,
-    view_aggregation_type_registry,
-)
-from baserow.contrib.database.views.exceptions import (
-    ViewFilterTypeNotAllowedForField,
-    ViewFilterTypeDoesNotExist,
-    AggregationTypeDoesNotExist,
-)
-from baserow.contrib.database.fields.models import Field
-from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.field_filters import (
     FILTER_TYPE_AND,
     FILTER_TYPE_OR,
 )
-from baserow.contrib.database.fields.exceptions import (
-    FieldDoesNotExist,
-    OrderByFieldNotFound,
-    OrderByFieldNotPossible,
-    FilterFieldNotFound,
-    FieldNotInTable,
+from baserow.contrib.database.fields.handler import FieldHandler
+from baserow.contrib.database.rows.registries import row_metadata_registry
+from baserow.contrib.database.views.exceptions import (
+    AggregationTypeDoesNotExist,
+    NoAuthorizationToPubliclySharedView,
+    ViewDoesNotExist,
+    ViewFilterTypeDoesNotExist,
+    ViewFilterTypeNotAllowedForField,
+)
+from baserow.contrib.database.views.handler import ViewHandler
+from baserow.contrib.database.views.models import GridView
+from baserow.contrib.database.views.registries import (
+    view_aggregation_type_registry,
+    view_filter_type_registry,
+    view_type_registry,
 )
 from baserow.core.exceptions import UserNotInGroup
+
 from .errors import ERROR_GRID_DOES_NOT_EXIST
-from .serializers import GridViewFilterSerializer
 from .schemas import (
     field_aggregation_response_schema,
     field_aggregations_response_schema,
 )
+from .serializers import GridViewFilterSerializer
 
 
 def get_available_aggregation_type():
@@ -756,6 +744,13 @@ class PublicGridViewRowsView(APIView):
         order_by = request.GET.get("order_by")
         include_fields = request.GET.get("include_fields")
         exclude_fields = request.GET.get("exclude_fields")
+        filter_type = (
+            FILTER_TYPE_OR
+            if request.GET.get("filter_type", "AND").upper() == "OR"
+            else FILTER_TYPE_AND
+        )
+        filter_object = {key: request.GET.getlist(key) for key in request.GET.keys()}
+        count = "count" in request.GET
 
         view_handler = ViewHandler()
         view = view_handler.get_public_view_by_slug(
@@ -765,56 +760,31 @@ class PublicGridViewRowsView(APIView):
             authorization_token=get_public_view_authorization_token(request),
         )
         view_type = view_type_registry.get_by_model(view)
-
-        publicly_visible_field_options = view_type.get_visible_field_options_in_order(
-            view
-        )
-        publicly_visible_field_ids = {
-            o.field_id for o in publicly_visible_field_options
-        }
-
-        field_ids = get_include_exclude_field_ids(
-            view.table, include_fields, exclude_fields
-        )
-
-        # We have to still make a model with all fields as the public rows should still
-        # be filtered by hidden fields.
         model = view.table.get_model()
-        queryset = model.objects.all().enhance_by_fields()
-        queryset = view_handler.apply_filters(view, queryset)
 
-        if order_by:
-            queryset = queryset.order_by_fields_string(
-                order_by, False, publicly_visible_field_ids
-            )
-
-        filter_type_query_param = request.GET.get("filter_type", "AND")
-        filter_type = (
-            FILTER_TYPE_OR
-            if filter_type_query_param.upper() == "OR"
-            else FILTER_TYPE_AND
-        )
-        filter_object = {key: request.GET.getlist(key) for key in request.GET.keys()}
-        queryset = queryset.filter_by_fields_object(
-            filter_object, filter_type, publicly_visible_field_ids
+        (
+            queryset,
+            field_ids,
+            publicly_visible_field_options,
+        ) = ViewHandler().get_public_rows_queryset_and_field_ids(
+            view,
+            search=search,
+            order_by=order_by,
+            include_fields=include_fields,
+            exclude_fields=exclude_fields,
+            filter_type=filter_type,
+            filter_object=filter_object,
+            table_model=model,
+            view_type=view_type,
         )
 
-        if search:
-            queryset = queryset.search_all_fields(search, publicly_visible_field_ids)
-
-        if "count" in request.GET:
+        if count:
             return Response({"count": queryset.count()})
 
         if LimitOffsetPagination.limit_query_param in request.GET:
             paginator = LimitOffsetPagination()
         else:
             paginator = PageNumberPagination()
-
-        field_ids = (
-            list(set(field_ids) & set(publicly_visible_field_ids))
-            if field_ids
-            else publicly_visible_field_ids
-        )
 
         page = paginator.paginate_queryset(queryset, request, self)
         serializer_class = get_row_serializer_class(
@@ -831,64 +801,3 @@ class PublicGridViewRowsView(APIView):
             response.data.update(**serializer_class(view, context=context).data)
 
         return response
-
-
-class PublicGridViewInfoView(APIView):
-    permission_classes = (AllowAny,)
-
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="slug",
-                location=OpenApiParameter.PATH,
-                type=OpenApiTypes.STR,
-                required=True,
-                description="The slug of the grid view to get public information "
-                "about.",
-            )
-        ],
-        tags=["Database table grid view"],
-        operation_id="get_public_grid_view_info",
-        description=(
-            "Returns the required public information to display a single "
-            "shared grid view."
-        ),
-        request=None,
-        responses={
-            200: PublicGridViewInfoSerializer,
-            400: get_error_schema(["ERROR_USER_NOT_IN_GROUP"]),
-            401: get_error_schema(["ERROR_NO_AUTHORIZATION_TO_PUBLICLY_SHARED_VIEW"]),
-            404: get_error_schema(["ERROR_VIEW_DOES_NOT_EXIST"]),
-        },
-    )
-    @map_exceptions(
-        {
-            UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
-            ViewDoesNotExist: ERROR_VIEW_DOES_NOT_EXIST,
-            NoAuthorizationToPubliclySharedView: ERROR_NO_AUTHORIZATION_TO_PUBLICLY_SHARED_VIEW,
-        }
-    )
-    @transaction.atomic
-    def get(self, request: Request, slug: str) -> Response:
-
-        handler = ViewHandler()
-        view = handler.get_public_view_by_slug(
-            request.user,
-            slug,
-            view_model=GridView,
-            authorization_token=get_public_view_authorization_token(request),
-        )
-        grid_view_type = view_type_registry.get_by_model(view)
-        field_options = grid_view_type.get_visible_field_options_in_order(view)
-        fields = specific_iterator(
-            Field.objects.filter(id__in=field_options.values_list("field_id"))
-            .select_related("content_type")
-            .prefetch_related("select_options")
-        )
-
-        return Response(
-            PublicGridViewInfoSerializer(
-                view=view,
-                fields=fields,
-            ).data
-        )

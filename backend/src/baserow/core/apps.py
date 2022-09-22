@@ -7,26 +7,29 @@ class CoreConfig(AppConfig):
     name = "baserow.core"
 
     def ready(self):
-        from baserow.core.trash.registries import trash_item_type_registry
         from baserow.core.action.registries import (
-            action_type_registry,
             action_scope_registry,
+            action_type_registry,
         )
-        from baserow.core.trash.trash_types import GroupTrashableItemType
-        from baserow.core.trash.trash_types import ApplicationTrashableItemType
+        from baserow.core.trash.registries import trash_item_type_registry
+        from baserow.core.trash.trash_types import (
+            ApplicationTrashableItemType,
+            GroupTrashableItemType,
+        )
 
         trash_item_type_registry.register(GroupTrashableItemType())
         trash_item_type_registry.register(ApplicationTrashableItemType())
 
         from baserow.core.actions import (
-            UpdateGroupActionType,
-            CreateGroupActionType,
-            DeleteGroupActionType,
-            OrderGroupsActionType,
             CreateApplicationActionType,
-            UpdateApplicationActionType,
+            CreateGroupActionType,
             DeleteApplicationActionType,
+            DeleteGroupActionType,
+            DuplicateApplicationActionType,
             OrderApplicationsActionType,
+            OrderGroupsActionType,
+            UpdateApplicationActionType,
+            UpdateGroupActionType,
         )
 
         action_type_registry.register(CreateGroupActionType())
@@ -37,18 +40,26 @@ class CoreConfig(AppConfig):
         action_type_registry.register(UpdateApplicationActionType())
         action_type_registry.register(DeleteApplicationActionType())
         action_type_registry.register(OrderApplicationsActionType())
+        action_type_registry.register(DuplicateApplicationActionType())
 
         from baserow.core.action.scopes import (
-            RootActionScopeType,
-            GroupActionScopeType,
             ApplicationActionScopeType,
-            ViewActionScopeType,
+            GroupActionScopeType,
+            RootActionScopeType,
         )
 
         action_scope_registry.register(RootActionScopeType())
         action_scope_registry.register(GroupActionScopeType())
         action_scope_registry.register(ApplicationActionScopeType())
-        action_scope_registry.register(ViewActionScopeType())
+
+        from baserow.core.jobs.registries import job_type_registry
+
+        from .job_types import DuplicateApplicationJobType
+        from .snapshots.job_type import CreateSnapshotJobType, RestoreSnapshotJobType
+
+        job_type_registry.register(DuplicateApplicationJobType())
+        job_type_registry.register(CreateSnapshotJobType())
+        job_type_registry.register(RestoreSnapshotJobType())
 
         # Clear the key after migration so we will trigger a new template sync.
         post_migrate.connect(start_sync_templates_task_after_migrate, sender=self)

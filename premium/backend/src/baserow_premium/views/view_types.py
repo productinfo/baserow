@@ -1,26 +1,27 @@
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional, Set
 from zipfile import ZipFile
 
 from django.core.files.storage import Storage
-from django.urls import path, include
+from django.db.models import Q
+from django.urls import include, path
 
-from rest_framework.serializers import PrimaryKeyRelatedField
-
-from baserow.contrib.database.fields.models import SingleSelectField, FileField
-from baserow.contrib.database.fields.exceptions import FieldNotInTable
-from baserow.contrib.database.api.fields.errors import ERROR_FIELD_NOT_IN_TABLE
-from baserow.contrib.database.views.models import View
-from baserow.contrib.database.views.registries import ViewType
-from baserow.contrib.database.table.models import Table
-from baserow_premium.api.views.kanban.serializers import (
-    KanbanViewFieldOptionsSerializer,
-)
 from baserow_premium.api.views.kanban.errors import (
     ERROR_KANBAN_VIEW_FIELD_DOES_NOT_BELONG_TO_SAME_TABLE,
 )
+from baserow_premium.api.views.kanban.serializers import (
+    KanbanViewFieldOptionsSerializer,
+)
+from rest_framework.serializers import PrimaryKeyRelatedField
 
-from .models import KanbanView, KanbanViewFieldOptions
+from baserow.contrib.database.api.fields.errors import ERROR_FIELD_NOT_IN_TABLE
+from baserow.contrib.database.fields.exceptions import FieldNotInTable
+from baserow.contrib.database.fields.models import FileField, SingleSelectField
+from baserow.contrib.database.table.models import Table
+from baserow.contrib.database.views.models import View
+from baserow.contrib.database.views.registries import ViewType
+
 from .exceptions import KanbanViewFieldDoesNotBelongToSameTable
+from .models import KanbanView, KanbanViewFieldOptions
 
 
 class KanbanViewType(ViewType):
@@ -29,6 +30,7 @@ class KanbanViewType(ViewType):
     field_options_model_class = KanbanViewFieldOptions
     field_options_serializer_class = KanbanViewFieldOptionsSerializer
     allowed_fields = ["single_select_field", "card_cover_image_field"]
+    field_options_allowed_fields = ["hidden", "order"]
     serializer_field_names = ["single_select_field", "card_cover_image_field"]
     serializer_field_overrides = {
         "single_select_field": PrimaryKeyRelatedField(
@@ -53,6 +55,8 @@ class KanbanViewType(ViewType):
         FieldNotInTable: ERROR_FIELD_NOT_IN_TABLE,
     }
     can_decorate = True
+    can_share = True
+    has_public_info = True
 
     def get_api_urls(self):
         from baserow_premium.api.views.kanban import urls as api_urls
@@ -97,13 +101,22 @@ class KanbanViewType(ViewType):
 
         return values
 
-    def export_serialized(self, kanban, files_zip, storage):
+    def export_serialized(
+        self,
+        kanban: View,
+        files_zip: Optional[ZipFile] = None,
+        storage: Optional[Storage] = None,
+    ):
         """
         Adds the serialized kanban view options to the exported dict.
         """
 
         serialized = super().export_serialized(kanban, files_zip, storage)
-        serialized["single_select_field_id"] = kanban.single_select_field_id
+        if kanban.single_select_field_id:
+            serialized["single_select_field_id"] = kanban.single_select_field_id
+
+        if kanban.card_cover_image_field_id:
+            serialized["card_cover_image_field_id"] = kanban.card_cover_image_field_id
 
         serialized_field_options = []
         for field_option in kanban.get_field_options():
@@ -124,17 +137,24 @@ class KanbanViewType(ViewType):
         table: Table,
         serialized_values: Dict[str, Any],
         id_mapping: Dict[str, Any],
-        files_zip: ZipFile,
-        storage: Storage,
-    ):
+        files_zip: Optional[ZipFile] = None,
+        storage: Optional[Storage] = None,
+    ) -> View:
         """
         Imports the serialized kanban view field options.
         """
 
         serialized_copy = serialized_values.copy()
-        serialized_copy["single_select_field_id"] = id_mapping["database_fields"][
-            serialized_copy.pop("single_select_field_id")
-        ]
+        if "single_select_field_id" in serialized_copy:
+            serialized_copy["single_select_field_id"] = id_mapping["database_fields"][
+                serialized_copy.pop("single_select_field_id")
+            ]
+
+        if "card_cover_image_field_id" in serialized_copy:
+            serialized_copy["card_cover_image_field_id"] = id_mapping[
+                "database_fields"
+            ][serialized_copy.pop("card_cover_image_field_id")]
+
         field_options = serialized_copy.pop("field_options")
         kanban_view = super().import_serialized(
             table, serialized_copy, id_mapping, files_zip, storage
@@ -174,10 +194,58 @@ class KanbanViewType(ViewType):
             )
 
     def export_prepared_values(self, view: KanbanView) -> Dict[str, Any]:
-
         values = super().export_prepared_values(view)
-
         values["single_select_field"] = view.single_select_field_id
         values["card_cover_image_field"] = view.card_cover_image_field_id
-
         return values
+
+    def get_visible_field_options_in_order(self, kanban_view: KanbanView):
+        return (
+            kanban_view.get_field_options(create_if_missing=True)
+            .filter(
+                Q(hidden=False)
+                # If the `single_select_field_id` or `card_cover_image_field_id` is set,
+                # we must always expose those fields because the values are needed to
+                # work correctly.
+                | Q(field_id=kanban_view.single_select_field_id)
+                | Q(field_id=kanban_view.card_cover_image_field_id)
+            )
+            .order_by("order", "field__id")
+        )
+
+    def get_hidden_fields(
+        self,
+        view: KanbanView,
+        field_ids_to_check: Optional[List[int]] = None,
+    ) -> Set[int]:
+        hidden_field_ids = set()
+        fields = view.table.field_set.all()
+        field_options = view.kanbanviewfieldoptions_set.all()
+
+        if field_ids_to_check is not None:
+            fields = [f for f in fields if f.id in field_ids_to_check]
+
+        for field in fields:
+            # If the `single_select_field_id` or `card_cover_image_field_id` is set,
+            # we must always expose those fields because the values are needed to
+            # work correctly.
+            if field.id in [
+                view.single_select_field_id,
+                view.card_cover_image_field_id,
+            ]:
+                continue
+
+            field_option_matching = None
+            for field_option in field_options:
+                if field_option.field_id == field.id:
+                    field_option_matching = field_option
+
+            # A field is considered hidden, if it is explicitly hidden
+            # or if the field options don't exist
+            if field_option_matching is None or field_option_matching.hidden:
+                hidden_field_ids.add(field.id)
+
+        return hidden_field_ids
+
+    def enhance_queryset(self, queryset):
+        return queryset.prefetch_related("kanbanviewfieldoptions_set")

@@ -1,91 +1,87 @@
+import re
 from collections import defaultdict
-from dataclasses import dataclass
 from copy import deepcopy
-from typing import (
-    Dict,
-    Any,
-    List,
-    Optional,
-    Iterable,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
-
-import jwt
-
-from redis.exceptions import LockNotOwnedError
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, AnonymousUser
-from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.cache import cache
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models as django_models
-from django.db.models import F, Count
+from django.db.models import Count, F
 from django.db.models.query import QuerySet
 
+import jwt
+from redis.exceptions import LockNotOwnedError
+
+from baserow.contrib.database.api.utils import get_include_exclude_field_ids
 from baserow.contrib.database.fields.exceptions import FieldNotInTable
-from baserow.contrib.database.fields.field_filters import FilterBuilder
+from baserow.contrib.database.fields.field_filters import FILTER_TYPE_AND, FilterBuilder
 from baserow.contrib.database.fields.field_sortings import AnnotatedOrder
 from baserow.contrib.database.fields.models import Field
 from baserow.contrib.database.fields.registries import field_type_registry
 from baserow.contrib.database.rows.handler import RowHandler
-from baserow.contrib.database.rows.signals import row_created
-from baserow.contrib.database.table.models import Table, GeneratedTableModel
+from baserow.contrib.database.rows.signals import rows_created
+from baserow.contrib.database.table.models import GeneratedTableModel, Table
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.utils import (
+    MirrorDict,
     extract_allowed,
-    set_allowed_attrs,
+    find_unused_name,
     get_model_reference_field_name,
+    set_allowed_attrs,
 )
+
 from .exceptions import (
-    ViewDoesNotExist,
-    ViewNotInTable,
+    CannotShareViewTypeError,
+    DecoratorValueProviderTypeNotCompatible,
+    FieldAggregationNotSupported,
+    NoAuthorizationToPubliclySharedView,
     UnrelatedFieldError,
+    ViewDecorationDoesNotExist,
+    ViewDecorationNotSupported,
+    ViewDoesNotExist,
+    ViewDoesNotSupportFieldOptions,
     ViewFilterDoesNotExist,
     ViewFilterNotSupported,
     ViewFilterTypeNotAllowedForField,
+    ViewNotInTable,
     ViewSortDoesNotExist,
-    ViewSortNotSupported,
     ViewSortFieldAlreadyExist,
     ViewSortFieldNotSupported,
-    ViewDoesNotSupportFieldOptions,
-    FieldAggregationNotSupported,
-    CannotShareViewTypeError,
-    ViewDecorationNotSupported,
-    ViewDecorationDoesNotExist,
-    DecoratorValueProviderTypeNotCompatible,
-    NoAuthorizationToPubliclySharedView,
+    ViewSortNotSupported,
 )
 from .models import View, ViewDecoration, ViewFilter, ViewSort
 from .registries import (
-    view_type_registry,
-    view_filter_type_registry,
-    view_aggregation_type_registry,
     decorator_type_registry,
     decorator_value_provider_type_registry,
+    view_aggregation_type_registry,
+    view_filter_type_registry,
+    view_type_registry,
 )
 from .signals import (
     view_created,
-    view_updated,
-    view_deleted,
-    views_reordered,
-    view_filter_created,
-    view_filter_updated,
-    view_filter_deleted,
-    view_sort_created,
-    view_sort_updated,
-    view_sort_deleted,
     view_decoration_created,
-    view_decoration_updated,
     view_decoration_deleted,
+    view_decoration_updated,
+    view_deleted,
     view_field_options_updated,
+    view_filter_created,
+    view_filter_deleted,
+    view_filter_updated,
+    view_sort_created,
+    view_sort_deleted,
+    view_sort_updated,
+    view_updated,
+    views_reordered,
 )
-from .validators import EMPTY_VALUES
-
+from .validators import value_is_empty_for_required_form_field
 
 FieldOptionsDict = Dict[int, Dict[str, Any]]
+
+
+ending_number_regex = re.compile(r"(.+) (\d+)$")
 
 
 class ViewHandler:
@@ -184,6 +180,8 @@ class ViewHandler:
 
         # Figure out which model to use for the given view type.
         view_type = view_type_registry.get(type_name)
+        view_type.before_view_create(kwargs, table, user)
+
         model_class = view_type.model_class
         view_values = view_type.prepare_values(kwargs, table, user)
         allowed_fields = [
@@ -202,6 +200,82 @@ class ViewHandler:
         view_created.send(self, view=instance, user=user, type_name=type_name)
 
         return instance
+
+    def find_unused_view_name(self, table_id: int, proposed_name: str) -> str:
+        """
+        Finds an unused name for a view.
+
+        :param table_id: The table_id of the view.
+        :param proposed_name: The name that is proposed to be used.
+        :return: A new unique name to use.
+        """
+
+        existing_view_names = View.objects.filter(table_id=table_id).values_list(
+            "name", flat=True
+        )
+        return find_unused_name([proposed_name], existing_view_names, max_length=255)
+
+    def duplicate_view(self, user: AbstractUser, original_view: View) -> View:
+        """
+        Duplicates the given view to create a new one. The name is appended with the
+        copy number and if the original view is publicly shared, the created view
+        will not be shared anymore. The new view will be created just after the original
+        view.
+
+        :param user: The user whose ask for the duplication.
+        :param original_view: The original view to be duplicated.
+        :return: The created view instance.
+        """
+
+        group = original_view.table.database.group
+        group.has_user(user, raise_error=True)
+
+        view_type = view_type_registry.get_by_model(original_view)
+
+        # Use export/import to duplicate the view easily
+        serialized = view_type.export_serialized(original_view)
+
+        # Change the name of the view
+        serialized["name"] = self.find_unused_view_name(
+            original_view.table_id, serialized["name"]
+        )
+
+        # The new view must not be publicly shared
+        if "public" in serialized:
+            serialized["public"] = False
+
+        # We're using the MirrorDict here because the fields and select options in
+        # the mapping remain the same. They haven't change because we're only
+        # reimporting the view and not the table, fields, etc.
+        id_mapping = {
+            "database_fields": MirrorDict(),
+            "database_field_select_options": MirrorDict(),
+        }
+        duplicated_view = view_type.import_serialized(
+            original_view.table, serialized, id_mapping
+        )
+
+        queryset = View.objects.filter(table_id=original_view.table.id)
+        view_ids = queryset.values_list("id", flat=True)
+
+        ordered_ids = []
+        for view_id in view_ids:
+            if view_id != duplicated_view.id:
+                ordered_ids.append(view_id)
+            if view_id == original_view.id:
+                ordered_ids.append(duplicated_view.id)
+
+        View.order_objects(queryset, ordered_ids)
+        duplicated_view.refresh_from_db()
+
+        view_created.send(
+            self, view=duplicated_view, user=user, type_name=view_type.type
+        )
+        views_reordered.send(
+            self, table=original_view.table, order=ordered_ids, user=None
+        )
+
+        return duplicated_view
 
     def update_view(
         self, user: AbstractUser, view: View, **data: Dict[str, Any]
@@ -223,6 +297,8 @@ class ViewHandler:
         group.has_user(user, raise_error=True)
 
         view_type = view_type_registry.get_by_model(view)
+        view_type.before_view_update(data, view, user)
+
         view_values = view_type.prepare_values(data, view.table, user)
         allowed_fields = [
             "name",
@@ -243,7 +319,7 @@ class ViewHandler:
     def order_views(self, user: AbstractUser, table: Table, order: List[int]):
         """
         Updates the order of the views in the given table. The order of the views
-        that are not in the `order` parameter set set to `0`.
+        that are not in the `order` parameter set to `0`.
 
         :param user: The user on whose behalf the views are ordered.
         :param table: The table of which the views must be updated.
@@ -332,7 +408,7 @@ class ViewHandler:
         ensure that the view is not trashed if they would like to exclude it from
         the update.
 
-        It is necesarry to do so, because aggregations have to be removed
+        It is necessary to do so, because aggregations have to be removed
         from trashed views as well if the field options change. Otherwise,
         you might restore a view and the aggregation is invalid on that view.
 
@@ -377,15 +453,61 @@ class ViewHandler:
             view, field_options, fields
         )
 
+        # Figure out which field options can be updated and fetch existing ones. We
+        # need the existing ones to later determine whether it must be updated or
+        # newly created.
         allowed_field_ids = [field.id for field in fields]
+        valid_field_ids = []
         for field_id, options in field_options.items():
             if int(field_id) not in allowed_field_ids:
                 raise UnrelatedFieldError(
                     f"The field id {field_id} is not related to the view."
                 )
-            model.objects_and_trash.update_or_create(
-                field_id=field_id, defaults=options, **{field_name: view}
+            valid_field_ids.append(field_id)
+
+        existing_field_options = {
+            o.field_id: o
+            for o in model.objects_and_trash.filter(
+                field_id__in=valid_field_ids, **{field_name: view}
+            ).select_for_update(of=("self",))
+        }
+
+        field_options_to_create = []
+        field_options_to_update = []
+        option_names_to_update = set()
+
+        for field_id, options in field_options.items():
+            exists = int(field_id) in existing_field_options
+
+            if exists:
+                field_options_object = existing_field_options[int(field_id)]
+            else:
+                field_options_object = model(field_id=field_id, **{field_name: view})
+
+            allowed_values = extract_allowed(
+                options, view_type.field_options_allowed_fields
             )
+            for key, value in allowed_values.items():
+                setattr(field_options_object, key, value)
+                option_names_to_update.add(key)
+
+            if exists:
+                field_options_to_update.append(field_options_object)
+            else:
+                field_options_to_create.append(field_options_object)
+
+        if len(field_options_to_create) > 0:
+            model.objects_and_trash.bulk_create(field_options_to_create)
+
+        if len(field_options_to_update) > 0 and len(option_names_to_update) > 0:
+            model.objects_and_trash.bulk_update(
+                field_options_to_update, option_names_to_update
+            )
+
+        updated_instances = field_options_to_create + field_options_to_update
+        view_type.after_field_options_update(
+            view, field_options, fields, updated_instances
+        )
 
         view_field_options_updated.send(self, view=view, user=user)
 
@@ -1620,8 +1742,9 @@ class ViewHandler:
             field_name = model._field_objects[field.field_id]["name"]
             allowed_field_names.append(field_name)
 
-            if field.required and (
-                field_name not in values or values[field_name] in EMPTY_VALUES
+            if field.is_required() and (
+                field_name not in values
+                or value_is_empty_for_required_form_field(values[field_name])
             ):
                 field_errors[field_name] = ["This field is required."]
 
@@ -1631,8 +1754,8 @@ class ViewHandler:
         allowed_values = extract_allowed(values, allowed_field_names)
         instance = RowHandler().force_create_row(table, allowed_values, model)
 
-        row_created.send(
-            self, row=instance, before=None, user=None, table=table, model=model
+        rows_created.send(
+            self, rows=[instance], before=None, user=None, table=table, model=model
         )
 
         return instance
@@ -1708,13 +1831,13 @@ class ViewHandler:
         """
 
         view_type = view_type_registry.get_by_model(view.specific_class)
-        hidden_field_options = view_type.get_hidden_field_options(view)
+        hidden_field_ids = view_type.get_hidden_fields(view.specific)
         restricted_rows = []
         for serialized_row in serialized_rows:
             if allowed_row_ids is None or serialized_row["id"] in allowed_row_ids:
                 row_copy = deepcopy(serialized_row)
-                for hidden_field_option in hidden_field_options:
-                    row_copy.pop(f"field_{hidden_field_option.field_id}", None)
+                for hidden_field_id in hidden_field_ids:
+                    row_copy.pop(f"field_{hidden_field_id}", None)
                 restricted_rows.append(row_copy)
         return restricted_rows
 
@@ -1725,7 +1848,7 @@ class ViewHandler:
         By changing the `slug` or the `public_view_password`, previous tokens cannot
         be decoded anymore so the user will be forced to the password input page.
         Server's SECRET_KEY is used to be sure that the JWT cannot be guessed.
-        :param view: The public view to restric access to.
+        :param view: The public view to restrict access to.
         :return: A string to use as secret to encode/decode JWT for the view.
         """
 
@@ -1734,7 +1857,7 @@ class ViewHandler:
     def encode_public_view_token(self, view: View) -> str:
         """
         Create a non-expiring JWT token that authorize public requests for this view.
-        :param view: The public view to restric access to.
+        :param view: The public view to restrict access to.
         :return: A string to use as JWT token to authorize the access for the view.
         """
 
@@ -1748,7 +1871,7 @@ class ViewHandler:
     def decode_public_view_token(self, view: View, token: str) -> Dict[str, Any]:
         """
         Decode the token using the view's secret.
-        :param view: The public view to restric access to.
+        :param view: The public view to restrict access to.
         :param token: The JWT token to decode.
         :return: The payload decoded or, if invalid, a jwt.InvalidTokenError is raised.
         """
@@ -1761,7 +1884,7 @@ class ViewHandler:
     def is_public_view_token_valid(self, view: View, token: str) -> bool:
         """
         Verify if the token provided is valid for the public view or not.
-        :param view: The public view to restric access to.
+        :param view: The public view to restrict access to.
         :param token: The JWT token to decode.
         :return: True if the token is valid for the view, False otherwise.
         """
@@ -1771,6 +1894,90 @@ class ViewHandler:
             return True
         except jwt.InvalidTokenError:
             return False
+
+    def get_public_rows_queryset_and_field_ids(
+        self,
+        view: View,
+        search: str = None,
+        order_by: str = None,
+        include_fields: str = None,
+        exclude_fields: str = None,
+        filter_type: str = None,
+        filter_object: dict = None,
+        table_model: Type[GeneratedTableModel] = None,
+        view_type=None,
+    ):
+        """
+        This function constructs a queryset which applies all the filters
+        and restrictions required to only return rows that are supposed to
+        be visible on a public view plus any additional filters given as
+        parameters.
+
+        It also returns the field_ids of the fields which are visibile and
+        the field_options.
+        :param view: The public view to get rows for.
+        :param search: A string to search for in the rows.
+        :param order_by: A string to order the rows by.
+        :param include_fields: A comma separated list of field_ids to include.
+        :param exclude_fields: A comma separated list of field_ids to exclude.
+        :param filter_type: The type of filter to apply.
+        :param filter_object: A dictionary to filter the rows by.
+        :param table_model: A model which can be passed if it's already instantiated.
+        :param view_type: The view_type which can be passed if it's already
+            instantiated.
+        :return: A tuple containing:
+            - A queryset of rows.
+            - A list of field_ids of the fields that are visible.
+            - A list of field_options of the fields that are visible.
+        """
+
+        if table_model is None:
+            table_model = view.table.get_model()
+
+        if view_type is None:
+            view_type = view_type_registry.get_by_model(view)
+
+        if filter_type is None:
+            filter_type = FILTER_TYPE_AND
+
+        if filter_object is None:
+            filter_object = {}
+
+        publicly_visible_field_options = view_type.get_visible_field_options_in_order(
+            view
+        )
+        publicly_visible_field_ids = {
+            o.field_id for o in publicly_visible_field_options
+        }
+
+        field_ids = get_include_exclude_field_ids(
+            view.table, include_fields, exclude_fields
+        )
+
+        # We have to still make a model with all fields as the public rows should still
+        # be filtered by hidden fields.
+        queryset = table_model.objects.all().enhance_by_fields()
+        queryset = self.apply_filters(view, queryset)
+
+        if order_by:
+            queryset = queryset.order_by_fields_string(
+                order_by, False, publicly_visible_field_ids
+            )
+
+        queryset = queryset.filter_by_fields_object(
+            filter_object, filter_type, publicly_visible_field_ids
+        )
+
+        if search:
+            queryset = queryset.search_all_fields(search, publicly_visible_field_ids)
+
+        field_ids = (
+            list(set(field_ids) & set(publicly_visible_field_ids))
+            if field_ids
+            else publicly_visible_field_ids
+        )
+
+        return queryset, field_ids, publicly_visible_field_options
 
 
 @dataclass

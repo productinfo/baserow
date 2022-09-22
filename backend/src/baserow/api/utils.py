@@ -1,14 +1,15 @@
 from contextlib import contextmanager
-from typing import Dict, Union, Tuple, Callable, Optional, Type
+from typing import Callable, Dict, Optional, Tuple, Type, Union
 
 from django.utils.encoding import force_str
-from rest_framework import status
-from rest_framework import serializers
+
+from rest_framework import serializers, status
 from rest_framework.exceptions import APIException
 from rest_framework.request import Request
 from rest_framework.serializers import ModelSerializer
 
 from baserow.core.exceptions import InstanceTypeDoesNotExist
+
 from .exceptions import RequestBodyValidationException
 
 ErrorTupleType = Tuple[str, int, str]
@@ -81,6 +82,12 @@ def map_exceptions(mapping: ExceptionMappingType):
 
       # SomeException will be thrown directly if the provided callable returns None.
     """
+
+    from baserow.api.registries import api_exception_registry
+
+    registered_exceptions = api_exception_registry.get_all()
+    for ex in registered_exceptions:
+        mapping[ex.exception_class] = ex.exception_error
 
     try:
         yield
@@ -215,7 +222,12 @@ def validate_data_custom_fields(
                 }
             )
         else:
-            serializer_kwargs = {"base_class": base_serializer_class}
+            serializer_kwargs = {
+                "base_class": base_serializer_class,
+                # We want the request serializer as we are validating date from a
+                # request
+                "request_serializer": True,
+            }
             serializer_class = type_instance.get_serializer_class(**serializer_kwargs)
 
     return validate_data(serializer_class, data, partial=partial)
@@ -375,7 +387,13 @@ class DiscriminatorCustomFieldsMappingSerializer:
     """
 
     def __init__(
-        self, registry, base_class, type_field_name="type", many=False, help_text=None
+        self,
+        registry,
+        base_class,
+        type_field_name="type",
+        many=False,
+        help_text=None,
+        request=False,
     ):
         self.read_only = False
         self.registry = registry
@@ -384,6 +402,7 @@ class DiscriminatorCustomFieldsMappingSerializer:
         self.many = many
         self.help_text = help_text
         self.partial = False
+        self.request = request
 
 
 class DiscriminatorMappingSerializer:

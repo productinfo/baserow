@@ -4,24 +4,26 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q
+from django.utils.functional import lazy
 
-from baserow.core.utils import get_model_reference_field_name
-from baserow.core.models import UserFile
-from baserow.core.mixins import (
-    OrderableMixin,
-    PolymorphicContentTypeMixin,
-    CreatedAndUpdatedOnMixin,
-    TrashableModelMixin,
-)
 from baserow.contrib.database.fields.field_filters import (
     FILTER_TYPE_AND,
     FILTER_TYPE_OR,
 )
 from baserow.contrib.database.fields.models import Field, FileField
 from baserow.contrib.database.views.registries import (
-    view_type_registry,
+    form_view_mode_registry,
     view_filter_type_registry,
+    view_type_registry,
 )
+from baserow.core.mixins import (
+    CreatedAndUpdatedOnMixin,
+    OrderableMixin,
+    PolymorphicContentTypeMixin,
+    TrashableModelMixin,
+)
+from baserow.core.models import UserFile
+from baserow.core.utils import get_model_reference_field_name
 
 FILTER_TYPES = ((FILTER_TYPE_AND, "And"), (FILTER_TYPE_OR, "Or"))
 
@@ -191,7 +193,9 @@ class View(
             )
 
         def get_queryset():
-            return through_model.objects.filter(**{field_name: self})
+            return view_type.enhance_field_options_queryset(
+                through_model.objects.filter(**{field_name: self})
+            )
 
         field_options = get_queryset()
 
@@ -384,6 +388,11 @@ class GridView(View):
         ID = "id"
         count = "count"
 
+    # `field_options` is a very misleading name
+    # it should probably be more like `fields_with_field_options`
+    # since this field will return instances of `Field` not of
+    # `GridViewFieldOptions`
+    # We might want to change this in the future.
     field_options = models.ManyToManyField(Field, through="GridViewFieldOptions")
     row_identifier_type = models.CharField(
         choices=RowIdentifierTypes.choices, default="id", max_length=10
@@ -518,6 +527,12 @@ class FormView(View):
         blank=True,
         help_text="The description that is displayed at the beginning of the form.",
     )
+    mode = models.TextField(
+        max_length=64,
+        default=lazy(form_view_mode_registry.get_default_choice, str)(),
+        choices=lazy(form_view_mode_registry.get_choices, list)(),
+        help_text="Configurable mode of the form.",
+    )
     cover_image = models.ForeignKey(
         UserFile,
         blank=True,
@@ -562,6 +577,7 @@ class FormView(View):
         return (
             FormViewFieldOptions.objects.filter(form_view=self, enabled=True)
             .select_related("field")
+            .prefetch_related("conditions")
             .order_by("order")
         )
 
@@ -601,6 +617,18 @@ class FormViewFieldOptions(models.Model):
         help_text="Indicates whether the field is required for the visitor to fill "
         "out.",
     )
+    show_when_matching_conditions = models.BooleanField(
+        default=False,
+        help_text="Indicates whether this field is visible when the conditions are "
+        "met.",
+    )
+    condition_type = models.CharField(
+        max_length=3,
+        choices=FILTER_TYPES,
+        default=FILTER_TYPE_AND,
+        help_text="Indicates whether all (AND) or any (OR) of the conditions should "
+        "match before shown.",
+    )
     # The default value is the maximum value of the small integer field because a newly
     # created field must always be last.
     order = models.SmallIntegerField(
@@ -613,3 +641,49 @@ class FormViewFieldOptions(models.Model):
             "order",
             "field_id",
         )
+
+    def is_required(self):
+        return (
+            self.required
+            # If the field is only visible when conditions are met, we can't do a
+            # required backend validation because there is no way of knowing whether
+            # the provided values match the conditions in the backend.
+            and (
+                not self.show_when_matching_conditions
+                or len(self.conditions.all()) == 0
+            )
+        )
+
+
+class FormViewFieldOptionsConditionManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(~Q(field__trashed=True))
+
+
+class FormViewFieldOptionsCondition(models.Model):
+    field_option = models.ForeignKey(
+        FormViewFieldOptions,
+        on_delete=models.CASCADE,
+        help_text="The form view option where the condition is related to.",
+        related_name="conditions",
+    )
+    field = models.ForeignKey(
+        "database.Field",
+        on_delete=models.CASCADE,
+        help_text="The field of which the value must be compared to the filter value.",
+    )
+    type = models.CharField(
+        max_length=48,
+        help_text="Indicates how the field's value must be compared to the filter's "
+        "value. The filter is always in this order `field` `type` `value` "
+        "(example: `field_1` `contains` `Test`).",
+    )
+    value = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="The filter value that must be compared to the field's value.",
+    )
+    objects = FormViewFieldOptionsConditionManager()
+
+    class Meta:
+        ordering = ("id",)

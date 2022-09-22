@@ -18,15 +18,15 @@
 # A. Create an MR from develop to master and merge it.
 # B. Wait for the merge commit pipeline succeed on master which will build and test the
 #    images.
-# C. Tag the merge commit in the Gitlab GUI with the git tag being the Baserow version
+# C. Tag the merge commit in the GitLab GUI with the git tag being the Baserow version
 #    (1.8.2, 1.0, etc).
-# D. Gitlab will make a new pipeline for the tag which will push the images built in
+# D. GitLab will make a new pipeline for the tag which will push the images built in
 #    step B to Dockerhub. If step B failed or has not completed yet then this pipeline
 #    will fail and not push anything.
 #
-# === What Gitlab CI steps are configured to run and when
+# === What GitLab CI steps are configured to run and when
 #
-# See below for the high level summary of the steps Gitlab will run to build, test and
+# See below for the high level summary of the steps GitLab will run to build, test and
 # release Baserow images in various scenarios depending on the branches involved.
 #
 # ==== On the master branch - When MR Merged/commit pushed/branch made
@@ -57,7 +57,7 @@
 # ===== On the latest commit on master - When a Git tag is created
 #
 #   This is done when we have merged the latest changes from develop on master, and we
-#   want to release them as a new version of Baserow. Gitlab will automatically detect
+#   want to release them as a new version of Baserow. GitLab will automatically detect
 #   the new git tag and only do the following:
 #
 #   1. Push the images built from step 3 above (or fail if they don't exist) to the
@@ -199,6 +199,9 @@ variables:
   ENABLE_RELEASES:
     value: "false"
     description: "If true then on master and develop release images will be pushed automatically"
+  BUILD_ALL_IN_ONE:
+    value: "false"
+    description: "If true then regardless of what branch we are on the all in one image will be built."
   # An image repo which is used for storing and passing images between ci pipeline jobs
   # and also speeding up ci builds by caching from the latest ci image when building.
   CI_IMAGE_REPO: $CI_REGISTRY_IMAGE/ci
@@ -300,7 +303,7 @@ backend-lint:
     - .docker-image-test-stage
     - .skippable-job
   variables:
-    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/"
+    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/ enterprise/backend/"
   script:
     - docker run --rm $BACKEND_CI_DEV_IMAGE lint
   needs:
@@ -309,6 +312,11 @@ backend-lint:
 # If pipeline not triggered by tag:
 # - Runs the backend startup check if changes to the backend, otherwise skips.
 backend-check-startup:
+  variables:
+    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/ enterprise/backend/"
+    POSTGRES_USER: "baserow"
+    POSTGRES_PASSWORD: "baserow"
+    POSTGRES_DB: "baserow"
   extends:
     - .docker-image-test-stage
     - .skippable-job
@@ -316,10 +324,8 @@ backend-check-startup:
     - job: build-backend-image
   services:
     - docker:20.10.12-dind
-    - name: postgres:11.3
+    - name: postgres:11
       alias: db
-  variables:
-    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/"
   script:
     - DB_IP=$(cat /etc/hosts | awk '{if ($2 == "db") print $1;}')
     - ping -w 2 $DB_IP
@@ -341,7 +347,7 @@ backend-test-group-1:
     - .skippable-job
   services:
     - docker:20.10.12-dind
-    - name: postgres:11.3
+    - name: postgres:11
       alias: db
   variables:
     DOCKER_HOST: tcp://docker:2376
@@ -350,7 +356,7 @@ backend-test-group-1:
     POSTGRES_PASSWORD: baserow
     POSTGRES_DB: baserow
     PYTEST_SPLIT_GROUP: 1
-    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/"
+    RUN_WHEN_CHANGES_MADE_IN: "backend/ premium/backend/ enterprise/backend/"
     DOWNLOAD_AND_UNPACK_ARTIFACTS_ON_SKIP: 'true'
   script:
     - DB_IP=$(cat /etc/hosts | awk '{if ($2 == "db") print $1;}')
@@ -360,7 +366,7 @@ backend-test-group-1:
     - PYTEST_EXTRA_ARGS=$([[ "$RUN_MORNING_TESTS" = "true" ]] && echo '--run-once-per-day-in-ci' || echo "")
     - |
       docker run \
-        -e PYTEST_SPLITS=3 \
+        -e PYTEST_SPLITS=4 \
         -e PYTEST_SPLIT_GROUP=$PYTEST_SPLIT_GROUP \
         --name=baserow_backend_test_container \
         --add-host="db:$DB_IP" \
@@ -399,8 +405,13 @@ backend-test-group-3:
   variables:
     PYTEST_SPLIT_GROUP: 3
 
+backend-test-group-4:
+  extends: backend-test-group-1
+  variables:
+    PYTEST_SPLIT_GROUP: 4
+
 # Collects together all the separate backend coverage databases from previous jobs and
-# combines them to generate a single report for gitlab to use. Gitlab itself does not
+# combines them to generate a single report for gitlab to use. GitLab itself does not
 # correctly merge these if you just add them all separately into artifacts->reports->
 # cobertura.
 collect-backend-coverage:
@@ -421,6 +432,8 @@ collect-backend-coverage:
     - job: backend-test-group-2
       artifacts: true
     - job: backend-test-group-3
+      artifacts: true
+    - job: backend-test-group-4
       artifacts: true
   script:
     - . /baserow/venv/bin/activate
@@ -448,6 +461,7 @@ build-final-backend-image:
     - job: backend-test-group-1
     - job: backend-test-group-2
     - job: backend-test-group-3
+    - job: backend-test-group-4
     - job: backend-lint
   variables:
     IMAGE_NAME: $BACKEND_IMAGE_NAME
@@ -473,7 +487,7 @@ web-frontend-lint:
   needs:
     - job: build-web-frontend-image
   variables:
-    RUN_WHEN_CHANGES_MADE_IN: "web-frontend/ premium/web-frontend/"
+    RUN_WHEN_CHANGES_MADE_IN: "web-frontend/ premium/web-frontend/ enterprise/web-frontend/"
   script:
     - docker run --rm $WEBFRONTEND_CI_DEV_IMAGE lint
 
@@ -485,7 +499,7 @@ web-frontend-test:
     - .docker-image-test-stage
     - .skippable-job
   variables:
-    RUN_WHEN_CHANGES_MADE_IN: "web-frontend/ premium/web-frontend/"
+    RUN_WHEN_CHANGES_MADE_IN: "web-frontend/ premium/web-frontend/ enterprise/web-frontend/"
     DOWNLOAD_AND_UNPACK_ARTIFACTS_ON_SKIP: 'true'
   needs:
     - job: build-web-frontend-image
@@ -534,6 +548,7 @@ build-all-in-one-image:
     variables:
       - $CI_COMMIT_BRANCH == $MASTER_BRANCH_NAME
       - $CI_COMMIT_BRANCH == $DEVELOP_BRANCH_NAME
+      - $BUILD_ALL_IN_ONE == "true"
   variables:
     IMAGE_NAME: $ALLINONE_IMAGE_NAME
     DOCKERFILE_PATH: $ALLINONE_DOCKERFILE_PATH

@@ -1,12 +1,43 @@
+import datetime
 import sys
-from datetime import timedelta
+import traceback
+from decimal import Decimal
+from re import search
+from typing import Any, List, Optional
 
-import pytest
 from django.conf import settings
 from django.urls import reverse
-from django.utils.duration import duration_string
 
-from baserow.contrib.database.fields.models import FormulaField
+import pytest
+from rest_framework.status import HTTP_200_OK
+
+from baserow.contrib.database.fields.handler import FieldHandler
+from baserow.contrib.database.fields.models import Field, FormulaField
+from baserow.contrib.database.formula import (
+    BaserowFormulaArrayType,
+    BaserowFormulaBooleanType,
+    BaserowFormulaNumberType,
+    BaserowFormulaTextType,
+    literal,
+)
+from baserow.contrib.database.formula.ast.function_defs import (
+    Baserow2dArrayAgg,
+    BaserowAggJoin,
+)
+from baserow.contrib.database.formula.ast.tree import (
+    BaserowFieldReference,
+    BaserowFunctionCall,
+)
+from baserow.contrib.database.formula.registries import formula_function_registry
+from baserow.contrib.database.formula.types.exceptions import InvalidFormulaType
+from baserow.contrib.database.formula.types.formula_type import (
+    BaserowFormulaValidType,
+    UnTyped,
+)
+from baserow.contrib.database.formula.types.type_checker import MustBeManyExprChecker
+from baserow.contrib.database.management.commands.fill_table_rows import fill_table_rows
+from baserow.contrib.database.rows.handler import RowHandler
+from baserow.core.trash.handler import TrashHandler
 
 VALID_FORMULA_TESTS = [
     ("'test'", "test"),
@@ -17,7 +48,7 @@ VALID_FORMULA_TESTS = [
     ("CONCAT('test', ' ', 'works')", "test works"),
     ("CONCAT('test', ' ', UPPER('works'))", "test WORKS"),
     (
-        "UPPER(" * 100 + "'test'" + ")" * 100,
+        "UPPER(" * 50 + "'test'" + ")" * 50,
         "TEST",
     ),
     (
@@ -50,9 +81,9 @@ VALID_FORMULA_TESTS = [
         "9" * 100 + "+1",
         "NaN",
     ),
-    ("tonumber('1')", "1.00000"),
+    ("tonumber('1')", "1.0000000000"),
     ("tonumber('a')", "NaN"),
-    ("tonumber('-12.12345')", "-12.12345"),
+    ("tonumber('-12.12345')", "-12.1234500000"),
     ("1.2 * 2", "2.4"),
     ("isblank(1)", False),
     ("isblank('')", True),
@@ -99,7 +130,7 @@ VALID_FORMULA_TESTS = [
     ("or(false, true)", True),
     ("or(true, true)", True),
     ("'a' + 'b'", "ab"),
-    ("date_interval('1 year')", duration_string(timedelta(days=365))),
+    ("date_interval('1 year')", "1 year"),
     ("date_interval('1 year') > date_interval('1 day')", True),
     ("date_interval('1 invalid')", None),
     ("todate('20200101', 'YYYYMMDD') + date_interval('1 year')", "2021-01-01"),
@@ -115,14 +146,8 @@ VALID_FORMULA_TESTS = [
         ")",
         "6",
     ),
-    (
-        "todate('20200101', 'YYYYMMDD') - todate('20210101', 'YYYYMMDD')",
-        duration_string(-timedelta(days=366)),
-    ),
-    (
-        "date_interval('1 year') - date_interval('1 day')",
-        duration_string(timedelta(days=364)),
-    ),
+    ("todate('20200101', 'YYYYMMDD') - todate('20210101', 'YYYYMMDD')", "-366 days"),
+    ("date_interval('1 year') - date_interval('1 day')", "1 year -1 days"),
     ("replace('test test', 'test', 'a')", "a a"),
     ("search('test test', 'test')", "1"),
     ("search('a', 'test')", "0"),
@@ -141,11 +166,86 @@ VALID_FORMULA_TESTS = [
     ("contains('a', 'x')", False),
     ("left('a', 2)", "a"),
     ("left('abc', 2)", "ab"),
+    ("left('abcde', -2)", "abc"),
+    ("left('abcde', 2)", "ab"),
+    ("left('abc', 2/0)", None),
+    ("right('a', 2)", "a"),
+    ("right('abc', 2)", "bc"),
+    ("right('abcde', -2)", "cde"),
+    ("right('abcde', 2)", "de"),
+    ("right('abc', 2/0)", None),
     ("when_empty(1, 2)", "1"),
+    ("round(1.12345, 0)", "1"),
+    ("round(1.12345, 4)", "1.1235"),
+    ("round(1.12345, 100)", "1.1234500000"),
+    ("round(1234.5678, -2)", "1200"),
+    ("round(1234.5678, -2.99999)", "1200"),
+    ("round(1234.5678, -2.00001)", "1200"),
+    ("round(1234.5678, 1/0)", "NaN"),
+    ("round(1234.5678, tonumber('invalid'))", "NaN"),
+    ("round(1/0, 1/0)", "NaN"),
+    ("round(1/0, 2)", "NaN"),
+    ("round(tonumber('invalid'), 2)", "NaN"),
+    ("trunc(1.1234)", "1"),
+    ("trunc(1.56)", "1"),
+    ("trunc(-1.56)", "-1"),
+    ("trunc(1/0)", "NaN"),
+    ("trunc(tonumber('invalid'))", "NaN"),
+    ("int(1.1234)", "1"),
+    ("int(1.56)", "1"),
+    ("int(-1.56)", "-1"),
+    ("int(1/0)", "NaN"),
+    ("int(tonumber('invalid'))", "NaN"),
+    ("1/2/4", "0.1250000000"),
+    ("divide(1, if(true,1,1))", "1.0000000000"),
+    ("link('1')", {"url": "1", "label": None}),
+    ("link('a' + 'b')", {"url": "ab", "label": None}),
+    (
+        "link('https://www.google.com')",
+        {"url": "https://www.google.com", "label": None},
+    ),
+    ("button('1', 'l')", {"url": "1", "label": "l"}),
+    ("button('a' + 'b', 'l' + 'a')", {"url": "ab", "label": "la"}),
+    (
+        "button('https://www.google.com', 'Google')",
+        {"url": "https://www.google.com", "label": "Google"},
+    ),
+    (
+        "button('https://www.google.com', 'Google') = link('https://www.google.com')",
+        False,
+    ),
+    (
+        "button('https://www.google.com', 'Google') "
+        "= button('https://www.google.com', 'Google')",
+        True,
+    ),
+    (
+        "button('https://www.google2.com', 'Google') "
+        "= button('https://www.google.com', 'Google')",
+        False,
+    ),
+    (
+        "button('https://www.google.com', 'Google') "
+        "= button('https://www.google.com', 'Google2')",
+        False,
+    ),
+    (
+        "link('https://www.google.com') = link('https://www.google.com')",
+        True,
+    ),
+    (
+        "link('https://www.google2.com') = link('https://www.google.com')",
+        False,
+    ),
+    ("get_link_label(link('1'))", None),
+    ("get_link_url(link('a' + 'b'))", "ab"),
+    ("get_link_url(link('https://www.google.com'))", "https://www.google.com"),
+    ("get_link_label(button('1', 'l'))", "l"),
+    ("get_link_url(button('a' + 'b', 'l' + 'a'))", "ab"),
 ]
 
 
-def a_test_case(name, starting_table_setup, formula_info, expectation):
+def a_test_case(name: str, starting_table_setup, formula_info, expectation):
     return name, starting_table_setup, formula_info, expectation
 
 
@@ -165,128 +265,193 @@ def then_expect_the_rows_to_be(rows):
     return rows
 
 
-COMPLEX_VALID_TESTS = [
-    a_test_case(
-        "Can reference and add to a integer column",
-        given_a_table(columns=[("number", "number")], rows=[[1], [2], [None]]),
-        when_a_formula_field_is_added("field('number')+1"),
-        then_expect_the_rows_to_be([["1", "2"], ["2", "3"], [None, None]]),
-    ),
-    a_test_case(
-        "Can reference and add to a integer column",
-        given_a_table(columns=[("number", "number")], rows=[[1], [2], [None]]),
-        when_multiple_formula_fields_are_added(
-            [("formula_1", "field('number')+1"), "field('formula_1')+1"]
+def assert_formula_results_are_case(
+    data_fixture,
+    given_field_in_table: Field,
+    given_field_has_rows: List[Any],
+    when_created_formula_is: str,
+    then_formula_values_are: List[Any],
+):
+    assert_formula_results_with_multiple_fields_case(
+        data_fixture,
+        given_fields_in_table=[given_field_in_table],
+        given_fields_have_rows=[[v] for v in given_field_has_rows],
+        when_created_formula_is=when_created_formula_is,
+        then_formula_values_are=then_formula_values_are,
+    )
+
+
+def assert_formula_results_with_multiple_fields_case(
+    data_fixture,
+    when_created_formula_is: str,
+    then_formula_values_are: List[Any],
+    given_fields_in_table: Optional[List[Field]] = None,
+    given_fields_have_rows: Optional[List[List[Any]]] = None,
+):
+    if given_fields_in_table is None:
+        given_fields_in_table = []
+    if given_fields_have_rows is None:
+        given_fields_have_rows = []
+
+    data_fixture.create_rows(given_fields_in_table, given_fields_have_rows)
+    formula_field = data_fixture.create_formula_field(
+        table=given_fields_in_table[0].table, formula=when_created_formula_is
+    )
+    assert formula_field.cached_formula_type.is_valid
+    rows = data_fixture.get_rows(fields=[formula_field])
+    assert [item for sublist in rows for item in sublist] == then_formula_values_are
+
+
+@pytest.mark.django_db
+def test_formula_can_reference_and_add_to_an_integer_column(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_number_field(name="number"),
+        given_field_has_rows=[1, 2, None],
+        when_created_formula_is="field('number') + 1",
+        then_formula_values_are=[2, 3, 1],
+    )
+
+
+@pytest.mark.django_db
+def test_can_reference_and_if_a_text_column(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_text_field(name="text"),
+        given_field_has_rows=["a", "b", None],
+        when_created_formula_is="if(field('text')='a', field('text'), 'no')",
+        then_formula_values_are=["a", "no", "no"],
+    )
+
+
+@pytest.mark.django_db
+def test_can_reference_and_if_a_phone_number_column(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_phone_number_field(name="pn"),
+        given_field_has_rows=["01772", "+2002", None],
+        when_created_formula_is="if(field('pn')='01772', field('pn'), 'no')",
+        then_formula_values_are=["01772", "no", "no"],
+    )
+
+
+@pytest.mark.django_db
+def test_can_compare_a_date_field_and_text_with_formatting(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_date_field(
+            date_format="US", name="date"
         ),
-        then_expect_the_rows_to_be(
-            [["1", "2", "3"], ["2", "3", "4"], [None, None, None]]
+        given_field_has_rows=["2020-02-01", "2020-03-01", None],
+        when_created_formula_is="field('date')='02/01/2020'",
+        then_formula_values_are=[True, False, False],
+    )
+
+
+@pytest.mark.django_db
+def test_can_compare_a_datetime_field_and_text_with_eu_formatting(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_date_field(
+            date_format="EU", date_include_time="True", name="date"
         ),
-    ),
-    a_test_case(
-        "Can reference and if a text column",
-        given_a_table(columns=[("text", "text")], rows=[["a"], ["b"], [None]]),
-        when_a_formula_field_is_added("if(field('text')='a', field('text'), 'no')"),
-        then_expect_the_rows_to_be([["a", "a"], ["b", "no"], [None, "no"]]),
-    ),
-    a_test_case(
-        "Can reference and if a phone number column",
-        given_a_table(
-            columns=[("pn", "phone_number")], rows=[["01772"], ["+2002"], [None]]
-        ),
-        when_a_formula_field_is_added("if(field('pn')='01772', field('pn'), 'no')"),
-        then_expect_the_rows_to_be([["01772", "01772"], ["+2002", "no"], [None, "no"]]),
-    ),
-    a_test_case(
-        "Can compare a phone number and number column",
-        given_a_table(
-            columns=[("pn", "phone_number"), ("num", "number")],
-            rows=[["123", "123"], ["+2002", "2002"], [None, None]],
-        ),
-        when_a_formula_field_is_added("field('pn')=field('num')"),
-        then_expect_the_rows_to_be(
-            [["123", "123", True], ["+2002", "2002", False], [None, None, None]]
-        ),
-    ),
-    a_test_case(
-        "Can compare a date field and text with formatting",
-        given_a_table(
-            columns=[("date", {"type": "date", "date_format": "US"})],
-            rows=[["2020-02-01"], ["2020-03-01"], [None]],
-        ),
-        when_a_formula_field_is_added("field('date')='02/01/2020'"),
-        then_expect_the_rows_to_be(
-            [
-                ["2020-02-01", True],
-                ["2020-03-01", False],
-                [None, False],
-            ]
-        ),
-    ),
-    a_test_case(
-        "Can compare a datetime field and text with eu formatting",
-        given_a_table(
-            columns=[
-                (
-                    "date",
-                    {"type": "date", "date_format": "EU", "date_include_time": True},
-                )
-            ],
-            rows=[["2020-02-01T00:10:00Z"], ["2020-02-01T02:00:00Z"], [None]],
-        ),
-        when_a_formula_field_is_added("field('date')='01/02/2020 00:10'"),
-        then_expect_the_rows_to_be(
-            [
-                ["2020-02-01T00:10:00Z", True],
-                ["2020-02-01T02:00:00Z", False],
-                [None, False],
-            ]
-        ),
-    ),
-    a_test_case(
-        "Can use datediff on fields",
-        given_a_table(
-            columns=[
-                (
-                    "date1",
-                    {"type": "date", "date_format": "EU", "date_include_time": True},
-                ),
-                (
-                    "date2",
-                    {"type": "date", "date_format": "EU", "date_include_time": True},
-                ),
-            ],
-            rows=[
-                ["2020-02-01T00:10:00Z", "2020-03-02T00:10:00Z"],
-                ["2020-02-01T02:00:00Z", "2020-10-01T04:00:00Z"],
-                [None, None],
-            ],
-        ),
-        when_a_formula_field_is_added(
-            "date_diff('dd', field('date1'), " "field('date2'))"
-        ),
-        then_expect_the_rows_to_be(
-            [
-                ["2020-02-01T00:10:00Z", "2020-03-02T00:10:00Z", "30"],
-                ["2020-02-01T02:00:00Z", "2020-10-01T04:00:00Z", "243"],
-                [None, None, None],
-            ]
-        ),
-    ),
-    a_test_case(
-        "Can use a boolean field in an if",
-        given_a_table(
-            columns=[("boolean", "boolean")],
-            rows=[[True], [False]],
-        ),
-        when_a_formula_field_is_added("if(field('boolean'), 'true', 'false')"),
-        then_expect_the_rows_to_be(
-            [
-                [True, "true"],
-                [False, "false"],
-            ]
-        ),
-    ),
-]
+        given_field_has_rows=["2020-02-01T00:10:00Z", "2020-02-01T02:00:00Z", None],
+        when_created_formula_is="field('date')='01/02/2020 00:10'",
+        then_formula_values_are=[True, False, False],
+    )
+
+
+@pytest.mark.django_db
+def test_todate_handles_empty_values(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_text_field(name="date_text"),
+        given_field_has_rows=[
+            "20200201T00:10:00Z",
+            "2021-01-22 | Some stuff",
+            "",
+            "20200201T02:00:00Z",
+            None,
+        ],
+        when_created_formula_is="todate(left(field('date_text'),11),'YYYY-MM-DD')",
+        then_formula_values_are=[None, datetime.date(2021, 1, 22), None, None, None],
+    )
+
+
+@pytest.mark.django_db
+def test_can_use_a_boolean_field_in_an_if(data_fixture):
+    assert_formula_results_are_case(
+        data_fixture,
+        given_field_in_table=data_fixture.create_boolean_field(name="boolean"),
+        given_field_has_rows=[True, False],
+        when_created_formula_is="if(field('boolean'), 'true', 'false')",
+        then_formula_values_are=["true", "false"],
+    )
+
+
+@pytest.mark.django_db
+def test_can_lookup_date_intervals(data_fixture, api_client):
+    user, token = data_fixture.create_user_and_token()
+    table_a, table_b, link_field = data_fixture.create_two_linked_tables(user=user)
+
+    data_fixture.create_formula_field(
+        user, table=table_b, formula="date_interval('2 days')", name="date_interval"
+    )
+
+    table_b_rows = data_fixture.create_rows_in_table(table=table_b, rows=[[], []])
+    row_1 = data_fixture.create_row_for_many_to_many_field(
+        table=table_a, field=link_field, values=[table_b_rows[0].id], user=user
+    )
+
+    lookup_formula = data_fixture.create_formula_field(
+        user=user,
+        table=table_a,
+        formula=f"lookup('{link_field.name}', 'date_interval')",
+    )
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table_a.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    assert response.status_code == HTTP_200_OK
+    assert [o[lookup_formula.db_column] for o in response.json()["results"]] == [
+        [{"id": row_1.id, "value": "2 days"}]
+    ]
+
+
+@pytest.mark.django_db
+def test_can_use_datediff_on_fields(data_fixture):
+    table = data_fixture.create_database_table()
+    assert_formula_results_with_multiple_fields_case(
+        data_fixture,
+        given_fields_in_table=[
+            data_fixture.create_date_field(
+                table=table,
+                name="date1",
+                date_format="EU",
+                date_include_time=True,
+            ),
+            data_fixture.create_date_field(
+                table=table,
+                name="date2",
+                date_format="EU",
+                date_include_time=True,
+            ),
+        ],
+        given_fields_have_rows=[
+            ["2020-02-01T00:10:00Z", "2020-03-02T00:10:00Z"],
+            ["2020-02-01T02:00:00Z", "2020-10-01T04:00:00Z"],
+            [None, None],
+        ],
+        when_created_formula_is="date_diff('dd', field('date1'), field('date2'))",
+        then_formula_values_are=[
+            Decimal(30),
+            Decimal(243),
+            None,
+        ],
+    )
+
 
 INVALID_FORMULA_TESTS = [
     (
@@ -342,7 +507,7 @@ INVALID_FORMULA_TESTS = [
         "'a' + 2",
         "ERROR_WITH_FORMULA",
         "Error with formula: argument number 2 given to operator + was of type number "
-        "but the only usable types for this argument are text,char.",
+        "but the only usable types for this argument are text,char,link.",
     ),
     (
         "true + true",
@@ -404,107 +569,299 @@ INVALID_FORMULA_TESTS = [
         "but the only usable type for this argument is date_interval.",
     ),
     (
-        'left("aa", 2.0)',
-        "ERROR_WITH_FORMULA",
-        "Error with formula: argument number 2 given to function left was of type "
-        "number but the only usable type for this argument is a whole number with no "
-        "decimal places.",
-    ),
-    (
         "when_empty(1, 'a')",
         "ERROR_WITH_FORMULA",
         "Error with formula: both inputs for when_empty must be the same type.",
     ),
+    (
+        "regex_replace(1, 1, 1)",
+        "ERROR_WITH_FORMULA",
+        "Error with formula: argument number 1 given to function regex_replace was of "
+        "type number but the only usable type for this argument is text, argument "
+        "number 2 given to function regex_replace was of type number but the only "
+        "usable type for this argument is text, argument number 3 given to function "
+        "regex_replace was of type number but the only usable type for this argument "
+        "is text.",
+    ),
+    (
+        "sum(1)",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function sum was of type "
+            "number but the only usable type for this argument is a list of number "
+            "values obtained from a lookup or link row field reference."
+        ),
+    ),
+    (
+        "link('https://www.google.com') + 'a'",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 2 given to operator + was of type "
+            "text but there are no possible types usable here."
+        ),
+    ),
+    (
+        "link('https://www.google.com') + 1",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 2 given to operator + was of type "
+            "number but there are no possible types usable here."
+        ),
+    ),
+    (
+        "sum(link('https://www.google.com'))",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function sum was of type "
+            "link "
+            "but the only usable type for this argument is a list of number values "
+            "obtained from a lookup or link row field reference."
+        ),
+    ),
+    (
+        "link('a') + link('b')",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 2 given to operator + was of type "
+            "link but there are no possible types usable here."
+        ),
+    ),
+    (
+        "link('a') > link('b')",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 2 given to operator > was of type "
+            "link but there are no possible types usable here."
+        ),
+    ),
+    (
+        "link('a') > 1",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 2 given to operator > was of type "
+            "number but there are no possible types usable here."
+        ),
+    ),
+    (
+        "get_link_label(1)",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function get_link_label "
+            "was "
+            "of type number but the only usable type for this argument is link."
+        ),
+    ),
+    (
+        "get_link_label('a')",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function get_link_label "
+            "was "
+            "of type text but the only usable type for this argument is link."
+        ),
+    ),
+    (
+        "get_link_url(1)",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function get_link_url "
+            "was "
+            "of type number but the only usable type for this argument is link."
+        ),
+    ),
+    (
+        "get_link_url('a')",
+        "ERROR_WITH_FORMULA",
+        (
+            "Error with formula: argument number 1 given to function get_link_url "
+            "was "
+            "of type text but the only usable type for this argument is link."
+        ),
+    ),
 ]
 
 
-@pytest.mark.parametrize("test_input,expected", VALID_FORMULA_TESTS)
 @pytest.mark.django_db
-def test_valid_formulas(test_input, expected, data_fixture, api_client):
-    user, token = data_fixture.create_user_and_token()
-    table = data_fixture.create_database_table(user=user)
-    response = api_client.post(
-        reverse("api:database:fields:list", kwargs={"table_id": table.id}),
-        {"name": "Formula2", "type": "formula", "formula": test_input},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    assert response.status_code == 200, response.json()
-    field_id = response.json()["id"]
-    response = api_client.post(
-        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
-        {},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    assert response.status_code == 200
-    response = api_client.get(
-        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
-        {},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    response_json = response.json()
-    assert response_json["count"] == 1
-    assert response_json["results"][0][f"field_{field_id}"] == expected
+def test_aggregate_functions_never_allow_non_many_inputs(data_fixture, api_client):
+    user = data_fixture.create_user()
+    table, table_b, link_field = data_fixture.create_two_linked_tables(user=user)
+
+    function_exceptions = {Baserow2dArrayAgg.type}
+    custom_cases = {
+        BaserowAggJoin.type: [
+            [literal("x"), literal("y")],
+            [literal("x"), BaserowFieldReference[UnTyped](link_field.name, None, None)],
+        ]
+    }
+    for formula_func in formula_function_registry.get_all():
+        if not formula_func.aggregate or formula_func.type in function_exceptions:
+            continue
+
+        if formula_func.type in custom_cases:
+            fake_args = custom_cases[formula_func.type]
+        else:
+            fake_args = [construct_some_literal_args(formula_func)]
+
+        for arg_set in fake_args:
+            formula = str(BaserowFunctionCall[UnTyped](formula_func, arg_set, None))
+            try:
+                FieldHandler().create_field(
+                    user,
+                    table,
+                    "formula",
+                    name=f"{formula_func.type}",
+                    formula=formula,
+                )
+                assert False, (
+                    f"Function {formula_func.type} with formula "
+                    f"{formula} did not raise any exception when we "
+                    f"were expecting it to do so as it was passed non "
+                    f"many expressions."
+                )
+            except Exception as e:
+                assert isinstance(e, InvalidFormulaType) and search(
+                    "is a list of .*values obtained from a", str(e)
+                ), (
+                    f"Function {formula_func.type} crashed with formula: "
+                    f"{formula or ''} because of: \n{traceback.format_exc()}"
+                )
 
 
-@pytest.mark.parametrize("name,table_setup,formula,expected", COMPLEX_VALID_TESTS)
+def construct_some_literal_args(formula_func):
+    args = formula_func.arg_types
+    fake_args = []
+    for a in args:
+        r = None
+        arg_checker = a[0]
+        if isinstance(arg_checker, MustBeManyExprChecker):
+            arg_checker = arg_checker.formula_types[0]
+        if arg_checker == BaserowFormulaValidType:
+            r = ""
+        elif arg_checker == BaserowFormulaBooleanType:
+            r = True
+        elif arg_checker == BaserowFormulaTextType:
+            r = "literal"
+        elif arg_checker == BaserowFormulaNumberType:
+            r = Decimal(1.2345)
+        elif arg_checker == BaserowFormulaArrayType:
+            raise Exception("No array literals exist yet in the formula language")
+        else:
+            assert False, (
+                f"Please add a branch for {arg_checker} to "
+                f"the test function construct_some_literal_args"
+            )
+        fake_args.append(literal(r))
+    return fake_args
+
+
 @pytest.mark.django_db
-def test_valid_complex_formulas(
-    name,
-    table_setup,
-    formula,
-    expected,
-    data_fixture,
-    api_client,
-    django_assert_num_queries,
+def test_aggregate_functions_can_be_referenced_by_other_formulas(
+    data_fixture, api_client
 ):
     user, token = data_fixture.create_user_and_token()
-    table, fields, rows = data_fixture.build_table(
-        columns=table_setup[0], rows=table_setup[1], user=user
+    table, table_b, link_field = data_fixture.create_two_linked_tables(user=user)
+    grid = data_fixture.create_grid_view(user, table=table)
+
+    text_field = data_fixture.create_text_field(user, table=table_b, name="text_field")
+    number_field = data_fixture.create_number_field(
+        user, table=table_b, name="number_field"
     )
-    if not isinstance(formula, list):
-        formula = [formula]
-    formula_field_ids = []
-    j = 0
-    for f in formula:
-        if not isinstance(f, tuple):
-            f = f"baserow_formula_{j}", f
-            j += 1
-        response = api_client.post(
-            reverse("api:database:fields:list", kwargs={"table_id": table.id}),
-            {"name": f[0], "type": "formula", "formula": f[1]},
+    bool_field = data_fixture.create_boolean_field(
+        user, table=table_b, name="bool_field"
+    )
+
+    fill_table_rows(10, table_b)
+
+    for formula_func in formula_function_registry.get_all():
+        if not formula_func.aggregate or formula_func.type == "array_agg_unnesting":
+            continue
+
+        field_refs = [
+            get_field_name_from_arg_types(
+                formula_func,
+                link_field,
+                text_field=text_field,
+                number_field=number_field,
+                bool_field=bool_field,
+            )
+        ]
+
+        for arg_set in field_refs:
+            formula = str(BaserowFunctionCall[UnTyped](formula_func, arg_set, None))
+            f = FieldHandler().create_field(
+                user,
+                table,
+                "formula",
+                name=f"{formula_func.type}",
+                formula=formula,
+            )
+            FieldHandler().create_field(
+                user,
+                table,
+                "formula",
+                name=f"{formula_func.type} ref",
+                formula=f"field('{f.name}')",
+            )
+            RowHandler().create_row(user, table, {})
+            url = reverse("api:database:views:grid:list", kwargs={"view_id": grid.id})
+            response = api_client.get(url, **{"HTTP_AUTHORIZATION": f"JWT {token}"})
+            response_json = response.json()
+            assert response.status_code == HTTP_200_OK
+            assert response_json["count"] > 0
+
+
+def get_field_name_from_arg_types(
+    formula_func, through_field, text_field, number_field, bool_field
+):
+    args = formula_func.arg_types
+    field_refs = []
+    for a in args:
+        r = None
+        arg_checker = a[0]
+        if isinstance(arg_checker, MustBeManyExprChecker):
+            arg_checker = arg_checker.formula_types[0]
+        if arg_checker == BaserowFormulaValidType:
+            r = text_field.name
+        elif arg_checker == BaserowFormulaBooleanType:
+            r = bool_field.name
+        elif arg_checker == BaserowFormulaTextType:
+            r = text_field.name
+        elif arg_checker == BaserowFormulaNumberType:
+            r = number_field.name
+        elif arg_checker == BaserowFormulaArrayType:
+            r = through_field.link_row_related_field.name
+        else:
+            assert False, (
+                f"Please add a branch for {arg_checker} to "
+                f"the test function get_field_name_from_arg_types"
+            )
+        field_refs.append(BaserowFieldReference[UnTyped](through_field.name, r, None))
+    return field_refs
+
+
+@pytest.mark.django_db
+def test_valid_formulas(data_fixture, api_client):
+    user, token = data_fixture.create_user_and_token()
+    table = data_fixture.create_database_table(user=user)
+    table.get_model().objects.create()
+    for test_formula, expected_value in VALID_FORMULA_TESTS:
+        formula_field = FieldHandler().create_field(
+            user, table, "formula", formula=test_formula, name="test formula"
+        )
+        response = api_client.get(
+            reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+            {},
             format="json",
             HTTP_AUTHORIZATION=f"JWT {token}",
         )
-        assert response.status_code == 200, response.json()
-        formula_field_ids.append(response.json()["id"])
-    response = api_client.post(
-        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
-        {},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    assert response.status_code == 200
-    response = api_client.get(
-        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
-        {},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    response_json = response.json()
-    assert response_json["count"] == len(table_setup[1]) + 1
-    i = 0
-    for row in expected:
-        k = 0
-        for field in fields:
-            assert response_json["results"][i][f"field_{field.id}"] == row[k]
-            k += 1
-        for f_id in formula_field_ids:
-            assert response_json["results"][i][f"field_{f_id}"] == row[k], response_json
-            k += 1
-        i += 1
+        response_json = response.json()
+        assert response_json["count"] == 1
+        actual_value = response_json["results"][0][formula_field.db_column]
+        assert actual_value == expected_value, (
+            f"Expected the formula: {test_formula} to be {expected_value} but instead "
+            f"it was {actual_value}"
+        )
+        TrashHandler.permanently_delete(formula_field)
 
 
 @pytest.mark.parametrize("test_input,error,detail", INVALID_FORMULA_TESTS)
@@ -532,3 +889,142 @@ def test_invalid_formulas(test_input, error, detail, data_fixture, api_client):
     assert response.status_code == 200
     assert response.json() == []
     assert FormulaField.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_formula_returns_zeros_instead_of_null_if_output_is_decimal(
+    data_fixture, api_client
+):
+    user, token = data_fixture.create_user_and_token()
+    table_a, table_b, link_field = data_fixture.create_two_linked_tables(user=user)
+
+    number_field = data_fixture.create_number_field(
+        table=table_b,
+        name="number",
+    )
+
+    table_b_rows = data_fixture.create_rows_in_table(
+        table=table_b,
+        rows=[["Tesla", 5], ["Apple", None], ["Amazon", 11]],
+        fields=[table_b.field_set.get(primary=True), number_field],
+    )
+
+    data_fixture.create_row_for_many_to_many_field(
+        table=table_a, field=link_field, values=[table_b_rows[0].id], user=user
+    )
+    data_fixture.create_row_for_many_to_many_field(
+        table=table_a,
+        field=link_field,
+        values=[table_b_rows[0].id, table_b_rows[1].id],
+        user=user,
+    )
+    data_fixture.create_row_for_many_to_many_field(
+        table=table_a, field=link_field, values=[], user=user
+    )
+
+    count_formula = data_fixture.create_formula_field(
+        user=user,
+        table=table_a,
+        formula=f"count(field('{link_field.name}'))",
+    )
+
+    sum_formula = data_fixture.create_formula_field(
+        user=user,
+        table=table_a,
+        formula=f"sum(lookup('{link_field.name}', '{number_field.name}'))",
+    )
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table_a.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    assert response.status_code == HTTP_200_OK
+    results = response.json()["results"]
+    assert len(results) == 3
+    assert [
+        [o[count_formula.db_column], o[sum_formula.db_column]] for o in results
+    ] == [["1", "5"], ["2", "5"], ["0", "0"]]
+
+
+@pytest.mark.django_db
+def test_reference_to_null_number_field_acts_as_zero(
+    data_fixture,
+):
+    number_field = data_fixture.create_number_field()
+    formula_field = data_fixture.create_formula_field(
+        table=number_field.table, formula="1"
+    )
+
+    formula_field.formula = f"field('{number_field.name}') + 1"
+    formula_field.save(recalculate=True)
+
+    assert (
+        formula_field.internal_formula
+        == f"error_to_nan(add(when_empty(field('{number_field.db_column}'),0),1))"
+    )
+    model = number_field.table.get_model()
+    row = model.objects.create(**{f"{number_field.db_column}": None})
+    assert getattr(row, formula_field.db_column) == 1
+
+
+@pytest.mark.django_db
+def test_can_make_joining_nested_aggregation(
+    data_fixture,
+):
+    user, token = data_fixture.create_user_and_token()
+    table_a, table_b, link_a_to_b = data_fixture.create_two_linked_tables(user=user)
+    table_c, _, link_c_to_a = data_fixture.create_two_linked_tables(
+        user=user, table_b=table_a
+    )
+
+    formula_field = FieldHandler().create_field(
+        user,
+        table_a,
+        "formula",
+        name="formula",
+        formula=f"field('{link_c_to_a.link_row_related_field.name}') + join(field('{link_a_to_b.name}'), ',')",
+    )
+    assert formula_field.formula_type == "array"
+
+    table_b_rows = data_fixture.create_rows_in_table(
+        table=table_b,
+        rows=[["b_1"], ["b_2"]],
+        fields=[table_b.field_set.get(primary=True)],
+    )
+    table_c_rows = data_fixture.create_rows_in_table(
+        table=table_c,
+        rows=[["c_1"], ["c_2"]],
+        fields=[table_c.field_set.get(primary=True)],
+    )
+    row_1 = RowHandler().create_row(
+        user,
+        table_a,
+        {
+            link_a_to_b.db_column: [
+                table_b_rows[0].id,
+                table_b_rows[1].id,
+            ],
+            link_c_to_a.link_row_related_field.db_column: [table_c_rows[0].id],
+        },
+    )
+    row_2 = RowHandler().create_row(
+        user,
+        table_a,
+        {
+            link_a_to_b.db_column: [
+                table_b_rows[1].id,
+            ],
+            link_c_to_a.link_row_related_field.db_column: [
+                table_c_rows[0].id,
+                table_c_rows[1].id,
+            ],
+        },
+    )
+
+    assert formula_field.cached_formula_type.is_valid
+    rows = data_fixture.get_rows(fields=[formula_field])
+    assert rows == [
+        [[{"id": 1, "value": "c_1b_1,b_2"}]],
+        [[{"id": 1, "value": "c_1b_2"}, {"id": 2, "value": "c_2b_2"}]],
+    ]

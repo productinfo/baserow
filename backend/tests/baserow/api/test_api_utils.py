@@ -1,23 +1,25 @@
-import pytest
+from django.test import override_settings
 
-from rest_framework import status, serializers
+import pytest
+from rest_framework import serializers, status
 from rest_framework.exceptions import APIException
 from rest_framework.serializers import CharField
-from rest_framework.status import HTTP_404_NOT_FOUND
-from baserow.api.exceptions import QueryParameterValidationException
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
-from baserow.core.models import Group
-from baserow.core.registry import (
-    Instance,
-    Registry,
-    CustomFieldsInstanceMixin,
-    ModelInstanceMixin,
-)
+from baserow.api.exceptions import QueryParameterValidationException
+from baserow.api.registries import RegisteredException, api_exception_registry
 from baserow.api.utils import (
+    get_serializer_class,
     map_exceptions,
     validate_data,
     validate_data_custom_fields,
-    get_serializer_class,
+)
+from baserow.core.models import Group
+from baserow.core.registry import (
+    CustomFieldsInstanceMixin,
+    Instance,
+    ModelInstanceMixin,
+    Registry,
 )
 
 
@@ -169,6 +171,31 @@ def test_map_exceptions():
             raise TemporaryException
 
     assert api_exception_3.value.detail["error"] == "BASE_TYPE_ERROR"
+
+
+def test_map_exceptions_from_registry():
+    class TestException(Exception):
+        ...
+
+    test_error = (
+        "TEST_ERROR",
+        HTTP_400_BAD_REQUEST,
+        "Test error description.",
+    )
+
+    test_registered_ex = RegisteredException(
+        exception_class=TestException, exception_error=test_error
+    )
+
+    api_exception_registry.register(test_registered_ex)
+
+    with pytest.raises(APIException) as api_exception:
+        with map_exceptions({}):
+            raise TestException
+
+    assert api_exception.value.detail["error"] == "TEST_ERROR"
+    assert api_exception.value.detail["detail"] == "Test error description."
+    assert api_exception.value.status_code == status.HTTP_400_BAD_REQUEST
 
 
 def test_validate_data():
@@ -348,21 +375,18 @@ def test_get_serializer_class(data_fixture):
 
 def test_api_error_if_url_trailing_slash_is_missing(api_client):
 
-    url = "/api/invalid-url"
+    invalid_url = "/api/invalid-url"
+    # with DEBUG=False always return a JSON response for an invalid url
+    for content_type in ["application/json", "application/xml", "text/html", "", "*/*"]:
+        for method in ["get", "post", "patch", "delete"]:
+            response = getattr(api_client, method)(
+                invalid_url, HTTP_ACCEPT=content_type
+            )
 
-    for method in ["get", "post", "patch", "delete"]:
-        response = getattr(api_client, method)(url)
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.headers.get("content-type") != "application/json"
-
-    for method in ["get", "post", "patch", "delete"]:
-        response = getattr(api_client, method)(url, HTTP_ACCEPT="application/json")
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        response_json = response.json()
-        assert response_json["detail"] == f"URL {url} not found."
-        assert response_json["error"] == "URL_NOT_FOUND"
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            response_json = response.json()
+            assert response_json["detail"] == f"URL {invalid_url} not found."
+            assert response_json["error"] == "URL_NOT_FOUND"
 
     # get nicer 404 error if the url is valid (even if method is not)
     url = "/api/user/dashboard"
@@ -375,3 +399,20 @@ def test_api_error_if_url_trailing_slash_is_missing(api_client):
             f"Please, redirect requests to {url}/"
         )
         assert response_json["error"] == "URL_TRAILING_SLASH_MISSING"
+
+
+@override_settings(DEBUG=True)
+def test_api_give_informative_404_page_in_debug_for_invalid_urls(api_client):
+
+    invalid_url = "/api/invalid-url"
+
+    # check that the django 404 html informative page is returned if DEBUG=True
+    # and the ACCEPT header does not accept json
+    for content_type in ["application/xml", "text/html"]:
+        for method in ["get", "post", "patch", "delete"]:
+            response = getattr(api_client, method)(
+                invalid_url, HTTP_ACCEPT=content_type
+            )
+
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            assert response.headers.get("content-type") == "text/html"

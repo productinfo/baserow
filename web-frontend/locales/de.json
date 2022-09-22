@@ -26,7 +26,9 @@
         "copy": "Kopieren",
         "paste": "Einfügen",
         "activate": "Aktivieren",
-        "deactivate": "Deaktivieren"
+        "deactivate": "Deaktivieren",
+        "duplicate": "Duplizieren",
+        "remove": "Entfernen"
     },
     "adminType": {
         "settings": "Einstellungen"
@@ -39,17 +41,18 @@
     "settingType": {
         "account": "Konto",
         "password": "Passwort",
-        "tokens": "API Token"
+        "tokens": "API Token",
+        "deleteAccount": "Konto löschen"
     },
     "userFileUploadType": {
         "file": "Mein Gerät",
         "url": "eine URL"
     },
     "field": {
-        "emailAddress": "E-Mail Adresse"
+        "emailAddress": "E-Mail-Adresse"
     },
     "error": {
-        "invalidEmail": "Bitte geben Sie eine gültige E-Mail Adresse ein.",
+        "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
         "notMatchingPassword": "Dieses Feld muss mit dem Passwort Feld übereinstimmen.",
         "minLength": "Hier sind mindestens {min} Zeichen erforderlich.",
         "maxLength": "Maximal {max} Zeichen sind hier erlaubt.",
@@ -79,7 +82,8 @@
         "multipleSelect": "Mehrfachauswahl",
         "phoneNumber": "Telefonnummer",
         "formula": "Formel",
-        "lookup": "Nachschlagen"
+        "lookup": "Nachschlagen",
+        "multipleCollaborators": "Mitarbeiter"
     },
     "fieldErrors": {
         "invalidNumber": "Ungültige Zahl",
@@ -108,12 +112,13 @@
         "createdOnReadOnly": "Das Feld Erstellt am ist ein schreibgeschütztes Feld.",
         "url": "Akzeptiert eine Zeichenfolge, die eine URL sein muss.",
         "email": "Akzeptiert eine Zeichenkette, die eine E-Mail-Adresse sein muss.",
-        "file": "Akzeptiert ein Feld von Objekten, das mindestens den Namen der Benutzerdatei enthält.",
+        "file": "Akzeptiert ein Array von Objekten, das mindestens den Namen der Benutzerdatei enthält. Sie können die \"File uploads\"-Endpunkte verwenden, um die Datei hochzuladen. Die Antwort auf diese Aufrufe kann hier direkt als Objekt bereitgestellt werden. Die Endpunkte sind in der linken Seitenleiste zu finden.",
         "singleSelect": "Akzeptiert eine ganze Zahl, die für die gewählte Auswahloption id steht, oder null, wenn keine ausgewählt ist.",
         "multipleSelect": "Akzeptiert ein Feld von Integerwerten, die jeweils die gewählte Auswahloption id darstellen.",
         "phoneNumber": "Akzeptiert eine Telefonnummer mit einer maximalen Länge von 100 Zeichen, die nur aus Ziffern, Leerzeichen und den folgenden Zeichen besteht: Nx,._+*()#=;/- .",
         "formula": "Ein schreibgeschütztes Feld, das durch eine in der Formelsprache Baserow geschriebene Formel definiert ist.",
-        "lookup": "Ein schreibgeschütztes Feld, das mit einem verknüpften Zeilenfeld verbunden ist und ein Feld von Werten und Zeilennummern aus dem gewählten Nachschlagefeld in der verknüpften Tabelle zurückgibt."
+        "lookup": "Ein schreibgeschütztes Feld, das mit einem verknüpften Zeilenfeld verbunden ist und ein Feld von Werten und Zeilennummern aus dem gewählten Nachschlagefeld in der verknüpften Tabelle zurückgibt.",
+        "multipleCollaborators": "Akzeptiert ein Array von Objekten, wobei jedes Objekt die ID eines Benutzers enthält."
     },
     "viewFilter": {
         "contains": "enthält",
@@ -137,7 +142,12 @@
         "lowerThan": "niedriger als",
         "lengthIsLowerThan": "Länge ist niedriger als",
         "hasFileType": "hat Dateityp",
-        "isDaysAgo": "ist Tage alt"
+        "isDaysAgo": "ist Tage alt",
+        "inThisWeek": "in dieser Woche",
+        "isMonthsAgo": "ist Monate her",
+        "isYearsAgo": "ist Jahre her",
+        "beforeToday": "ist vor heute",
+        "afterToday": "ist nach heute"
     },
     "viewType": {
         "grid": "Gitternetz",
@@ -157,7 +167,8 @@
         "table": "Tabelle",
         "field": "Feld",
         "row": "Zeile",
-        "view": "Ansicht"
+        "view": "Ansicht",
+        "rows": "Zeilen"
     },
     "webhook": {
         "request": "Anfrage",
@@ -171,7 +182,14 @@
         "eventType": {
             "rowCreated": "Wenn eine Zeile erstellt wurde",
             "rowUpdated": "Wenn eine Zeile aktualisiert wurde",
-            "rowDeleted": "Wenn eine Zeile gelöscht wurde"
+            "rowDeleted": "Wenn eine Zeile gelöscht wurde",
+            "rowsCreated": "Zeilen werden erstellt",
+            "rowsUpdated": "Zeilen werden aktualisiert",
+            "rowsDeleted": "Zeilen werden gelöscht"
+        },
+        "form": {
+            "invalidURLTitle": "Ungültige URL.",
+            "invalidURLDescription": "Die Webhook-URL ist ungültig, unzugänglich oder verboten."
         }
     },
     "clientHandler": {
@@ -210,7 +228,27 @@
         "cannotRestoreAsRelatedTableTrashedTitle": "Bitte stellen Sie zuerst die zugehörigen Tabellen wieder her.",
         "cannotRestoreAsRelatedTableTrashedDescription": "Sie können dieses Feld nicht wiederherstellen, da es von anderen Tabellen abhängt, die noch nicht gelöscht sind. Bitte stellen Sie zuerst die anderen Bezugstabellen wieder her.",
         "groupUserIsLastAdminTitle": "Kann die Gruppe nicht verlassen",
-        "groupUserIsLastAdminDescription": "Es ist nicht möglich, die Gruppe zu verlassen, da Sie der letzte Administrator sind. Bitte löschen Sie die Gruppe oder geben Sie einem anderen Benutzer Administratorrechte."
+        "groupUserIsLastAdminDescription": "Es ist nicht möglich, die Gruppe zu verlassen, weil Sie der letzte Administrator sind oder weil die Konten anderer Administratoren zur Löschung anstehen. Bitte löschen Sie die Gruppe oder geben Sie einem anderen Benutzer Admin-Rechte.",
+        "errorMaxJobCountExceededTitle": "Die Aktion konnte nicht gestartet werden.",
+        "errorMaxJobCountExceededDescription": "Sie können keine weiteren dieser Aktionen starten, da noch andere im Hintergrund laufen. Bitte versuchen Sie es erneut, sobald die vorherigen Aktionen abgeschlossen sind.",
+        "failedToLockFieldDueToConflictTitle": "Feld kann nicht geändert werden",
+        "failedToLockTableDueToConflictTitle": "Feld kann nicht erstellt werden",
+        "failedToUndoRedoDueToConflictTitle": "Kann nicht rückgängig machen/wiederherstellen",
+        "failedToUndoRedoDueToConflictDescription": "Ein anderer Vorgang wird gerade ausgeführt und blockiert Ihre Rückgängigmachung oder Wiederherstellung. Bitte warten Sie, bis dieser Vorgang beendet ist, bevor Sie es erneut versuchen.",
+        "failedToLockFieldDueToConflictDescription": "Dieses Feld wird gerade von einem anderen Vorgang aktualisiert oder verwendet. Bitte warten Sie, bis dieser Vorgang abgeschlossen ist, bevor Sie es erneut versuchen.",
+        "failedToLockTableDueToConflictDescription": "Ein anderer Vorgang aktualisiert oder verwendet gerade diese Tabelle. Bitte warten Sie, bis er beendet ist, bevor Sie es erneut versuchen.",
+        "snapshotBeingCreatedDescription": "Es ist nicht möglich, mehrere Snapshots gleichzeitig zu erstellen.",
+        "maximumSnapshotsReachedDescription": "Die maximale Anzahl von Snapshots in einer Gruppe wurde erreicht.",
+        "snapshotBeingRestoredDescription": "Es ist nicht möglich, Snapshots zu verwenden, die derzeit wiederhergestellt werden.",
+        "snapshotBeingDeletedDescription": "Snapshots, die gerade gelöscht werden, können nicht verwendet werden.",
+        "snapshotNameNotUniqueDescription": "Alle Snapshot-Namen müssen pro Anwendung eindeutig sein.",
+        "maximumSnapshotsReachedTitle": "Limit für Snapshots erreicht",
+        "snapshotBeingCreatedTitle": "Ein Snapshot wird bereits erstellt",
+        "snapshotBeingRestoredTitle": "Der Snapshot wird wiederhergestellt",
+        "snapshotBeingDeletedTitle": "Der Snapshot wird gelöscht",
+        "snapshotOperationLimitExceededTitle": "Limit erreicht",
+        "snapshotNameNotUniqueTitle": "Der Name des Snapshots muss eindeutig sein.",
+        "snapshotOperationLimitExceededDescription": "Sie haben ein Limit für die Anzahl der laufenden Snapshot-Vorgänge erreicht. Bitte warten Sie, bis der vorherige Vorgang abgeschlossen ist."
     },
     "importerType": {
         "csv": "Importieren einer CSV-Datei",
@@ -235,7 +273,17 @@
         "queryParameters": "Abfrage Parameter",
         "pathParameters": "Pfad-Parameter",
         "requestBodySchema": "Aufbauschema anfordern",
-        "userFieldNamesDescription": "Wenn für den GET-Parameter \"user_field_names\" ein beliebiger Wert angegeben wird, sind die von diesem Endpunkt zurückgegebenen Feldnamen die tatsächlichen Namen der Felder.\n\n Wenn der GET-Parameter \"user_field_names\" nicht angegeben wird, lauten alle zurückgegebenen Feldnamen \"field_\", gefolgt von der ID des Feldes. Zum Beispiel bezieht sich \"field_1\" auf das Feld mit der ID \"1\"."
+        "userFieldNamesDescription": "Wenn für den GET-Parameter \"user_field_names\" ein beliebiger Wert angegeben wird, sind die von diesem Endpunkt zurückgegebenen Feldnamen die tatsächlichen Namen der Felder.\n\n Wenn der GET-Parameter \"user_field_names\" nicht angegeben wird, lauten alle zurückgegebenen Feldnamen \"field_\", gefolgt von der ID des Feldes. Zum Beispiel bezieht sich \"field_1\" auf das Feld mit der ID \"1\".",
+        "singleRow": "Einzeln",
+        "deleteRows": "Zeilen löschen",
+        "updateRows": "Zeilen aktualisieren",
+        "createRows": "Zeilen erstellen",
+        "batchRows": "Charge",
+        "uploadFile": "Datei hochladen",
+        "uploadFileDescription": "Der `file` Multipart, der den Dateiinhalt enthält.",
+        "uploadFileViaUrl": "Datei per URL hochladen",
+        "uploadFileViaUrlDescription": "Lädt eine Datei auf Baserow hoch, indem es sie von der angegebenen URL herunterlädt.",
+        "fileUploads": "Datei-Uploads"
     },
     "exporterType": {
         "csv": "Exportieren in CSV"
@@ -310,9 +358,16 @@
         "variancePopDescription": "Berechnet die Populationsvarianz der Werte und gibt das Ergebnis zurück. Die Populationsvarianz sollte verwendet werden, wenn die bereitgestellten Werte eine  Wert für jeden einzelnen Datensatz in der Grundgesamtheit.",
         "avgDescription": "Ermittelt den Durchschnitt aller Werte und gibt das Ergebnis zurück.",
         "sumDescription": "Summiert alle Werte und gibt das Ergebnis zurück.",
-        "filterDescription": "Filtert einen Ausdruck, der einen Verweis auf ein Nachschlage-/Verknüpfungsfeld oder einen Aufruf einer Nachschlagefunktion enthält, nach unten."
+        "filterDescription": "Filtert einen Ausdruck, der einen Verweis auf ein Nachschlage-/Verknüpfungsfeld oder einen Aufruf einer Nachschlagefunktion enthält, nach unten.",
+        "roundDescription": "Gibt das erste Argument gerundet auf die im zweiten Argument angegebene Anzahl von Ziffern zurück.",
+        "intDescription": "Gibt nur das erste Argument zurück, das in eine ganze Zahl umgewandelt wurde, indem alle Dezimalstellen abgeschnitten wurden.",
+        "truncDescription": "Gibt nur das erste Argument zurück, das in eine ganze Zahl umgewandelt wurde, indem alle Dezimalstellen abgeschnitten wurden."
     },
     "functionnalGridViewFieldLinkRow": {
         "unnamed": "unbenannte Zeile {value}"
+    },
+    "urlCheck": {
+        "invalidUrlEnvVarTitle": "Ungültiger {name}",
+        "invalidUrlEnvVarDescription": "Die Umgebungsvariable {name} ist auf einen ungültigen Wert gesetzt worden. Ihr Site-Administrator muss {name} in eine gültige URL ändern, die mit http:// oder https:// beginnt, und dann Baserow neu starten, um diesen Fehler zu beheben."
     }
 }

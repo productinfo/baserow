@@ -1,27 +1,20 @@
 import abc
-from typing import (
-    List,
-    Type,
-    Union,
-    Callable,
-    TypeVar,
-)
+from typing import List, Type, TypeVar
 
-from django.db.models import Value, Expression
+from django.db.models import Expression, Value
 from django.utils.functional import classproperty
 
 from baserow.contrib.database.formula.ast import tree
-from baserow.contrib.database.formula.types.exceptions import (
-    InvalidFormulaType,
-)
+from baserow.contrib.database.formula.types.exceptions import InvalidFormulaType
 
 T = TypeVar("T", bound="BaserowFormulaType")
 
 
 class BaserowFormulaType(abc.ABC):
+    @classmethod
     @property
     @abc.abstractmethod
-    def type(self) -> str:
+    def type(cls) -> str:
         """
         Should be a unique lowercase string used to identify this type.
         """
@@ -310,7 +303,7 @@ class BaserowFormulaValidType(BaserowFormulaType, abc.ABC):
         )
 
         func = formula_function_registry.get("array_agg")
-        return func.call_and_type_with(expr)
+        return func(expr)
 
     def raise_if_invalid(self):
         pass
@@ -346,28 +339,10 @@ class BaserowFormulaValidType(BaserowFormulaType, abc.ABC):
             formula_function_registry,
         )
 
-        return formula_function_registry.get("error_to_null").call_and_type_with(expr)
+        return formula_function_registry.get("error_to_null")(expr)
 
     def unwrap_at_field_level(self, expr: "tree.BaserowExpression[BaserowFormulaType]"):
         return expr.args[0].with_valid_type(expr.expression_type)
 
 
 UnTyped = type(None)
-BaserowListOfValidTypes = List[Type[BaserowFormulaValidType]]
-
-BaserowSingleArgumentTypeChecker = BaserowListOfValidTypes
-"""
-Defines a way of checking a single provided argument has a valid type or not.
-"""
-
-BaserowArgumentTypeChecker = Union[
-    Callable[[int, List[BaserowFormulaType]], BaserowListOfValidTypes],
-    List[BaserowSingleArgumentTypeChecker],
-]
-"""
-Defines a way of checking if all the arguments for a function.
-Either a callable which is given the argument index to check and the list of argument
-types and should return a list of valid types for that argument. Or instead can just be
-a list of single arg type checkers where the Nth position in the list is the type
-checker for the Nth argument.
-"""

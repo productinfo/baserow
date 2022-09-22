@@ -25,6 +25,7 @@ import {
   SingleSelectColorValueProviderType,
   ConditionalColorValueProviderType,
 } from '@baserow_premium/decoratorValueProviders'
+import { FormViewSurveyModeType } from '@baserow_premium/formViewModeTypes'
 
 import en from '@baserow_premium/locales/en.json'
 import fr from '@baserow_premium/locales/fr.json'
@@ -32,6 +33,7 @@ import nl from '@baserow_premium/locales/nl.json'
 import de from '@baserow_premium/locales/de.json'
 import es from '@baserow_premium/locales/es.json'
 import it from '@baserow_premium/locales/it.json'
+import pl from '@baserow_premium/locales/pl.json'
 
 export default (context) => {
   const { store, app, isDev } = context
@@ -51,6 +53,7 @@ export default (context) => {
     i18n.mergeLocaleMessage('de', de)
     i18n.mergeLocaleMessage('es', es)
     i18n.mergeLocaleMessage('it', it)
+    i18n.mergeLocaleMessage('pl', pl)
   }
 
   store.registerModule('row_comments', rowCommentsStore)
@@ -84,6 +87,8 @@ export default (context) => {
     'decoratorValueProvider',
     new ConditionalColorValueProviderType(context)
   )
+
+  app.$registry.register('formViewMode', new FormViewSurveyModeType(context))
 
   registerRealtimeEvents(app.$realtime)
 

@@ -1,12 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.db.models import QuerySet
 
-from baserow.contrib.database.rows.handler import RowHandler
-from baserow.contrib.database.table.handler import TableHandler
+from baserow_premium.license.handler import check_active_premium_license_for_group
 from baserow_premium.row_comments.exceptions import InvalidRowCommentException
 from baserow_premium.row_comments.models import RowComment
 from baserow_premium.row_comments.signals import row_comment_created
-from baserow_premium.license.handler import check_active_premium_license
+
+from baserow.contrib.database.rows.handler import RowHandler
+from baserow.contrib.database.table.handler import TableHandler
 
 User = get_user_model()
 
@@ -28,6 +29,7 @@ class RowCommentHandler:
         """
 
         table = TableHandler().get_table(table_id)
+        check_active_premium_license_for_group(requesting_user, table.database.group)
         RowHandler().has_row(requesting_user, table, row_id, raise_error=True)
         return (
             RowComment.objects.select_related("user")
@@ -54,12 +56,12 @@ class RowCommentHandler:
         :raises InvalidRowCommentException: If the comment is blank or None.
         """
 
-        check_active_premium_license(requesting_user)
+        table = TableHandler().get_table(table_id)
+        check_active_premium_license_for_group(requesting_user, table.database.group)
 
         if comment is None or comment == "":
             raise InvalidRowCommentException()
 
-        table = TableHandler().get_table(table_id)
         RowHandler().has_row(requesting_user, table, row_id, raise_error=True)
         row_comment = RowComment.objects.create(
             user=requesting_user, table=table, row_id=row_id, comment=comment

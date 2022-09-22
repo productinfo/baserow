@@ -1,8 +1,10 @@
+import contextlib
 import os
 
-import pytest
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS
+
+import pytest
 
 SKIP_FLAGS = ["disabled-in-ci", "once-per-day-in-ci"]
 COMMAND_LINE_FLAG_PREFIX = "--run-"
@@ -55,8 +57,58 @@ def mutable_action_registry():
     action_type_registry.registry = before
 
 
-# We reuse this file in the premium backend folder, if you run a pytest session over
-# plugins and the core at the same time pytest will crash if this called multiple times.
+@pytest.fixture()
+def patch_filefield_storage(tmpdir):
+    """
+    Patches all filefield storages from all models with the one given in parameter
+    or a newly created one.
+    """
+
+    from django.apps import apps
+    from django.core.files.storage import FileSystemStorage
+    from django.db.models import FileField
+
+    # Cache the storage
+    _storage = None
+
+    @contextlib.contextmanager
+    def patch(new_storage=None):
+        nonlocal _storage
+        if new_storage is None:
+            if not _storage:
+                # Create a default storage if none given
+                _storage = FileSystemStorage(
+                    location=str(tmpdir), base_url="http://localhost"
+                )
+            new_storage = _storage
+
+        previous_storages = {}
+        # Replace storage
+        for model in apps.get_models():
+            filefields = (f for f in model._meta.fields if isinstance(f, FileField))
+            for filefield in filefields:
+                previous_storages[
+                    f"{model._meta.label}_{filefield.name}"
+                ] = filefield.storage
+                filefield.storage = new_storage
+
+        yield new_storage
+
+        # Restore previous storage
+        for model in apps.get_models():
+            filefields = (f for f in model._meta.fields if isinstance(f, FileField))
+
+            for filefield in filefields:
+                filefield.storage = previous_storages[
+                    f"{model._meta.label}_{filefield.name}"
+                ]
+
+    return patch
+
+
+# We reuse this file in the premium/enterprise backend folder, if you run a pytest
+# session over plugins and the core at the same time pytest will crash if this
+# called multiple times.
 def pytest_addoption(parser):
     # Unfortunately a simple decorator doesn't work here as pytest is doing some
     # exciting reflection of sorts over this function and crashes if it is wrapped.

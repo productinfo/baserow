@@ -1,25 +1,30 @@
-import pytest
 import secrets
 from io import BytesIO
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 
-from baserow.core.user_files.handler import UserFileHandler
-from baserow.contrib.database.views.registries import (
-    view_type_registry,
-    view_aggregation_type_registry,
-)
+import pytest
+
+from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.views.models import GalleryViewFieldOptions
-from baserow.contrib.database.fields.handler import FieldHandler
+from baserow.contrib.database.views.registries import (
+    view_aggregation_type_registry,
+    view_type_registry,
+)
+from baserow.core.user_files.handler import UserFileHandler
 
 
 @pytest.mark.django_db
 def test_import_export_grid_view(data_fixture):
     grid_view = data_fixture.create_grid_view(
-        name="Test", order=1, filter_type="AND", filters_disabled=False
+        name="Test",
+        order=1,
+        filter_type="AND",
+        filters_disabled=False,
+        row_identifier_type="count",
     )
     field = data_fixture.create_text_field(table=grid_view.table)
     imported_field = data_fixture.create_text_field(table=grid_view.table)
@@ -52,6 +57,7 @@ def test_import_export_grid_view(data_fixture):
     assert grid_view.order == imported_grid_view.order
     assert grid_view.filter_type == imported_grid_view.filter_type
     assert grid_view.filters_disabled == imported_grid_view.filters_disabled
+    assert grid_view.row_identifier_type == imported_grid_view.row_identifier_type
     assert imported_grid_view.viewfilter_set.all().count() == 1
     assert imported_grid_view.viewsort_set.all().count() == 1
 
@@ -148,7 +154,10 @@ def test_import_export_gallery_view(data_fixture, tmpdir):
 
     storage = FileSystemStorage(location=str(tmpdir), base_url="http://localhost")
     table = data_fixture.create_database_table(user=user)
-    gallery_view = data_fixture.create_gallery_view(table=table)
+    file_field = data_fixture.create_file_field(table=table)
+    gallery_view = data_fixture.create_gallery_view(
+        table=table, card_cover_image_field=file_field
+    )
     text_field = data_fixture.create_text_field(table=table)
     field_option = data_fixture.create_gallery_view_field_option(
         gallery_view, text_field, order=1
@@ -166,14 +175,21 @@ def test_import_export_gallery_view(data_fixture, tmpdir):
     assert serialized["type"] == "gallery"
     assert serialized["name"] == gallery_view.name
     assert serialized["order"] == 0
-    assert len(serialized["field_options"]) == 1
+    assert serialized["card_cover_image_field_id"] == file_field.id
+    assert len(serialized["field_options"]) == 2
     assert serialized["field_options"][0]["id"] == field_option.id
     assert serialized["field_options"][0]["field_id"] == field_option.field_id
     assert serialized["field_options"][0]["hidden"] is True
     assert serialized["field_options"][0]["order"] == 1
 
     imported_single_select_field = data_fixture.create_text_field(table=table)
-    id_mapping = {"database_fields": {text_field.id: imported_single_select_field.id}}
+    imported_file_field = data_fixture.create_file_field(table=table)
+    id_mapping = {
+        "database_fields": {
+            text_field.id: imported_single_select_field.id,
+            file_field.id: imported_file_field.id,
+        }
+    }
 
     with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
         imported_gallery_view = gallery_view_type.import_serialized(
@@ -183,8 +199,9 @@ def test_import_export_gallery_view(data_fixture, tmpdir):
     assert gallery_view.id != imported_gallery_view.id
     assert gallery_view.name == imported_gallery_view.name
     assert gallery_view.order == imported_gallery_view.order
+    assert imported_gallery_view.card_cover_image_field.id == imported_file_field.id
     imported_field_options = imported_gallery_view.get_field_options()
-    assert len(imported_field_options) == 1
+    assert len(imported_field_options) == 2
     imported_field_option = imported_field_options[0]
     assert field_option.id != imported_field_option.id
     assert field_option.hidden == imported_field_option.hidden
@@ -238,6 +255,30 @@ def test_convert_card_cover_image_field_deleted(data_fixture):
 
 
 @pytest.mark.django_db
+def test_convert_to_incompatible_field_in_form_view(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    field = data_fixture.create_text_field(table=table)
+    field_2 = data_fixture.create_text_field(table=table)
+    form_view = data_fixture.create_form_view(table=table)
+    options = data_fixture.create_form_view_field_option(form_view, field, enabled=True)
+    options_2 = data_fixture.create_form_view_field_option(
+        form_view, field_2, enabled=True
+    )
+
+    FieldHandler().update_field(
+        user=user,
+        table=table,
+        field=field,
+        new_type_name="created_on",
+    )
+    options.refresh_from_db()
+    options_2.refresh_from_db()
+    assert options.enabled is False
+    assert options_2.enabled is True
+
+
+@pytest.mark.django_db
 def test_import_export_form_view(data_fixture, tmpdir):
     user = data_fixture.create_user()
 
@@ -271,6 +312,15 @@ def test_import_export_form_view(data_fixture, tmpdir):
         name="Test name",
         description="Field description",
         order=1,
+    )
+    condition = data_fixture.create_form_view_field_options_condition(
+        field_option=field_option, field=text_field
+    )
+    condition_2 = data_fixture.create_form_view_field_options_condition(
+        field_option=field_option,
+        field=text_field,
+        type="multiple_select_has",
+        value="1",
     )
 
     files_buffer = BytesIO()
@@ -309,12 +359,29 @@ def test_import_export_form_view(data_fixture, tmpdir):
     assert serialized["field_options"][0]["description"] == field_option.description
     assert serialized["field_options"][0]["enabled"] == field_option.enabled
     assert serialized["field_options"][0]["required"] == field_option.required
+    assert serialized["field_options"][0]["conditions"] == [
+        {
+            "id": condition.id,
+            "field": condition.field_id,
+            "type": condition.type,
+            "value": condition.value,
+        },
+        {
+            "id": condition_2.id,
+            "field": condition_2.field_id,
+            "type": condition_2.type,
+            "value": condition_2.value,
+        },
+    ]
 
     with ZipFile(files_buffer, "r", ZIP_DEFLATED, False) as zip_file:
         assert zip_file.read(user_file.name) == b"Hello World"
         assert len(zip_file.infolist()) == 1
 
-    id_mapping = {"database_fields": {text_field.id: imported_text_field.id}}
+    id_mapping = {
+        "database_fields": {text_field.id: imported_text_field.id},
+        "database_field_select_options": {1: 2},
+    }
 
     with ZipFile(files_buffer, "a", ZIP_DEFLATED, False) as files_zip:
         imported_form_view = form_view_type.import_serialized(
@@ -349,3 +416,16 @@ def test_import_export_form_view(data_fixture, tmpdir):
     assert field_option.enabled == imported_field_option.enabled
     assert field_option.required == imported_field_option.required
     assert field_option.order == imported_field_option.order
+
+    imported_field_option_conditions = imported_field_option.conditions.all()
+    assert len(imported_field_option_conditions) == 2
+    imported_field_option_condition = imported_field_option_conditions[0]
+    assert imported_field_option_condition.field_id == imported_text_field.id
+    assert imported_field_option_condition.field_option_id == imported_field_option.id
+    assert imported_field_option_condition.type == condition.type
+    assert imported_field_option_condition.value == condition.value
+    imported_field_option_condition_2 = imported_field_option_conditions[1]
+    assert imported_field_option_condition_2.field_id == imported_text_field.id
+    assert imported_field_option_condition_2.field_option_id == imported_field_option.id
+    assert imported_field_option_condition_2.type == condition_2.type
+    assert imported_field_option_condition_2.value == "2"

@@ -6,10 +6,12 @@ import KanbanService from '@baserow_premium/services/views/kanban'
 import {
   getRowSortFunction,
   matchSearchFilters,
+  getFilters,
 } from '@baserow/modules/database/utils/view'
 import RowService from '@baserow/modules/database/services/row'
 import FieldService from '@baserow/modules/database/services/field'
 import { SingleSelectFieldType } from '@baserow/modules/database/fieldTypes'
+import { prepareRowForRequest } from '@baserow/modules/database/utils/row'
 
 export function populateRow(row) {
   row._ = {
@@ -165,7 +167,7 @@ export const actions = {
    * Fetches an initial set of rows and adds that data to the store.
    */
   async fetchInitial(
-    { dispatch, commit, getters },
+    { dispatch, commit, getters, rootGetters },
     { kanbanId, singleSelectFieldId, includeFieldOptions = true }
   ) {
     const { data } = await KanbanService(this.$client).fetchRows({
@@ -174,6 +176,9 @@ export const actions = {
       offset: 0,
       includeFieldOptions,
       selectOptions: [],
+      publicUrl: rootGetters['page/view/public/getIsPublic'],
+      publicAuthToken: rootGetters['page/view/public/getAuthToken'],
+      filters: getFilters(rootGetters, kanbanId),
     })
     Object.keys(data.rows).forEach((key) => {
       populateStack(data.rows[key])
@@ -190,7 +195,10 @@ export const actions = {
    * we don't fetch all the rows, the next set will be fetched when the user reaches
    * the end.
    */
-  async fetchMore({ dispatch, commit, getters }, { selectOptionId }) {
+  async fetchMore(
+    { dispatch, commit, getters, rootGetters },
+    { selectOptionId }
+  ) {
     const stack = getters.getStack(selectOptionId)
     const { data } = await KanbanService(this.$client).fetchRows({
       kanbanId: getters.getLastKanbanId,
@@ -204,6 +212,9 @@ export const actions = {
           offset: stack.results.length,
         },
       ],
+      publicUrl: rootGetters['page/view/public/getIsPublic'],
+      publicAuthToken: rootGetters['page/view/public/getAuthToken'],
+      filters: getFilters(rootGetters, getters.getLastKanbanId),
     })
     const count = data.rows[selectOptionId].count
     const rows = data.rows[selectOptionId].results
@@ -331,36 +342,18 @@ export const actions = {
    */
   async createNewRow(
     { dispatch, commit, getters },
-    { view, table, fields, primary, values }
+    { view, table, fields, values }
   ) {
-    // First prepare an object that we can send to the
-    const allFields = [primary].concat(fields)
-    const preparedValues = {}
-    allFields.forEach((field) => {
-      const name = `field_${field.id}`
-      const fieldType = this.$registry.get('field', field._.type.type)
-
-      if (fieldType.isReadOnly) {
-        return
-      }
-
-      preparedValues[name] = Object.prototype.hasOwnProperty.call(values, name)
-        ? (preparedValues[name] = fieldType.prepareValueForUpdate(
-            field,
-            values[name]
-          ))
-        : fieldType.getEmptyValue(field)
-    })
+    const preparedRow = prepareRowForRequest(values, fields, this.$registry)
 
     const { data } = await RowService(this.$client).create(
       table.id,
-      preparedValues
+      preparedRow
     )
     return await dispatch('createdNewRow', {
       view,
       values: data,
       fields,
-      primary,
     })
   },
   /**
@@ -376,7 +369,7 @@ export const actions = {
    */
   async createdNewRow(
     { dispatch, commit, getters, rootGetters },
-    { view, values, fields, primary }
+    { view, values, fields }
   ) {
     const row = clone(values)
     populateRow(row)
@@ -385,7 +378,6 @@ export const actions = {
       view,
       row,
       fields,
-      primary,
     })
     if (!matchesFilters) {
       return
@@ -398,7 +390,7 @@ export const actions = {
 
     const sortedRows = clone(stack.results)
     sortedRows.push(row)
-    sortedRows.sort(getRowSortFunction(this.$registry, [], fields, primary))
+    sortedRows.sort(getRowSortFunction(this.$registry, [], fields))
     const index = sortedRows.findIndex((r) => r.id === row.id)
     const isLast = index === sortedRows.length - 1
 
@@ -420,7 +412,7 @@ export const actions = {
    */
   async deletedExistingRow(
     { dispatch, commit, getters },
-    { view, row, fields, primary }
+    { view, row, fields }
   ) {
     row = clone(row)
     populateRow(row)
@@ -429,7 +421,6 @@ export const actions = {
       view,
       row,
       fields,
-      primary,
     })
     if (!matchesFilters) {
       return
@@ -456,7 +447,7 @@ export const actions = {
   /**
    * Check if the provided row matches the provided view filters.
    */
-  rowMatchesFilters(context, { view, fields, primary, row, overrides = {} }) {
+  rowMatchesFilters(context, { view, fields, row, overrides = {} }) {
     const values = JSON.parse(JSON.stringify(row))
     Object.assign(values, overrides)
 
@@ -467,7 +458,7 @@ export const actions = {
           this.$registry,
           view.filter_type,
           view.filters,
-          primary === null ? fields : [primary, ...fields],
+          fields,
           values
         )
   },
@@ -479,7 +470,7 @@ export const actions = {
    */
   async updatedExistingRow(
     { dispatch, getters, commit },
-    { view, row, values, fields, primary }
+    { view, row, values, fields }
   ) {
     const singleSelectFieldId = getters.getSingleSelectFieldId
     const fieldName = `field_${singleSelectFieldId}`
@@ -490,7 +481,6 @@ export const actions = {
       view,
       row: oldRow,
       fields,
-      primary,
     })
     const oldOption = oldRow[fieldName]
     const oldStackId = oldOption !== null ? oldOption.id : 'null'
@@ -506,7 +496,6 @@ export const actions = {
       view,
       row: newRow,
       fields,
-      primary,
     })
     const newOption = newRow[fieldName]
     const newStackId = newOption !== null ? newOption.id : 'null'
@@ -522,9 +511,7 @@ export const actions = {
     }
     newStackResults.push(newRow)
     newStackCount++
-    newStackResults.sort(
-      getRowSortFunction(this.$registry, [], fields, primary)
-    )
+    newStackResults.sort(getRowSortFunction(this.$registry, [], fields))
     const newIndex = newStackResults.findIndex((r) => r.id === newRow.id)
     const newIsLast = newIndex === newStackResults.length - 1
     const newExists =
@@ -580,7 +567,7 @@ export const actions = {
    * need to updated and will make a call to the backend. If something goes wrong,
    * the row is moved back to the original stack and position.
    */
-  async stopRowDrag({ dispatch, commit, getters }, { table, fields, primary }) {
+  async stopRowDrag({ dispatch, commit, getters }, { table, fields }) {
     const row = getters.getDraggingRow
 
     if (row === null) {
@@ -601,9 +588,9 @@ export const actions = {
     // We need to have the single select option field instance because we need
     // access to the available options. We can figure that out by looking looping
     // over the provided fields.
-    const singleSelectField = [primary]
-      .concat(fields)
-      .find((field) => field.id === getters.getSingleSelectFieldId)
+    const singleSelectField = fields.find(
+      (field) => field.id === getters.getSingleSelectFieldId
+    )
     const singleSelectFieldType = this.$registry.get(
       'field',
       SingleSelectFieldType.getType()
@@ -755,10 +742,9 @@ export const actions = {
    */
   async updateRowValue(
     { commit, dispatch },
-    { view, table, row, field, fields, primary, value, oldValue }
+    { view, table, row, field, fields, value, oldValue }
   ) {
     const fieldType = this.$registry.get('field', field._.type.type)
-    const allFields = [primary].concat(fields)
     const newValues = {}
     const newValuesForUpdate = {}
     const oldValues = {}
@@ -770,7 +756,7 @@ export const actions = {
     )
     oldValues[fieldName] = oldValue
 
-    allFields.forEach((fieldToCall) => {
+    fields.forEach((fieldToCall) => {
       const fieldType = this.$registry.get('field', fieldToCall._.type.type)
       const fieldToCallName = `field_${fieldToCall.id}`
       const currentFieldValue = row[fieldToCallName]
@@ -791,7 +777,6 @@ export const actions = {
       row,
       values: newValues,
       fields,
-      primary,
     })
 
     try {
@@ -807,7 +792,6 @@ export const actions = {
         row,
         values: oldValues,
         fields,
-        primary,
       })
       throw error
     }
@@ -816,13 +800,10 @@ export const actions = {
    * Creates a new stack by updating the related field option of the view's
    * field. The values in the store also be updated accordingly.
    */
-  async createStack(
-    { getters, commit, dispatch },
-    { fields, primary, color, value }
-  ) {
-    const field = [primary]
-      .concat(fields)
-      .find((field) => field.id === getters.getSingleSelectFieldId)
+  async createStack({ getters, commit, dispatch }, { fields, color, value }) {
+    const field = fields.find(
+      (field) => field.id === getters.getSingleSelectFieldId
+    )
 
     const updateValues = {
       type: field.type,
@@ -868,11 +849,11 @@ export const actions = {
    */
   async updateStack(
     { getters, commit, dispatch },
-    { fields, primary, optionId, values }
+    { fields, optionId, values }
   ) {
-    const field = [primary]
-      .concat(fields)
-      .find((field) => field.id === getters.getSingleSelectFieldId)
+    const field = fields.find(
+      (field) => field.id === getters.getSingleSelectFieldId
+    )
 
     const options = clone(field.select_options)
     const index = options.findIndex((o) => o.id === optionId)
@@ -911,11 +892,11 @@ export const actions = {
    */
   async deleteStack(
     { getters, commit, dispatch },
-    { fields, primary, optionId, deferredFieldUpdate = false }
+    { fields, optionId, deferredFieldUpdate = false }
   ) {
-    const field = [primary]
-      .concat(fields)
-      .find((field) => field.id === getters.getSingleSelectFieldId)
+    const field = fields.find(
+      (field) => field.id === getters.getSingleSelectFieldId
+    )
 
     const options = clone(field.select_options)
     const index = options.findIndex((o) => o.id === optionId)

@@ -1,14 +1,13 @@
 <template>
   <div>
-    <div
+    <Alert
       v-if="invitation !== null"
-      class="alert alert--simple alert--primary alert--has-icon"
+      simple
+      type="primary"
+      icon="exclamation"
+      :title="$t('invitationTitle')"
     >
-      <div class="alert__icon">
-        <i class="fas fa-exclamation"></i>
-      </div>
-      <div class="alert__title">{{ $t('invitationTitle') }}</div>
-      <i18n path="invitationMessage" tag="p" class="alert__content">
+      <i18n path="invitationMessage" tag="p">
         <template #invitedBy>
           <strong>{{ invitation.invited_by }}</strong>
         </template>
@@ -16,7 +15,7 @@
           <strong>{{ invitation.group }}</strong>
         </template>
       </i18n>
-    </div>
+    </Alert>
     <Error :error="error"></Error>
     <form @submit.prevent="register">
       <div class="control">
@@ -83,6 +82,13 @@
           </div>
         </div>
       </div>
+      <component
+        :is="component"
+        v-for="(component, index) in registerComponents"
+        :ref="`register-component-${index}`"
+        :key="index"
+        @updated-account="updatedAccount"
+      ></component>
       <div class="actions">
         <slot></slot>
         <button
@@ -138,6 +144,13 @@ export default {
       },
     }
   },
+  computed: {
+    registerComponents() {
+      return Object.values(this.$registry.getAll('plugin'))
+        .map((plugin) => plugin.getRegisterComponent())
+        .filter((component) => component !== null)
+    },
+  },
   beforeMount() {
     if (this.invitation !== null) {
       this.account.email = this.invitation.email
@@ -146,7 +159,19 @@ export default {
   methods: {
     async register() {
       this.$v.$touch()
-      if (this.$v.$invalid) {
+      let registerComponentsValid = true
+
+      for (let i = 0; i < this.registerComponents.length; i++) {
+        const ref = this.$refs[`register-component-${i}`][0]
+        if (
+          Object.prototype.hasOwnProperty.call(ref, 'isValid') &&
+          !ref.isValid(this.account)
+        ) {
+          registerComponentsValid = false
+        }
+      }
+
+      if (this.$v.$invalid || !registerComponentsValid) {
         return
       }
 
@@ -191,6 +216,9 @@ export default {
           ),
         })
       }
+    },
+    updatedAccount({ key, value }) {
+      this.$set(this.account, key, value)
     },
   },
   validations: {

@@ -1,18 +1,42 @@
-from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers
 
 from baserow.api.user_files.serializers import UserFileField
 from baserow.contrib.database.api.fields.serializers import FieldSerializer
 from baserow.contrib.database.fields.models import Field
-from baserow.contrib.database.views.models import FormView, FormViewFieldOptions
 from baserow.contrib.database.fields.registries import field_type_registry
+from baserow.contrib.database.views.models import (
+    FormView,
+    FormViewFieldOptions,
+    FormViewFieldOptionsCondition,
+)
+
+
+class FormViewFieldOptionsConditionSerializer(serializers.ModelSerializer):
+    field = serializers.IntegerField(required=True, source="field_id")
+
+    class Meta:
+        model = FormViewFieldOptionsCondition
+        fields = ("id", "field", "type", "value")
+        extra_kwargs = {"id": {"read_only": False}}
 
 
 class FormViewFieldOptionsSerializer(serializers.ModelSerializer):
+    conditions = FormViewFieldOptionsConditionSerializer(many=True, required=False)
+
     class Meta:
         model = FormViewFieldOptions
-        fields = ("name", "description", "enabled", "required", "order")
+        fields = (
+            "name",
+            "description",
+            "enabled",
+            "required",
+            "show_when_matching_conditions",
+            "condition_type",
+            "order",
+            "conditions",
+        )
 
 
 class PublicFormViewFieldSerializer(FieldSerializer):
@@ -33,10 +57,20 @@ class PublicFormViewFieldOptionsSerializer(FieldSerializer):
     name = serializers.SerializerMethodField(
         help_text="If provided, then this value will be visible above the field input.",
     )
+    conditions = FormViewFieldOptionsConditionSerializer(many=True, required=False)
 
     class Meta:
         model = FormViewFieldOptions
-        fields = ("name", "description", "required", "order", "field")
+        fields = (
+            "name",
+            "description",
+            "required",
+            "order",
+            "field",
+            "show_when_matching_conditions",
+            "condition_type",
+            "conditions",
+        )
 
     # @TODO show correct API docs discriminated by field type.
     @extend_schema_field(PublicFormViewFieldSerializer)
@@ -66,6 +100,7 @@ class PublicFormViewSerializer(serializers.ModelSerializer):
         fields = (
             "title",
             "description",
+            "mode",
             "cover_image",
             "logo_image",
             "submit_text",
@@ -74,10 +109,13 @@ class PublicFormViewSerializer(serializers.ModelSerializer):
 
 
 class FormViewSubmittedSerializer(serializers.ModelSerializer):
+    row_id = serializers.IntegerField()
+
     class Meta:
         model = FormView
         fields = (
             "submit_action",
             "submit_action_message",
             "submit_action_redirect_url",
+            "row_id",
         )

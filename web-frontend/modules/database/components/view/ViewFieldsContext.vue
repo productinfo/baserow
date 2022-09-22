@@ -52,6 +52,7 @@
         >
           <a class="hidings__item-handle" data-field-handle></a>
           <SwitchInput
+            v-if="allowHidingFields"
             :value="!isHidden(field.id)"
             @input="updateFieldOptionsOfField(field, { hidden: !$event })"
           >
@@ -61,10 +62,17 @@
             ></i>
             <span>{{ field.name }}</span>
           </SwitchInput>
+          <div v-else class="hidings__item-name">
+            <i
+              class="fas fa-fw switch__icon"
+              :class="'fa-' + field._.type.iconClass"
+            ></i>
+            <span>{{ field.name }}</span>
+          </div>
         </li>
       </ul>
     </div>
-    <div v-show="query === ''" class="hidings__footer">
+    <div v-if="allowHidingFields" v-show="query === ''" class="hidings__footer">
       <button
         class="button button--ghost hidings__footer-button"
         @click="!noneSelected && updateAllFieldOptions({ hidden: true })"
@@ -82,11 +90,12 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { escapeRegExp } from '@baserow/modules/core/utils/string'
 import context from '@baserow/modules/core/mixins/context'
 import { clone } from '@baserow/modules/core/utils/object'
-import { maxPossibleOrderValue } from '@baserow/modules/database/viewTypes'
 import { FileFieldType } from '@baserow/modules/database/fieldTypes'
+import { sortFieldsByOrderAndIdFunction } from '@baserow/modules/database/utils/view'
 
 export default {
   name: 'ViewFieldsContext',
@@ -113,6 +122,11 @@ export default {
       type: Boolean,
       required: false,
       default: false,
+    },
+    allowHidingFields: {
+      type: Boolean,
+      required: false,
+      default: true,
     },
   },
   data() {
@@ -145,39 +159,22 @@ export default {
           const regex = new RegExp('(' + escapeRegExp(query) + ')', 'i')
           return field.name.match(regex)
         })
-        .sort((a, b) => {
-          const orderA = this.fieldOptions[a.id]
-            ? this.fieldOptions[a.id].order
-            : maxPossibleOrderValue
-          const orderB = this.fieldOptions[b.id]
-            ? this.fieldOptions[b.id].order
-            : maxPossibleOrderValue
-
-          // First by order.
-          if (orderA > orderB) {
-            return 1
-          } else if (orderA < orderB) {
-            return -1
-          }
-
-          // Then by id.
-          if (a.id < b.id) {
-            return -1
-          } else if (a.id > b.id) {
-            return 1
-          } else {
-            return 0
-          }
-        })
+        .sort(sortFieldsByOrderAndIdFunction(this.fieldOptions))
     },
     fileFields() {
       const type = FileFieldType.getType()
       return this.fields.filter((field) => field.type === type)
     },
+    ...mapGetters({
+      allFields: 'field/getAll',
+    }),
   },
   methods: {
     order(order, oldOrder) {
-      this.$emit('update-order', { order, oldOrder })
+      this.$emit('update-order', {
+        order: [this.allFields[0].id, ...order], // Add primary field first
+        oldOrder,
+      })
     },
     updateAllFieldOptions(values) {
       const newFieldOptions = {}

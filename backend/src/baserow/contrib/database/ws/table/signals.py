@@ -1,9 +1,8 @@
-from django.dispatch import receiver
 from django.db import transaction
+from django.dispatch import receiver
 
-from baserow.contrib.database.table import signals as table_signals
 from baserow.contrib.database.api.tables.serializers import TableSerializer
-
+from baserow.contrib.database.table import signals as table_signals
 from baserow.ws.tasks import broadcast_to_group
 
 
@@ -19,7 +18,7 @@ def table_created(sender, table, user, **kwargs):
 
 
 @receiver(table_signals.table_updated)
-def table_updated(sender, table, user, **kwargs):
+def table_updated(sender, table, user, force_table_refresh=False, **kwargs):
     transaction.on_commit(
         lambda: broadcast_to_group.delay(
             table.database.group_id,
@@ -27,6 +26,7 @@ def table_updated(sender, table, user, **kwargs):
                 "type": "table_updated",
                 "table_id": table.id,
                 "table": TableSerializer(table).data,
+                "force_table_refresh": force_table_refresh,
             },
             getattr(user, "web_socket_id", None),
         )

@@ -588,14 +588,20 @@ export class DateNotEqualViewFilterType extends ViewFilterType {
   }
 }
 
-export class DateEqualsTodayViewFilterType extends ViewFilterType {
+/**
+ * Base class for compare dates with today.
+ */
+export class DateCompareTodayViewFilterType extends ViewFilterType {
   static getType() {
-    return 'date_equals_today'
+    throw new Error('Not implemented')
   }
 
   getName() {
-    const { i18n } = this.app
-    return i18n.t('viewFilter.isToday')
+    throw new Error('Not implemented')
+  }
+
+  getCompareFunction() {
+    throw new Error('Not implemented')
   }
 
   getInputComponent() {
@@ -630,36 +636,127 @@ export class DateEqualsTodayViewFilterType extends ViewFilterType {
 
   matches(rowValue, filterValue, field) {
     if (rowValue === null) {
-      rowValue = ''
+      return false
     }
-
-    const sliceLength = this.getSliceLength()
-    const format = 'YYYY-MM-DD'.slice(0, sliceLength)
-    const today = moment().tz(filterValue).format(format)
 
     if (field.timezone) {
-      rowValue = moment.utc(rowValue).tz(field.timezone).format(format)
+      rowValue = moment.utc(rowValue).tz(field.timezone)
     } else {
       rowValue = rowValue.toString().toLowerCase().trim()
-      rowValue = rowValue.slice(0, sliceLength)
+      rowValue = moment.utc(rowValue.slice(0, this.getSliceLength()))
     }
 
-    return rowValue === today
+    const today = moment().tz(filterValue)
+    return this.getCompareFunction(rowValue, today)
   }
 }
 
-export class DateEqualsDaysAgoViewFilterType extends ViewFilterType {
+export class DateEqualsTodayViewFilterType extends DateCompareTodayViewFilterType {
   static getType() {
-    return 'date_equals_days_ago'
-  }
-
-  getSeparator() {
-    return '?'
+    return 'date_equals_today'
   }
 
   getName() {
     const { i18n } = this.app
-    return i18n.t('viewFilter.isDaysAgo')
+    return i18n.t('viewFilter.isToday')
+  }
+
+  getCompareFunction(value, today) {
+    const minTime = today.clone().startOf('day')
+    const maxtime = today.clone().endOf('day')
+    return value.isBetween(minTime, maxtime, null, '[]')
+  }
+}
+
+export class DateBeforeTodayViewFilterType extends DateCompareTodayViewFilterType {
+  static getType() {
+    return 'date_before_today'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.beforeToday')
+  }
+
+  getCompareFunction(value, today) {
+    const minTime = today.clone().startOf('day')
+    return value.isBefore(minTime)
+  }
+}
+
+export class DateAfterTodayViewFilterType extends DateCompareTodayViewFilterType {
+  static getType() {
+    return 'date_after_today'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.afterToday')
+  }
+
+  getCompareFunction(value, today) {
+    const maxtime = today.clone().endOf('day')
+    return value.isAfter(maxtime)
+  }
+}
+
+export class DateEqualsCurrentWeekViewFilterType extends DateCompareTodayViewFilterType {
+  static getType() {
+    return 'date_equals_week'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.inThisWeek')
+  }
+
+  getCompareFunction(value, today) {
+    const firstDay = today.clone().startOf('isoWeek')
+    const lastDay = today.clone().endOf('isoWeek')
+    return value.isBetween(firstDay, lastDay, null, '[]')
+  }
+}
+
+export class DateEqualsCurrentMonthViewFilterType extends DateCompareTodayViewFilterType {
+  static getType() {
+    return 'date_equals_month'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.inThisMonth')
+  }
+
+  getCompareFunction(value, today) {
+    const firstDay = today.clone().startOf('month')
+    const lastDay = today.clone().endOf('month')
+    return value.isBetween(firstDay, lastDay, null, '[]')
+  }
+}
+
+export class DateEqualsCurrentYearViewFilterType extends DateEqualsTodayViewFilterType {
+  static getType() {
+    return 'date_equals_year'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.inThisYear')
+  }
+
+  getCompareFunction(value, today) {
+    const firstDay = today.clone().startOf('year')
+    const lastDay = today.clone().endOf('year')
+    return value.isBetween(firstDay, lastDay, null, '[]')
+  }
+}
+
+/**
+ * Base class for days, months, years ago filters.
+ */
+export class DateEqualsXAgoViewFilterType extends ViewFilterType {
+  getSeparator() {
+    return '?'
   }
 
   getInputComponent() {
@@ -677,21 +774,21 @@ export class DateEqualsDaysAgoViewFilterType extends ViewFilterType {
 
   getExample() {
     const tzone = new Intl.DateTimeFormat().resolvedOptions().timeZone
-    const daysAgo = 1
-    return `${tzone}${this.getSeparator()}${daysAgo}`
+    const xAgo = 1
+    return `${tzone}${this.getSeparator()}${xAgo}`
   }
 
   getValidNumberWithTimezone(rawValue = null) {
-    let tzone, daysAgo, rawDaysAgo
+    let tzone, xAgo, rawXAgo
     // keep the original filter timezone if any, otherwise take the default from the browser
     if (rawValue) {
-      ;[tzone, rawDaysAgo] = rawValue.split(this.getSeparator())
-      daysAgo = parseInt(rawDaysAgo)
+      ;[tzone, rawXAgo] = rawValue.split(this.getSeparator())
+      xAgo = parseInt(rawXAgo)
     } else {
       tzone = new Intl.DateTimeFormat().resolvedOptions().timeZone
     }
-    daysAgo = isNaN(daysAgo) ? '' : daysAgo
-    return `${tzone}${this.getSeparator()}${daysAgo}`
+    xAgo = isNaN(xAgo) ? '' : xAgo
+    return `${tzone}${this.getSeparator()}${xAgo}`
   }
 
   getDefaultValue() {
@@ -704,7 +801,11 @@ export class DateEqualsDaysAgoViewFilterType extends ViewFilterType {
 
   getSliceLength() {
     // 10: YYYY-MM-DD, 7: YYYY-MM, 4: YYYY
-    return 10
+    throw new Error('Not implemented')
+  }
+
+  getWhen(xAgo, timezone, format) {
+    throw new Error('Not implemented')
   }
 
   matches(rowValue, filterValue, field) {
@@ -717,21 +818,18 @@ export class DateEqualsDaysAgoViewFilterType extends ViewFilterType {
       return true
     }
 
-    const [rawTimezone, rawDaysAgo] = filterValue.split(separator)
+    const [rawTimezone, rawXAgo] = filterValue.split(separator)
     const timezone = moment.tz.zone(rawTimezone) ? rawTimezone : 'UTC'
-    const daysAgo = parseInt(rawDaysAgo)
+    const xAgo = parseInt(rawXAgo)
 
     // an invalid daysAgo will result in an empty filter
-    if (isNaN(daysAgo)) {
+    if (isNaN(xAgo)) {
       return true
     }
 
     const sliceLength = this.getSliceLength()
     const format = 'YYYY-MM-DD'.slice(0, sliceLength)
-    const when = moment()
-      .tz(timezone)
-      .subtract(parseInt(daysAgo), 'days')
-      .format(format)
+    const when = this.getWhen(xAgo, timezone, format)
 
     if (field.timezone) {
       rowValue = moment.utc(rowValue).tz(field.timezone).format(format)
@@ -744,33 +842,66 @@ export class DateEqualsDaysAgoViewFilterType extends ViewFilterType {
   }
 }
 
-export class DateEqualsCurrentMonthViewFilterType extends DateEqualsTodayViewFilterType {
+export class DateEqualsDaysAgoViewFilterType extends DateEqualsXAgoViewFilterType {
   static getType() {
-    return 'date_equals_month'
+    return 'date_equals_days_ago'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.isDaysAgo')
+  }
+
+  getWhen(xAgo, timezone, format) {
+    return moment().tz(timezone).subtract(parseInt(xAgo), 'days').format(format)
+  }
+
+  getSliceLength() {
+    return 10
+  }
+}
+
+export class DateEqualsMonthsAgoViewFilterType extends DateEqualsXAgoViewFilterType {
+  static getType() {
+    return 'date_equals_months_ago'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.isMonthsAgo')
+  }
+
+  getWhen(xAgo, timezone, format) {
+    return moment()
+      .tz(timezone)
+      .subtract(parseInt(xAgo), 'months')
+      .format(format)
   }
 
   getSliceLength() {
     return 7
   }
+}
+
+export class DateEqualsYearsAgoViewFilterType extends DateEqualsXAgoViewFilterType {
+  static getType() {
+    return 'date_equals_years_ago'
+  }
 
   getName() {
     const { i18n } = this.app
-    return i18n.t('viewFilter.inThisMonth')
+    return i18n.t('viewFilter.isYearsAgo')
   }
-}
 
-export class DateEqualsCurrentYearViewFilterType extends DateEqualsTodayViewFilterType {
-  static getType() {
-    return 'date_equals_year'
+  getWhen(xAgo, timezone, format) {
+    return moment()
+      .tz(timezone)
+      .subtract(parseInt(xAgo), 'years')
+      .format(format)
   }
 
   getSliceLength() {
     return 4
-  }
-
-  getName() {
-    const { i18n } = this.app
-    return i18n.t('viewFilter.inThisYear')
   }
 }
 
@@ -1118,6 +1249,72 @@ export class LinkRowHasNotFilterType extends ViewFilterType {
 
     const filterValueId = parseInt(filterValue)
     return !rowValue.some((relation) => relation.id === filterValueId)
+  }
+}
+
+export class LinkRowContainsFilterType extends ViewFilterType {
+  static getType() {
+    return 'link_row_contains'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.contains')
+  }
+
+  getExample() {
+    return 'string'
+  }
+
+  getInputComponent() {
+    return ViewFilterTypeText
+  }
+
+  getCompatibleFieldTypes() {
+    return ['link_row']
+  }
+
+  matches(rowValue, filterValue, field, fieldType) {
+    if (filterValue === '') {
+      return true
+    }
+
+    return rowValue.some(
+      ({ value }) => value.search(new RegExp(filterValue, 'i')) !== -1
+    )
+  }
+}
+
+export class LinkRowNotContainsFilterType extends ViewFilterType {
+  static getType() {
+    return 'link_row_not_contains'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('viewFilter.containsNot')
+  }
+
+  getExample() {
+    return 'string'
+  }
+
+  getInputComponent() {
+    return ViewFilterTypeText
+  }
+
+  getCompatibleFieldTypes() {
+    return ['link_row']
+  }
+
+  matches(rowValue, filterValue, field, fieldType) {
+    if (filterValue === '') {
+      return true
+    }
+
+    return !rowValue.some(
+      ({ value }) => value.search(new RegExp(filterValue, 'i')) !== -1
+    )
   }
 }
 

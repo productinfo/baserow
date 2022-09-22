@@ -2,6 +2,7 @@
   <li class="tree__sub" :class="{ active: table._.selected }">
     <a
       class="tree__sub-link"
+      :title="table.name"
       :href="resolveTableHref(database, table)"
       @mousedown.prevent
       @click.prevent="selectTable(database, table)"
@@ -42,6 +43,14 @@
           </a>
         </li>
         <li>
+          <SidebarDuplicateTableContextItem
+            :database="database"
+            :table="table"
+            :disabled="deleteLoading"
+            @click="$refs.context.hide()"
+          ></SidebarDuplicateTableContextItem>
+        </li>
+        <li>
           <a
             :class="{ 'context__menu-item--loading': deleteLoading }"
             @click="deleteTable()"
@@ -51,7 +60,11 @@
           </a>
         </li>
       </ul>
-      <ExportTableModal ref="exportTableModal" :table="table" />
+      <ExportTableModal
+        ref="exportTableModal"
+        :database="database"
+        :table="table"
+      />
       <WebhookModal ref="webhookModal" :table="table" />
     </Context>
   </li>
@@ -61,10 +74,15 @@
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import ExportTableModal from '@baserow/modules/database/components/export/ExportTableModal'
 import WebhookModal from '@baserow/modules/database/components/webhook/WebhookModal'
+import SidebarDuplicateTableContextItem from '@baserow/modules/database/components/sidebar/table/SidebarDuplicateTableContextItem'
 
 export default {
   name: 'SidebarItem',
-  components: { ExportTableModal, WebhookModal },
+  components: {
+    ExportTableModal,
+    WebhookModal,
+    SidebarDuplicateTableContextItem,
+  },
   props: {
     database: {
       type: Object,

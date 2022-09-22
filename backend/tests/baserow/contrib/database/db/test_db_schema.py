@@ -1,14 +1,15 @@
-import pytest
-from django.db import connection, transaction, ProgrammingError
+from django.db import ProgrammingError, connection, transaction
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.dummy.base import DatabaseWrapper as DummyDatabaseWrapper
 from django.db.backends.postgresql.schema import (
     DatabaseSchemaEditor as PostgresqlDatabaseSchemaEditor,
 )
 
+import pytest
+
 from baserow.contrib.database.db.schema import (
-    lenient_schema_editor,
     PostgresqlLenientDatabaseSchemaEditor,
+    lenient_schema_editor,
     safe_django_schema_editor,
 )
 from baserow.contrib.database.table.models import Table
@@ -17,13 +18,12 @@ from baserow.contrib.database.table.models import Table
 @pytest.mark.django_db
 def test_lenient_schema_editor():
     dummy = DummyDatabaseWrapper({})
-    with pytest.raises(ValueError):
-        with lenient_schema_editor(dummy):
-            pass
+    with lenient_schema_editor():
+        pass
 
     assert connection.SchemaEditorClass == PostgresqlDatabaseSchemaEditor
 
-    with lenient_schema_editor(connection) as schema_editor:
+    with lenient_schema_editor() as schema_editor:
         assert isinstance(schema_editor, PostgresqlLenientDatabaseSchemaEditor)
         assert isinstance(schema_editor, BaseDatabaseSchemaEditor)
         assert schema_editor.alter_column_prepare_old_value == ""
@@ -34,7 +34,6 @@ def test_lenient_schema_editor():
     assert connection.SchemaEditorClass == PostgresqlDatabaseSchemaEditor
 
     with lenient_schema_editor(
-        connection,
         "p_in = REGEXP_REPLACE(p_in, '', 'test', 'g');",
         "p_in = REGEXP_REPLACE(p_in, 'test', '', 'g');",
         True,
@@ -151,7 +150,6 @@ def test_lenient_schema_editor_is_also_safe(data_fixture):
         ProgrammingError, match=f'relation "tbl_order_id_{table.id}_idx" already exists'
     ):
         with lenient_schema_editor(
-            connection,
             None,
             None,
             False,

@@ -14,7 +14,7 @@ export const registerRealtimeEvents = (realtime) => {
     }
   })
 
-  realtime.registerEvent('table_updated', ({ store }, data) => {
+  realtime.registerEvent('table_updated', ({ store, app }, data) => {
     const database = store.getters['application/get'](data.table.database_id)
     if (database !== undefined) {
       const table = database.tables.find((table) => table.id === data.table.id)
@@ -24,6 +24,11 @@ export const registerRealtimeEvents = (realtime) => {
           table,
           values: data.table,
         })
+        if (data.force_table_refresh) {
+          app.$bus.$emit('table-refresh', {
+            tableId: data.table.id,
+          })
+        }
       }
     }
   })
@@ -150,21 +155,6 @@ export const registerRealtimeEvents = (realtime) => {
     }
   })
 
-  realtime.registerEvent('row_created', (context, data) => {
-    const { app, store } = context
-    for (const viewType of Object.values(app.$registry.getAll('view'))) {
-      viewType.rowCreated(
-        context,
-        data.table_id,
-        store.getters['field/getAll'],
-        store.getters['field/getPrimary'],
-        data.row,
-        data.metadata,
-        'page/'
-      )
-    }
-  })
-
   realtime.registerEvent('rows_created', (context, data) => {
     const { app, store } = context
     for (const viewType of Object.values(app.$registry.getAll('view'))) {
@@ -173,7 +163,6 @@ export const registerRealtimeEvents = (realtime) => {
           context,
           data.table_id,
           store.getters['field/getAll'],
-          store.getters['field/getPrimary'],
           data.rows[i],
           data.metadata,
           'page/'
@@ -182,30 +171,7 @@ export const registerRealtimeEvents = (realtime) => {
     }
   })
 
-  realtime.registerEvent('row_updated', async (context, data) => {
-    const { app, store } = context
-    for (const viewType of Object.values(app.$registry.getAll('view'))) {
-      await viewType.rowUpdated(
-        context,
-        data.table_id,
-        store.getters['field/getAll'],
-        store.getters['field/getPrimary'],
-        data.row_before_update,
-        data.row,
-        data.metadata,
-        'page/'
-      )
-    }
-
-    store.dispatch('rowModal/updated', {
-      tableId: data.table_id,
-      values: data.row,
-    })
-  })
-
   realtime.registerEvent('rows_updated', async (context, data) => {
-    // TODO: Rewrite
-    // This is currently a naive implementation of batch rows updates.
     const { app, store } = context
     for (const viewType of Object.values(app.$registry.getAll('view'))) {
       for (let i = 0; i < data.rows.length; i++) {
@@ -216,7 +182,6 @@ export const registerRealtimeEvents = (realtime) => {
           context,
           data.table_id,
           store.getters['field/getAll'],
-          store.getters['field/getPrimary'],
           rowBeforeUpdate,
           row,
           data.metadata,
@@ -225,21 +190,10 @@ export const registerRealtimeEvents = (realtime) => {
       }
     }
     for (let i = 0; i < data.rows.length; i++) {
-      store.dispatch('rowModal/updated', { values: data.rows[i] })
-    }
-  })
-
-  realtime.registerEvent('row_deleted', (context, data) => {
-    const { app, store } = context
-    for (const viewType of Object.values(app.$registry.getAll('view'))) {
-      viewType.rowDeleted(
-        context,
-        data.table_id,
-        store.getters['field/getAll'],
-        store.getters['field/getPrimary'],
-        data.row,
-        'page/'
-      )
+      store.dispatch('rowModal/updated', {
+        tableId: data.table_id,
+        values: data.rows[i],
+      })
     }
   })
 
@@ -252,7 +206,6 @@ export const registerRealtimeEvents = (realtime) => {
           context,
           data.table_id,
           store.getters['field/getAll'],
-          store.getters['field/getPrimary'],
           row,
           'page/'
         )
@@ -314,18 +267,25 @@ export const registerRealtimeEvents = (realtime) => {
     }
   })
 
-  realtime.registerEvent('force_view_refresh', ({ store, app }, data) => {
+  realtime.registerEvent('force_view_refresh', async ({ store, app }, data) => {
     const view = store.getters['view/get'](data.view_id)
     if (view !== undefined) {
       if (store.getters['view/getSelectedId'] === view.id) {
+        const updateViewPromise = store.dispatch('view/forceUpdate', {
+          view,
+          values: data.view,
+          repopulate: true,
+        })
+        const updateFieldsPromise = store.dispatch('field/forceSetFields', {
+          fields: data.fields,
+        })
+
+        // This makes sure both dispatches are executed in parallel.
+        await Promise.all([updateViewPromise, updateFieldsPromise])
+
         app.$bus.$emit('table-refresh', {
           tableId: store.getters['table/getSelectedId'],
           includeFieldOptions: true,
-          async callback() {
-            await store.dispatch('field/forceSetFields', {
-              fields: data.fields,
-            })
-          },
         })
       }
     }
@@ -475,5 +435,11 @@ export const registerRealtimeEvents = (realtime) => {
       const viewType = app.$registry.get('view', view.type)
       viewType.fieldOptionsUpdated(context, view, data.field_options, 'page/')
     }
+  })
+
+  realtime.registerEvent('user_permanently_deleted', ({ store, app }, data) => {
+    app.$bus.$emit('table-refresh', {
+      tableId: store.getters['table/getSelectedId'],
+    })
   })
 }

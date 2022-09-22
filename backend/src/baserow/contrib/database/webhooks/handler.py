@@ -1,28 +1,26 @@
-import uuid
 import json
+import uuid
 from typing import List
 
-from requests import Response, PreparedRequest
-
 from django.conf import settings
-from django.db.models.query import QuerySet
-from django.db.models import Q
 from django.contrib.auth.models import User as DjangoUser
+from django.db.models import Q
+from django.db.models.query import QuerySet
+
+from requests import PreparedRequest, Response
 
 from baserow.contrib.database.table.models import Table
 from baserow.core.utils import extract_allowed, set_allowed_attrs
 
+from .exceptions import TableWebhookDoesNotExist, TableWebhookMaxAllowedCountExceeded
 from .models import (
     TableWebhook,
     TableWebhookCall,
     TableWebhookEvent,
     TableWebhookHeader,
 )
-from .exceptions import (
-    TableWebhookDoesNotExist,
-    TableWebhookMaxAllowedCountExceeded,
-)
 from .registries import webhook_event_type_registry
+from .validators import get_webhook_request_function
 
 
 class WebhookHandler:
@@ -32,8 +30,15 @@ class WebhookHandler:
         that must be triggered on a specific event.
         """
 
+        q = Q()
+        q.add(Q(events__event_type__in=[event_type]), Q.OR)
+
+        event_type_object = webhook_event_type_registry.get(event_type)
+        if event_type_object.should_trigger_when_all_event_types_selected:
+            q.add(Q(include_all_events=True), Q.OR)
+
         return TableWebhook.objects.filter(
-            Q(events__event_type__in=[event_type]) | Q(include_all_events=True),
+            q,
             table_id=table_id,
             active=True,
         ).prefetch_related("headers")
@@ -128,7 +133,7 @@ class WebhookHandler:
 
         webhook_count = TableWebhook.objects.filter(table_id=table.id).count()
 
-        if webhook_count >= settings.WEBHOOKS_MAX_PER_TABLE:
+        if webhook_count >= settings.BASEROW_WEBHOOKS_MAX_PER_TABLE:
             raise TableWebhookMaxAllowedCountExceeded
 
         allowed_fields = [
@@ -294,17 +299,14 @@ class WebhookHandler:
         :return: The request and response as the tuple (request, response)
         """
 
-        if settings.DEBUG is True:
-            from requests import request
-        else:
-            from advocate import request
+        request = get_webhook_request_function()
 
         response = request(
             method,
             url,
             headers=headers,
             json=payload,
-            timeout=settings.WEBHOOKS_REQUEST_TIMEOUT_SECONDS,
+            timeout=settings.BASEROW_WEBHOOKS_REQUEST_TIMEOUT_SECONDS,
         )
 
         if response.history:
@@ -365,19 +367,10 @@ class WebhookHandler:
 
         event_id = str(uuid.uuid4())
         model = table.get_model()
-        row = model(id=0, order=0)
+
         event = webhook_event_type_registry.get(event_type)
-        before_return = event.get_test_call_before_return(
-            table=table, row=row, model=model
-        )
-        payload = event.get_payload(
-            event_id=event_id,
-            webhook=webhook,
-            model=model,
-            table=table,
-            row=row,
-            before_return=before_return,
-        )
+
+        payload = event.get_test_call_payload(table, model, event_id, webhook)
         headers.update(self.get_headers(event_type, event_id))
 
         return self.make_request(webhook.request_method, webhook.url, headers, payload)
@@ -414,7 +407,7 @@ class WebhookHandler:
     def clean_webhook_calls(self, webhook: TableWebhook):
         """
         Cleans up oldest webhook calls and makes sure that the total amount of calls
-        will never exceed the `WEBHOOKS_MAX_CALL_LOG_ENTRIES` setting.
+        will never exceed the `BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES` setting.
 
         :param webhook: The webhook for which the calls must be cleaned up.
         """
@@ -422,7 +415,9 @@ class WebhookHandler:
         calls_to_keep = (
             TableWebhookCall.objects.filter(webhook=webhook)
             .order_by("-called_time")
-            .values_list("id", flat=True)[: settings.WEBHOOKS_MAX_CALL_LOG_ENTRIES]
+            .values_list("id", flat=True)[
+                : settings.BASEROW_WEBHOOKS_MAX_CALL_LOG_ENTRIES
+            ]
         )
         TableWebhookCall.objects.filter(
             ~Q(id__in=calls_to_keep), webhook=webhook

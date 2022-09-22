@@ -52,7 +52,6 @@
           ref="editContext"
           :option="option"
           :fields="fields"
-          :primary="primary"
           :store-prefix="storePrefix"
           @create-row="$emit('create-row', { option })"
           @refresh="$emit('refresh', $event)"
@@ -103,8 +102,9 @@
       </InfiniteScroll>
       <div class="kanban-view__stack-foot">
         <a
+          v-if="!readOnly"
           class="button button--ghost kanban-view__stack-new-button"
-          :disabled="draggingRow !== null || readOnly"
+          :disabled="draggingRow !== null"
           @click="!readOnly && $emit('create-row', { option })"
         >
           <i class="fas fa-plus"></i>
@@ -167,10 +167,6 @@ export default {
       type: Array,
       required: true,
     },
-    primary: {
-      type: Object,
-      required: true,
-    },
     readOnly: {
       type: Boolean,
       required: true,
@@ -229,11 +225,7 @@ export default {
     },
     coverImageField() {
       const fieldId = this.view.card_cover_image_field
-      return (
-        [this.primary]
-          .concat(this.fields)
-          .find((field) => field.id === fieldId) || null
-      )
+      return this.fields.find((field) => field.id === fieldId) || null
     },
   },
   watch: {
@@ -358,7 +350,6 @@ export default {
             {
               table: this.table,
               fields: this.fields,
-              primary: this.primary,
             }
           )
         } catch (error) {

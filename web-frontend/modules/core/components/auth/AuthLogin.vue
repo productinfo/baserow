@@ -1,16 +1,13 @@
 <template>
   <div>
-    <div
+    <Alert
       v-if="invitation !== null"
-      class="alert alert--simple alert--primary alert--has-icon"
+      simple
+      type="primary"
+      icon="exclamation"
+      :title="$t('invitationTitle')"
     >
-      <div class="alert__icon">
-        <i class="fas fa-exclamation"></i>
-      </div>
-      <div class="alert__title">
-        {{ $t('invitationTitle') }}
-      </div>
-      <i18n path="invitationMessage" tag="p" class="alert__content">
+      <i18n path="invitationMessage" tag="p">
         <template #invitedBy>
           <strong>{{ invitation.invited_by }}</strong>
         </template>
@@ -18,7 +15,7 @@
           <strong>{{ invitation.group }}</strong>
         </template>
       </i18n>
-    </div>
+    </Alert>
     <Error :error="error"></Error>
     <form @submit.prevent="login">
       <FormElement :error="fieldHasErrors('email')" class="control">
@@ -116,7 +113,7 @@ export default {
         try {
           // Attempt to connect to the backend using the configured PUBLIC_BACKEND_URL
           // just in-case it is actually configured correctly.
-          await this.$client.get('_health')
+          await this.$client.get('_health/')
         } catch (error) {
           const publicBackendUrlWithProto =
             publicBackendUrl.protocol + '//' + publicBackendUrl.host
@@ -127,7 +124,7 @@ export default {
               ` You visited Baserow at ${browserWindowUrl} ` +
               ' which indicates you have mis-configured the Baserow ' +
               ' BASEROW_PUBLIC_URL or PUBLIC_BACKEND_URL environment variables. ' +
-              ' Please visit https://baserow.io/docs/debugging-connection-issues ' +
+              ' Please visit https://baserow.io/docs/tutorials/debugging-connection-issues ' +
               ' on how to fix this error.'
           )
         }

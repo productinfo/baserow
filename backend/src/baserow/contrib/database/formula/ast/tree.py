@@ -1,15 +1,16 @@
 import abc
+import typing
 from decimal import Decimal
-from typing import List, TypeVar, Generic, Tuple, Optional, Type, Dict, Set
+from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 from django.conf import settings
-from django.db.models import Expression, Model
+from django.db.models import Model
 
 from baserow.contrib.database.formula.ast import visitors
 from baserow.contrib.database.formula.ast.exceptions import (
+    InvalidIntLiteralProvided,
     InvalidStringLiteralProvided,
     TooLargeStringLiteralProvided,
-    InvalidIntLiteralProvided,
 )
 from baserow.contrib.database.formula.parser.parser import (
     convert_string_to_string_literal_token,
@@ -19,6 +20,11 @@ from baserow.contrib.database.formula.types.type_checker import (
     SingleArgumentTypeChecker,
 )
 from baserow.core.registry import Instance
+
+if typing.TYPE_CHECKING:
+    from baserow.contrib.database.formula.expression_generator.generator import (
+        WrappedExpressionWithMetadata,
+    )
 
 A = TypeVar("A")
 T = TypeVar("T")
@@ -109,6 +115,17 @@ class BaserowExpression(abc.ABC, Generic[A]):
         self.aggregate = aggregate
         self.many = many
         self.requires_aggregate_wrapper = requires_aggregate_wrapper
+
+    @property
+    def is_wrapper(self) -> bool:
+        """
+        A wrapper expression is a function call that needs to be removed in nested
+        field references.
+        Returns True if the expression is a wrapper expression (e.g 'error_to_nan()').
+        Look at `FormulaTypingVisitor.visit_field_reference` for more information.
+        """
+
+        return False
 
     @abc.abstractmethod
     def accept(self, visitor: "visitors.BaserowFormulaASTVisitor[A, T]") -> T:
@@ -285,8 +302,13 @@ class BaserowFunctionCall(BaserowExpression[A]):
         expression_type: A,
         requires_aggregate_wrapper=False,
     ):
-        many = any(a.many for a in args)
-        aggregate = any(a.aggregate for a in args)
+        if function_def.aggregate:
+            many = False
+            aggregate = True
+        else:
+            many = any(a.many for a in args)
+            aggregate = any(a.aggregate for a in args)
+
         super().__init__(
             expression_type,
             many=many,
@@ -296,6 +318,10 @@ class BaserowFunctionCall(BaserowExpression[A]):
 
         self.function_def = function_def
         self.args = args
+
+    @property
+    def is_wrapper(self) -> bool:
+        return self.function_def.is_wrapper
 
     def accept(self, visitor: "visitors.BaserowFormulaASTVisitor[A, T]") -> T:
         return visitor.visit_function_call(self)
@@ -318,15 +344,12 @@ class BaserowFunctionCall(BaserowExpression[A]):
 
     def to_django_expression_given_args(
         self,
-        args: List[Expression],
+        args: List["WrappedExpressionWithMetadata"],
         model: Type[Model],
         model_instance: Optional[Model],
-        pre_annotations: Dict[str, Expression],
-        aggregate_filters: List[Expression],
-        join_ids: Set[str],
-    ) -> Expression:
+    ) -> "WrappedExpressionWithMetadata":
         return self.function_def.to_django_expression_given_args(
-            args, model, model_instance, pre_annotations, aggregate_filters, join_ids
+            args, model, model_instance
         )
 
     def check_arg_type_valid(
@@ -361,6 +384,8 @@ class BaserowFunctionDefinition(Instance, abc.ABC):
     - TwoArgumentBaserowFunction
     - ThreeArgumentBaserowFunction
     """
+
+    is_wrapper = False
 
     @property
     @abc.abstractmethod
@@ -442,13 +467,10 @@ class BaserowFunctionDefinition(Instance, abc.ABC):
     @abc.abstractmethod
     def to_django_expression_given_args(
         self,
-        args: List[Expression],
+        args: List["WrappedExpressionWithMetadata"],
         model: Type[Model],
         model_instance: Optional[Model],
-        pre_annotations: Dict[str, Expression],
-        aggregate_filters: List[Expression],
-        join_ids: Set[str],
-    ) -> Expression:
+    ) -> "WrappedExpressionWithMetadata":
         """
         Given the args already converted to Django Expressions should return a Django
         Expression which calculates the result of a call to this function.
@@ -460,10 +482,7 @@ class BaserowFunctionDefinition(Instance, abc.ABC):
         :param args: The already converted to Django expression args.
         :param model_instance: If set then the model instance which is being inserted
             or if False then the django expression is for an update statement.
-        :param pre_annotations: Any annotations required by the sub expression.
         :return: A Django Expression which calculates the result of this function.
-        :param join_ids: The set of django field references (field_X__field_Y etc) which
-            are joined to by the args.
         """
 
         pass
@@ -478,7 +497,7 @@ class BaserowFunctionDefinition(Instance, abc.ABC):
         definition this function will check the type of each argument against the
         arg_types property. If they all pass the type check then the user implemented
         type_function_given_valid_args will be called. If they don't a
-        BaserowInvalidType will be returned containing a relavent error message.
+        BaserowInvalidType will be returned containing a relevant error message.
 
         :param typed_args: The typed but not checked argument BaserowExpressions.
         :param expression: The func_call expression which contains the typed_args but
@@ -541,26 +560,26 @@ class BaserowFunctionDefinition(Instance, abc.ABC):
         """
 
         if callable(self.arg_types):
-            arg_types_for_this_arg = self.arg_types(
+            arg_type_checkers = self.arg_types(
                 arg_index, [t.expression_type for t in all_typed_args]
             )
         else:
-            arg_types_for_this_arg = self.arg_types[arg_index]
+            arg_type_checkers = self.arg_types[arg_index]
 
         expression_type = typed_arg.expression_type
         valid_type_names = []
-        for valid_arg_type in arg_types_for_this_arg:
-            if isinstance(valid_arg_type, SingleArgumentTypeChecker):
-                if valid_arg_type.check(expression_type):
+        for checker in arg_type_checkers:
+            if isinstance(checker, SingleArgumentTypeChecker):
+                if checker.check(arg_index, typed_arg):
                     return typed_arg
                 else:
                     valid_type_names.append(
-                        valid_arg_type.invalid_message(expression_type)
+                        checker.invalid_message(arg_index, typed_arg)
                     )
-            elif isinstance(expression_type, valid_arg_type):
+            elif isinstance(expression_type, checker):
                 return typed_arg
             else:
-                valid_type_names.append(valid_arg_type.type)
+                valid_type_names.append(checker.type)
 
         expression_type_name = expression_type.type
         if len(valid_type_names) == 1:

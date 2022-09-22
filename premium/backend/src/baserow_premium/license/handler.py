@@ -3,50 +3,48 @@ import binascii
 import hashlib
 import json
 import logging
-from typing import Union, List
 from os.path import dirname, join
-from dateutil import parser
-
-import requests
-from requests.exceptions import RequestException
+from typing import Any, Dict, List, Union
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User as DjangoUser
-from django.utils.timezone import now, make_aware, utc
 from django.db import transaction
 from django.db.models import Q
+from django.utils.timezone import make_aware, now, utc
 
+import requests
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-
+from dateutil import parser
+from requests.exceptions import RequestException
 from rest_framework.status import HTTP_200_OK
 
 from baserow.core.exceptions import IsNotAdminError
 from baserow.core.handler import CoreHandler
+from baserow.core.models import Group
 from baserow.ws.signals import broadcast_to_users
 
-from .models import License, LicenseUser
-from .exceptions import (
-    NoPremiumLicenseError,
-    InvalidPremiumLicenseError,
-    UnsupportedPremiumLicenseError,
-    PremiumLicenseInstanceIdMismatchError,
-    PremiumLicenseAlreadyExists,
-    PremiumLicenseHasExpired,
-    UserAlreadyOnPremiumLicenseError,
-    NoSeatsLeftInPremiumLicenseError,
-    LicenseAuthorityUnavailable,
-)
 from .constants import (
-    AUTHORITY_RESPONSE_UPDATE,
     AUTHORITY_RESPONSE_DOES_NOT_EXIST,
     AUTHORITY_RESPONSE_INSTANCE_ID_MISMATCH,
     AUTHORITY_RESPONSE_INVALID,
+    AUTHORITY_RESPONSE_UPDATE,
 )
-
+from .exceptions import (
+    InvalidPremiumLicenseError,
+    LicenseAuthorityUnavailable,
+    NoPremiumLicenseError,
+    NoSeatsLeftInPremiumLicenseError,
+    PremiumLicenseAlreadyExists,
+    PremiumLicenseHasExpired,
+    PremiumLicenseInstanceIdMismatchError,
+    UnsupportedPremiumLicenseError,
+    UserAlreadyOnPremiumLicenseError,
+)
+from .models import License, LicenseUser
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -75,7 +73,7 @@ def has_active_premium_license(user: DjangoUser) -> bool:
     return False
 
 
-def check_active_premium_license(user):
+def check_active_premium_license(user: DjangoUser):
     """
     Raises the `NoPremiumLicenseError` if the user does not have an active premium
     license.
@@ -83,6 +81,68 @@ def check_active_premium_license(user):
 
     if not has_active_premium_license(user):
         raise NoPremiumLicenseError()
+
+
+def has_active_premium_license_for(
+    user: DjangoUser,
+) -> Union[bool, List[Dict[str, Any]]]:
+    """
+    Check for which objects the user has an active license. If `True` is returned it
+    means that the user has premium access to everything. If an object is returned,
+    it means that the user only has access to the specific objects. For now,
+    it's only possible to grant access to specific groups.
+
+    Example complex return value:
+
+    [
+      {
+        "type": "group",
+        "id": 1,
+      },
+      {
+        "type": "group",
+        "id": 2,
+      }
+    ]
+
+    :param user: The user for whom must be checked if it has an active license.
+    :return: To which groups the user has an active premium license for.
+    """
+
+    return has_active_premium_license(user)
+
+
+def check_active_premium_license_for_group(user: DjangoUser, group: Group):
+    """
+    Checks if the provided user has premium access to the premium group.
+
+    :param user: The user for whom must be checked if it has an active license.
+    :param group: The group that the user must have active premium license for.
+    :raises NoPremiumLicenseError: if the user does not have an active premium
+        license for the provided group.
+    """
+
+    active_license_for = has_active_premium_license_for(user)
+
+    # If the `active_license_for` is True, it means that the user has premium access
+    # for every group.
+    if active_license_for is True:
+        return
+
+    # If a list is returned, it means that the user only has access to specific
+    # items. In this case we check if the matching group is is present in that list.
+    if isinstance(active_license_for, list):
+        group_ids = [
+            license_for["id"]
+            for license_for in active_license_for
+            if license_for["type"] == "group"
+        ]
+        if group.id in group_ids:
+            return
+
+    # If the user doesn't have a global or group specific premium license, we must
+    # raise an error.
+    raise NoPremiumLicenseError()
 
 
 def get_public_key():

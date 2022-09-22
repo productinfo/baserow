@@ -1,14 +1,9 @@
 <template>
   <div>
     <div class="control">
-      <div
-        v-if="linkRowFieldsInThisTable.length === 0"
-        class="alert alert--error context__alert"
-      >
-        <p class="alert__content">
-          {{ $t('fieldLookupSubForm.noTable') }}
-        </p>
-      </div>
+      <Alert v-if="linkRowFieldsInThisTable.length === 0" minimal type="error">
+        {{ $t('fieldLookupSubForm.noTable') }}
+      </Alert>
       <div v-if="linkRowFieldsInThisTable.length > 0">
         <label class="control__label control__label--small">
           {{ $t('fieldLookupSubForm.selectThroughFieldLabel') }}
@@ -161,11 +156,20 @@ export default {
         const selectedField = this.$store.getters['field/get'](
           this.values.through_field_id
         )
-        if (selectedField && selectedField.link_row_table) {
+        if (selectedField && selectedField.link_row_table_id) {
           const { data } = await FieldService(this.$client).fetchAll(
-            selectedField.link_row_table
+            selectedField.link_row_table_id
           )
           this.fieldsInThroughTable = data
+            .filter((f) => {
+              // If we are the primary field filter out any links back to this table
+              // as it is a lookup back to ourself and hence would always cause a
+              // circular reference.
+              return (
+                !this.defaultValues.primary ||
+                this.defaultValues.table_id !== f.link_row_table_id
+              )
+            })
             .filter((f) => {
               return this.$registry
                 .get('field', f.type)

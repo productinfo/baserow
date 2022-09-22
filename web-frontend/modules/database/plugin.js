@@ -1,4 +1,5 @@
 import { DatabaseApplicationType } from '@baserow/modules/database/applicationTypes'
+import { DuplicateTableJobType } from '@baserow/modules/database/jobTypes'
 import {
   GridViewType,
   GalleryViewType,
@@ -22,6 +23,7 @@ import {
   CreatedOnFieldType,
   FormulaFieldType,
   LookupFieldType,
+  MultipleCollaboratorsFieldType,
 } from '@baserow/modules/database/fieldTypes'
 import {
   EqualViewFilterType,
@@ -41,7 +43,12 @@ import {
   EmptyViewFilterType,
   NotEmptyViewFilterType,
   DateEqualsTodayViewFilterType,
+  DateBeforeTodayViewFilterType,
+  DateAfterTodayViewFilterType,
   DateEqualsDaysAgoViewFilterType,
+  DateEqualsMonthsAgoViewFilterType,
+  DateEqualsYearsAgoViewFilterType,
+  DateEqualsCurrentWeekViewFilterType,
   DateEqualsCurrentMonthViewFilterType,
   DateEqualsCurrentYearViewFilterType,
   DateBeforeViewFilterType,
@@ -51,6 +58,8 @@ import {
   LinkRowHasNotFilterType,
   MultipleSelectHasFilterType,
   MultipleSelectHasNotFilterType,
+  LinkRowContainsFilterType,
+  LinkRowNotContainsFilterType,
 } from '@baserow/modules/database/viewFilters'
 import {
   CSVImporterType,
@@ -59,9 +68,9 @@ import {
   JSONImporterType,
 } from '@baserow/modules/database/importerTypes'
 import {
-  RowCreatedWebhookEventType,
-  RowUpdatedWebhookEventType,
-  RowDeletedWebhookEventType,
+  RowsCreatedWebhookEventType,
+  RowsUpdatedWebhookEventType,
+  RowsDeletedWebhookEventType,
 } from '@baserow/modules/database/webhookEventTypes'
 import {
   ImageFilePreview,
@@ -137,16 +146,23 @@ import {
   BaserowLeast,
   BaserowGreatest,
   BaserowRegexReplace,
+  BaserowLink,
   BaserowTrim,
   BaserowRight,
   BaserowLeft,
   BaserowContains,
   BaserowFilter,
+  BaserowTrunc,
+  BaserowRound,
+  BaserowButton,
+  BaserowGetLinkUrl,
+  BaserowGetLinkLabel,
 } from '@baserow/modules/database/formula/functions'
 import {
   BaserowFormulaArrayType,
   BaserowFormulaBooleanType,
   BaserowFormulaCharType,
+  BaserowFormulaLinkType,
   BaserowFormulaDateIntervalType,
   BaserowFormulaDateType,
   BaserowFormulaInvalidType,
@@ -175,6 +191,8 @@ import {
   VarianceViewAggregationType,
   MedianViewAggregationType,
 } from '@baserow/modules/database/viewAggregationTypes'
+import { FormViewFormModeType } from '@baserow/modules/database/formViewModeTypes'
+import { DatabasePlugin } from '@baserow/modules/database/plugins'
 
 import en from '@baserow/modules/database/locales/en.json'
 import fr from '@baserow/modules/database/locales/fr.json'
@@ -182,6 +200,7 @@ import nl from '@baserow/modules/database/locales/nl.json'
 import de from '@baserow/modules/database/locales/de.json'
 import es from '@baserow/modules/database/locales/es.json'
 import it from '@baserow/modules/database/locales/it.json'
+import pl from '@baserow/modules/database/locales/pl.json'
 
 export default (context) => {
   const { store, app, isDev } = context
@@ -195,6 +214,7 @@ export default (context) => {
     i18n.mergeLocaleMessage('de', de)
     i18n.mergeLocaleMessage('es', es)
     i18n.mergeLocaleMessage('it', it)
+    i18n.mergeLocaleMessage('pl', pl)
   }
 
   store.registerModule('table', tableStore)
@@ -212,7 +232,9 @@ export default (context) => {
   app.$registry.registerNamespace('viewDecorator')
   app.$registry.registerNamespace('decoratorValueProvider')
 
+  app.$registry.register('plugin', new DatabasePlugin(context))
   app.$registry.register('application', new DatabaseApplicationType(context))
+  app.$registry.register('job', new DuplicateTableJobType(context))
   app.$registry.register('view', new GridViewType(context))
   app.$registry.register('view', new GalleryViewType(context))
   app.$registry.register('view', new FormViewType(context))
@@ -226,7 +248,27 @@ export default (context) => {
   )
   app.$registry.register(
     'viewFilter',
+    new DateBeforeTodayViewFilterType(context)
+  )
+  app.$registry.register(
+    'viewFilter',
+    new DateAfterTodayViewFilterType(context)
+  )
+  app.$registry.register(
+    'viewFilter',
     new DateEqualsDaysAgoViewFilterType(context)
+  )
+  app.$registry.register(
+    'viewFilter',
+    new DateEqualsMonthsAgoViewFilterType(context)
+  )
+  app.$registry.register(
+    'viewFilter',
+    new DateEqualsYearsAgoViewFilterType(context)
+  )
+  app.$registry.register(
+    'viewFilter',
+    new DateEqualsCurrentWeekViewFilterType(context)
   )
   app.$registry.register(
     'viewFilter',
@@ -266,6 +308,11 @@ export default (context) => {
   app.$registry.register('viewFilter', new BooleanViewFilterType(context))
   app.$registry.register('viewFilter', new LinkRowHasFilterType(context))
   app.$registry.register('viewFilter', new LinkRowHasNotFilterType(context))
+  app.$registry.register('viewFilter', new LinkRowContainsFilterType(context))
+  app.$registry.register(
+    'viewFilter',
+    new LinkRowNotContainsFilterType(context)
+  )
   app.$registry.register('viewFilter', new MultipleSelectHasFilterType(context))
   app.$registry.register(
     'viewFilter',
@@ -290,6 +337,8 @@ export default (context) => {
   app.$registry.register('field', new PhoneNumberFieldType(context))
   app.$registry.register('field', new FormulaFieldType(context))
   app.$registry.register('field', new LookupFieldType(context))
+  app.$registry.register('field', new MultipleCollaboratorsFieldType(context))
+
   app.$registry.register('importer', new CSVImporterType(context))
   app.$registry.register('importer', new PasteImporterType(context))
   app.$registry.register('importer', new XMLImporterType(context))
@@ -298,15 +347,15 @@ export default (context) => {
   app.$registry.register('exporter', new CSVTableExporterType(context))
   app.$registry.register(
     'webhookEvent',
-    new RowCreatedWebhookEventType(context)
+    new RowsCreatedWebhookEventType(context)
   )
   app.$registry.register(
     'webhookEvent',
-    new RowUpdatedWebhookEventType(context)
+    new RowsUpdatedWebhookEventType(context)
   )
   app.$registry.register(
     'webhookEvent',
-    new RowDeletedWebhookEventType(context)
+    new RowsDeletedWebhookEventType(context)
   )
 
   // Text functions
@@ -378,6 +427,13 @@ export default (context) => {
   app.$registry.register('formula_function', new BaserowAvg(context))
   app.$registry.register('formula_function', new BaserowSum(context))
   app.$registry.register('formula_function', new BaserowFilter(context))
+  app.$registry.register('formula_function', new BaserowTrunc(context))
+  app.$registry.register('formula_function', new BaserowRound(context))
+  // Link functions
+  app.$registry.register('formula_function', new BaserowLink(context))
+  app.$registry.register('formula_function', new BaserowButton(context))
+  app.$registry.register('formula_function', new BaserowGetLinkUrl(context))
+  app.$registry.register('formula_function', new BaserowGetLinkLabel(context))
 
   // Formula Types
   app.$registry.register('formula_type', new BaserowFormulaTextType(context))
@@ -396,6 +452,7 @@ export default (context) => {
     'formula_type',
     new BaserowFormulaSingleSelectType(context)
   )
+  app.$registry.register('formula_type', new BaserowFormulaLinkType(context))
 
   // File preview types
   app.$registry.register('preview', new ImageFilePreview(context))
@@ -468,6 +525,8 @@ export default (context) => {
     'viewAggregation',
     new UniqueCountViewAggregationType(context)
   )
+
+  app.$registry.register('formViewMode', new FormViewFormModeType(context))
 
   registerRealtimeEvents(app.$realtime)
 }

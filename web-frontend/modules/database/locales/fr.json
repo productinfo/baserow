@@ -28,7 +28,7 @@
             "example": "Example de requête"
         },
         "errors": {
-            "urlField": "Ce champ est requis est doit être une URL valide.",
+            "urlField": "Doit être une URL commençant par « https:// » ou « http:// ».",
             "invalidHeaders": "Un des entête est invalide."
         },
         "checkbox": {
@@ -43,6 +43,11 @@
             "title": "Le webhook est désactivé",
             "content": "Ce webhook a été désactivé car il produisait trop d'échecs consécutifs. Veuillez vérifier l'historique des appels pour plus d'information. Cliquez sur le bouton ci-dessous pour l'activer de nouveau. Pensez à enregistrer le webhook avant de l'activer.",
             "activate": "Activer"
+        },
+        "deprecatedEventType": {
+            "convert": "Convertir",
+            "title": "Type d'événement obsolète",
+            "description": "Ce webhook ne reçoit pas d'informations sur les lignes modifiées en une seule opération. Veuillez le convertir en un type d'événement de type lot. Cette opération modifie le contenu JSON pour un format qui permet de contenir plusieurs lignes."
         }
     },
     "webhook": {
@@ -138,13 +143,14 @@
         "filterLink": "Une liste des filtres disponibles peut être consultée ici.",
         "filterType": "- `AND` : indique que les lignes doivent satisfaire tous les filtres définis.\n- `OR` : indique que les lignes doivent satisfaire au moins l'un des filtres définis pour être retournées.\n\n Cela fonctionne uniquement quand au moins 2 filtres sont définis.",
         "include": "Par défaut, tous les champs de la table sont retournés. Vous pouvez définir le sous ensemble des champs qui seront dans les résultats en fournissant une valeur pour ce paramètre.\n\n#### Avec `user_field_names` :\n\n`include` doit être une liste des noms définis par l'utilisateur des champs que vous souhaitez conserver, séparés par une virgule. Par exemple, si vous fournissez la valeur suivante `include=Mon champ,-Mon champ 2` alors seul ces champs seront retournés dans les résultats (sauf si vous les avez explicitement exclus avec le paramètre suivant).\n\nLe nom des champs contenant des virgules doit être entouré par des guillemets : `\"Nom ,\"`. Si le nom des champs contient des guillemets, ceux-ci doivent être protégés en utilisant le caractère `\\`. Ex : `Nom \\\"`.\n\n#### Sans `user_field_names` :\n\n`include` doit être une liste de `field_` suivis par l'identifiant d'un champ à inclure dans le résultat, séparé par des virgules. Par exemple, si vous fournissez la valeur suivante `exclude=field_1,field_2` alors les champs d'identifiant `1` et `2` seront les champs présents dans le résultat (sauf si vous les avez explicitement exclus avec le paramètre suivant).",
-        "exclude": "Par défaut, tous les champs de la table sont retournés dans les résultats. Vous pouvez choisir un sous ensemble de champs qui seront exclus des résultats en définissant une valeur pour ce paramètre.\n\n#### Avec `user_field_names` :\n\n`exclude` doit être une liste des noms définis par l'utilisateur des champs que vous souhaitez exclure, séparés par une virgule. Par exemple, si vous fournissez la valeur suivante : `exclude=Mon champ,-Mon champ 2` alors ces deux champs seront exclus des résultats.\n\nLe nom des champs contenant des virgules doit être entouré par des guillemets : `\"Nom ,\"`. Si le nom des champs contient des guillemets, ceux-ci doivent être protégés en utilisant le caractère `\\`. Ex : `Nom \\\"`.\n\n#### Sans `user_field_names` :\n\n`exclude` doit être une liste de `field_` suivis par l'identifiant d'un champ à exclure du résultat, séparé par des virgules. Par exemple, si vous fournissez la valeur suivante : `exclude=field_1,field_2` alors les champs avec l'identifiant `1` et `2` seront exclus."
+        "exclude": "Par défaut, tous les champs de la table sont retournés dans les résultats. Vous pouvez choisir un sous ensemble de champs qui seront exclus des résultats en définissant une valeur pour ce paramètre.\n\n#### Avec `user_field_names` :\n\n`exclude` doit être une liste des noms définis par l'utilisateur des champs que vous souhaitez exclure, séparés par une virgule. Par exemple, si vous fournissez la valeur suivante : `exclude=Mon champ,-Mon champ 2` alors ces deux champs seront exclus des résultats.\n\nLe nom des champs contenant des virgules doit être entouré par des guillemets : `\"Nom ,\"`. Si le nom des champs contient des guillemets, ceux-ci doivent être protégés en utilisant le caractère `\\`. Ex : `Nom \\\"`.\n\n#### Sans `user_field_names` :\n\n`exclude` doit être une liste de `field_` suivis par l'identifiant d'un champ à exclure du résultat, séparé par des virgules. Par exemple, si vous fournissez la valeur suivante : `exclude=field_1,field_2` alors les champs avec l'identifiant `1` et `2` seront exclus.",
+        "viewId": "Par défaut, aucun des filtres et tris autres que ceux définis dans les paramètres de la requête ne sont appliqués. Vous pouvez définir les filtres et les tris d'une vue en fournissant son `id` dans le paramètre GET `view_id`. Par exemple, si vous fournissez le paramètre GET suivant `view_id=1`, les filtres et les tris définis dans la vue avec l'id `1` seront appliqués. Vous pouvez trouver le `view_id` dans le menu contextuel d'une vue donnée. Il s'agit du nombre entre parenthèses derrière le nom de la vue. \n\n #### Avec `filter__{field}__{filter}` \n\n Le filtre fourni dans le paramètre de la requête et les filtres définis dans la vue seront appliqués.\n\n #### Avec `order_by` \n\n Si `order_by` est fourni, le tri défini dans la vue sera ignoré."
     },
     "apiDocsIntro": {
         "intro": "L'API de la base {name} offre un moyen simple d'intégrer des données provenant d'un système externe. L'API suit les principes d'architecture REST, utilise le format JSON pour encoder les données, s'appuie sur les codes HTTP standards et propose des messages d'erreurs à la fois techniques mais également lisibles par les humains pour signaler les dysfonctionnements.",
         "autoDocDescription": "Cette documentation est générée automatiquement à partir des table et des champs disponibles dans votre basse de données. Si vous effectuez des modifications sur la base, les tables ou bien sur les champs des tables, cela peut également modifier l'API. Par conséquent, assurez-vous de mettre à jour les clients de votre API dans ce cas.",
         "databaseId": "Identifiant de la base :",
-        "jsClient": "Client pour les examples de requêtes en Javascript :",
+        "jsClient": "Client pour les exemples de requêtes en JavaScript :",
         "pythonClient": "Client pour les examples de requêtes en Python :"
     },
     "apiDocsTableListFields": {
@@ -207,7 +213,8 @@
     },
     "fieldLinkRowSubForm": {
         "noTable": "Vous devez créer au moins une autre table dans la même base de données pour pouvoir créer un lien.",
-        "selectTableLabel": "Sélectionnez une table"
+        "selectTableLabel": "Sélectionnez une table",
+        "hasRelatedFieldLabel": "Créer un champ rapporté"
     },
     "fieldSelectOptions": {
         "add": "Ajouter une option"
@@ -221,7 +228,9 @@
     },
     "fieldContext": {
         "editField": "Modifier le champ",
-        "deleteField": "Supprimer le champ"
+        "deleteField": "Supprimer le champ",
+        "hideField": "Masquer le champ",
+        "showField": "Afficher le champ"
     },
     "fieldForm": {
         "name": "Nom",
@@ -253,7 +262,9 @@
         "search": "Rechercher dans la table"
     },
     "rowEditModal": {
-        "addField": "Ajouter un champ"
+        "addField": "Ajouter un champ",
+        "showHiddenFields": "Afficher les champs masqués",
+        "hideHiddenFields": "Masquer les champs cachés"
     },
     "rowEditFieldMultipleSelect": {
         "addOption": "Ajouter une option"
@@ -288,10 +299,6 @@
     "tableForm": {
         "name": "Nom"
     },
-    "tableImporterPreview": {
-        "label": "Aperçu",
-        "remaining": "{remaining} autres lignes"
-    },
     "tableXMLImporter": {
         "fileLabel": "Choisissez un fichier XML",
         "fileDescription": "Vous pouvez importer un XML existant en envoyant un fichier .XML contenant des données tabulaires, c'est-à-dire :",
@@ -318,11 +325,30 @@
         "firstRowHeader": "La première ligne est l'entête",
         "limitError": "Il n'est pas possible d'importer plus de {limit} lignes."
     },
-    "createTableModal": {
+    "importFileModal": {
         "title": "Créer une nouvelle table",
         "importLabel": "Souhaitez-vous importer des données existantes ?",
         "newTable": "Commencer avec une table vide",
-        "addButton": "Ajouter la table"
+        "addButton": "Ajouter la table",
+        "preparing": "Préparation des données...",
+        "showReport": "Afficher le rapport d'erreur",
+        "reportTitleFailure": "Lignes en échec",
+        "importError": "Un problème est survenu lors de l'import du fichier",
+        "uploading": "Envoi…",
+        "reportTitleSuccess": "Import réussi mais...",
+        "openCreatedTable": "Ouvrir la table créée",
+        "stateRowCreation": "Import en cours…",
+        "reportMessage": "Les numéro de ligne suivants n'ont pas pu être importés :",
+        "statePreValidation": "Validation des données...",
+        "stateCreateTable": "Création de la table...",
+        "fieldMappingTitle": "Correspondance des champs",
+        "showTable": "Afficher la table",
+        "additionalImportTitle": "Importer dans {table}",
+        "importButton": "Importer",
+        "fieldMappingDescription": "Nous avons automatiquement fait la correspondance entre les colonnes du fichier et les champs Baserow dans votre table. Vous pouvez les modifier ci-dessous. Toute cellule incompatible avec le type du champ sélectionné restera vide après l'importation.",
+        "selectImportMessage": "Veuillez sélectionner les données à importer.",
+        "filePreview": "Aperçu du contenu du fichier",
+        "importPreview": "Aperçu de l'import"
     },
     "formulaAdvancedEditContext": {
         "textAreaFormulaInputPlaceholder": "Cliquez pour éditer la formule",
@@ -358,7 +384,9 @@
         "noFilterText": "Les filtres permettent de voir uniquement les lignes qui correspondent à vos critères.",
         "where": "Quand",
         "and": "Et",
-        "or": "Ou"
+        "or": "Ou",
+        "filterTypeNotFound": "Le filtre n'est pas compatible.",
+        "relatedFieldNotFound": "Le champ associé n'a pas était trouvé."
     },
     "viewFilterTypeFileTypeDropdown": {
         "image": "Image",
@@ -412,7 +440,9 @@
         "exportView": "Exporter la vue",
         "renameView": "Renommer la vue",
         "deleteView": "Supprimer la vue",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "duplicateView": "Dupliquer la vue",
+        "importFile": "Importer un fichier"
     },
     "deleteViewModal": {
         "title": "Supprimer la vue {name}",
@@ -433,7 +463,8 @@
         "sortField": "Trier",
         "hideField": "Cacher un champ",
         "insertRight": "Insérer à droite",
-        "insertLeft": "Insérer à gauche"
+        "insertLeft": "Insérer à gauche",
+        "duplicate": "Dupliquer le champ"
     },
     "gridViewRow": {
         "rowNotMatchingFilters": "La ligne est filtrée",
@@ -445,14 +476,18 @@
         "insertRowBelow": "Insérer en dessous",
         "enlargeRow": "Afficher la ligne",
         "deleteRow": "Supprimer la ligne",
-        "rowCount": "Acune ligne | 1 ligne | {count} lignes"
+        "rowCount": "Acune ligne | 1 ligne | {count} lignes",
+        "duplicateRow": "Dupliquer la ligne",
+        "selectRow": "Sélectionner la ligne",
+        "copyCells": "Copier les cellules",
+        "deleteRows": "Supprimer les lignes"
     },
     "gridViewFieldLinkRow": {
         "unnamed": "Ligne sans nom {value}"
     },
     "gridViewIdentifierOptions": {
-        "id": "",
-        "count": ""
+        "id": "Identifiant de ligne",
+        "count": "Compte"
     },
     "previewAny": {
         "externalWarning": "Ouvrir un fichier via un service externe expose votre fichier à leurs serveurs."
@@ -542,7 +577,8 @@
         "stateImporting": "Import en cours",
         "stateImportingTable": "Import de la table {table}",
         "errorJobAlreadyRunningTitle": "Déjà en cours",
-        "errorJobAlreadyRunningDescription": "Une autre tâche est déjà en cours. Vous devez attendre que celle-ci finisse avant d'en démarrer une autre."
+        "errorJobAlreadyRunningDescription": "Une autre tâche est déjà en cours. Vous devez attendre que celle-ci finisse avant d'en démarrer une autre.",
+        "linkError": "Le lien devrait ressembler à : https://airtable.com/shrxxxxxxxxxxxxxx"
     },
     "chooseSingleSelectField": {
         "addSelectField": "Ajouter une liste déroulante"
@@ -574,5 +610,109 @@
             "incorrectPasswordTitle": "Mot de passe invalide"
         },
         "description": "Saisissez un mot de passe valide pour accéder à la page."
+    },
+    "apiDocsTableDeleteRows": {
+        "description": "Supprime les lignes {name} existantes.",
+        "items": "Un tableau d'identifiants de lignes qui doivent être supprimées."
+    },
+    "apiDocsTableUpdateRows": {
+        "id": "L'identifiant de la ligne.",
+        "description": "Mettre à jour les lignes {name} existantes."
+    },
+    "apiDocsTableCreateRows": {
+        "description": "Créer de nouvelles lignes {name}.",
+        "before": "Si il est fourni, les lignes nouvellement créées seront positionnées avant la ligne avec l’identifiant spécifié."
+    },
+    "importer": {
+        "loading": "Chargement du fichier",
+        "decoding": "Décodage",
+        "inProgress": "En cours…",
+        "preparing": "Préparation",
+        "parsing": "Analyse des données",
+        "fieldDefaultName": "Champ {count}"
+    },
+    "databaseDashboardSidebarLinks": {
+        "apiDocumentation": "Documentation de l'API"
+    },
+    "formViewMeta": {
+        "includeRowId": "Utilisez {row_id} pour inclure l'identifiant de la ligne a créer dans l'URL."
+    },
+    "formViewField": {
+        "required": "Obligatoire",
+        "showWhenMatchingConditions": "afficher lorsque les conditions sont remplies",
+        "addCondition": "Ajouter une condition",
+        "descriptionPlaceholder": "Description"
+    },
+    "duplicateFieldContext": {
+        "duplicate": "Dupliquer le champ",
+        "cloneData": "Copier les données",
+        "soon": "Bientôt disponible",
+        "readOnlyField": "Les valeurs des cellules seront remplies automatiquement."
+    },
+    "snapshotsModal": {
+        "title": "sauvegardes",
+        "snapshotRestoredErrorMessage": "La sauvegarde n'a pas pu être restaurée. Veuillez réessayer plus tard.",
+        "description": "Les sauvegardes sont une copie complète de votre base de données au moment où elles ont été créés. Une duplication des données sera créée lors de la restauration. Les sauvegardes sont automatiquement supprimées après un an.",
+        "descriptionLimits": "Vous pouvez avoir un maximum de 0 sauvegarde par groupe. | Vous pouvez avoir un maximum de 1 sauvegarde par groupe. | Vous pouvez avoir un maximum de {n} sauvegardes par groupe.",
+        "createLabel": "Créer une nouvelle sauvegarde",
+        "create": "Créer une sauvegarde",
+        "snapshotDeletedErrorTitle": "Une erreur est survenue",
+        "snapshotDeletedErrorMessage": "La sauvegarde n'a pas pu être supprimée. Veuillez réessayer plus tard.",
+        "limitReached": "La limite du nombre maximum de sauvegardes a été atteinte.",
+        "snapshot": "Sauvegarde",
+        "importingState": "En cours de création",
+        "snapshotRestoredErrorTitle": "Une erreur s'est produite",
+        "reset": "Créer une autre"
+    },
+    "deleteSnapshotModal": {
+        "content": "Êtes-vous sûr·e de vouloir supprimer définitivement la sauvegarde {nom} ?",
+        "confirm": "Supprimer",
+        "title": "Supprimer la sauvegarde"
+    },
+    "snapshotListItem": {
+        "restore": "restaurer",
+        "delete": "supprimer",
+        "created": "créée"
+    },
+    "rowEditFieldMultipleCollaborators": {
+        "addCollaborator": "Ajouter un collaborateur"
+    },
+    "gridViewFieldFile": {
+        "dropHere": "Déposer ici",
+        "dropFileHere": "Déposez les fichiers ici"
+    },
+    "formViewHeader": {
+        "preview": "Aperçu",
+        "mode": "Mode",
+        "fields": "Champs"
+    },
+    "formViewModePreviewForm": {
+        "addCoverImage": "Ajouter une image d'entête",
+        "noFields": "Ce formulaire ne comporte aucun champ. Cliquez sur un champ dans la barre latérale gauche pour en ajouter un.",
+        "addLogo": "Ajouter un logo",
+        "titlePlaceholder": "Titre",
+        "descriptionPlaceholder": "Description"
+    },
+    "table": {
+        "chooseView": "Choisir la vue"
+    },
+    "fieldmultipleCollaboratorsDropdown": {
+        "notFound": "Collaborateur non trouvé"
+    },
+    "formViewModeType": {
+        "formDescription": "Tous les champs sont visibles et empilés verticalement.",
+        "form": "Formulaire"
+    },
+    "duplicateTableJobType": {
+        "duplicating": "Duplication",
+        "duplicatedTitle": "Table dupliquée"
+    },
+    "apiDocsUploadFile": {
+        "description": "Envoi un fichier sur Baserow en envoyant directement le contenu du fichier. Un section multipart `file` contenant le contenu du fichier est attendu dans la requête. La réponse peut ensuite être utilisée pour [associer un fichier à une ligne]({PUBLIC_BACKEND_URL}/api/redoc/#tag/Database-table-rows/operation/update_database_table_row).",
+        "file": "La section multipart `file` contenant le contenu du fichier."
+    },
+    "apiDocsUploadFileViaURL": {
+        "description": "Envoi un fichier sur Baserow en le téléchargeant depuis l'URL fournie. La réponse peut ensuite être utilisée pour [associer un fichier à une ligne]({PUBLIC_BACKEND_URL}/api/redoc/#tag/Database-table-rows/operation/update_database_table_row).",
+        "url": "L'URL que vous souhaitez que Baserow télécharge et enregistre en votre nom."
     }
 }

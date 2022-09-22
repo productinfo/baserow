@@ -62,12 +62,20 @@ export const actions = {
     commit('SET_LOADING', value)
   },
   /**
-   * Create a new table based on the provided values and add it to the tables
-   * of the provided database.
+   * Trigger a new table creation based on the provided values. The job id corresponding
+   * to the table creation task is returned. Once this job is finished a create_table
+   * signal will be received and the table will be added in the store for the related
+   * database.
    */
   async create(
     { commit, dispatch },
-    { database, values, initialData = null, firstRowHeader = true }
+    {
+      database,
+      values,
+      initialData = null,
+      firstRowHeader = true,
+      onUploadProgress = null,
+    }
   ) {
     const type = DatabaseApplicationType.getType()
 
@@ -83,11 +91,29 @@ export const actions = {
       database.id,
       values,
       initialData,
-      firstRowHeader
+      firstRowHeader,
+      {
+        onUploadProgress,
+      }
     )
-    dispatch('forceCreate', { database, data })
-
+    // The returned data is a table creation job
     return data
+  },
+  /**
+   * Fetches one table for the authenticated user.
+   */
+  async fetch({ commit, dispatch }, { database, tableId }) {
+    commit('SET_LOADING', true)
+
+    try {
+      const { data } = await TableService(this.$client).get(tableId)
+      dispatch('forceCreate', { database, data })
+      commit('SET_LOADING', false)
+      return data
+    } catch (error) {
+      commit('SET_LOADING', false)
+      throw error
+    }
   },
   /**
    * Forcefully create an item in the store without making a call to the server.

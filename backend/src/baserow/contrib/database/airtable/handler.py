@@ -1,51 +1,40 @@
-import re
 import json
-import requests
-from pytz import UTC, BaseTzInfo, timezone as pytz_timezone
+import re
 from collections import defaultdict
-from typing import List, Tuple, Union, Dict, Optional
-from requests import Response
-from io import BytesIO, IOBase
-from zipfile import ZipFile, ZIP_DEFLATED
 from datetime import datetime
+from io import BytesIO, IOBase
+from typing import Dict, List, Optional, Tuple, Union
+from zipfile import ZIP_DEFLATED, ZipFile
 
-from django.core.files.storage import Storage
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.core.files.storage import Storage
 
-from baserow.core.handler import CoreHandler
-from baserow.core.utils import (
-    remove_invalid_surrogate_characters,
-    ChildProgressBuilder,
+import requests
+from pytz import UTC, BaseTzInfo
+from requests import Response
+
+from baserow.contrib.database.airtable.constants import (
+    AIRTABLE_EXPORT_JOB_CONVERTING,
+    AIRTABLE_EXPORT_JOB_DOWNLOADING_BASE,
+    AIRTABLE_EXPORT_JOB_DOWNLOADING_FILES,
 )
-from baserow.core.models import Group
-from baserow.core.export_serialized import CoreExportSerializedStructure
-from baserow.contrib.database.export_serialized import DatabaseExportSerializedStructure
-from baserow.contrib.database.models import Database
-from baserow.contrib.database.fields.models import Field
-from baserow.contrib.database.fields.field_types import FieldType, field_type_registry
-from baserow.contrib.database.views.registries import view_type_registry
-from baserow.contrib.database.views.models import GridView
-from baserow.contrib.database.application_types import DatabaseApplicationType
 from baserow.contrib.database.airtable.registry import (
     AirtableColumnType,
     airtable_column_type_registry,
 )
-from baserow.contrib.database.airtable.constants import (
-    AIRTABLE_EXPORT_JOB_DOWNLOADING_BASE,
-    AIRTABLE_EXPORT_JOB_DOWNLOADING_FILES,
-    AIRTABLE_EXPORT_JOB_CONVERTING,
-)
+from baserow.contrib.database.application_types import DatabaseApplicationType
+from baserow.contrib.database.export_serialized import DatabaseExportSerializedStructure
+from baserow.contrib.database.fields.field_types import FieldType, field_type_registry
+from baserow.contrib.database.fields.models import Field
+from baserow.contrib.database.models import Database
+from baserow.contrib.database.views.models import GridView
+from baserow.contrib.database.views.registries import view_type_registry
+from baserow.core.export_serialized import CoreExportSerializedStructure
+from baserow.core.handler import CoreHandler
+from baserow.core.models import Group
+from baserow.core.utils import ChildProgressBuilder, remove_invalid_surrogate_characters
 
-from .exceptions import (
-    AirtableBaseNotPublic,
-    AirtableShareIsNotABase,
-    AirtableImportJobDoesNotExist,
-    AirtableImportJobAlreadyRunning,
-)
-from .models import AirtableImportJob
-from .tasks import run_import_from_airtable
-
+from .exceptions import AirtableBaseNotPublic, AirtableShareIsNotABase
 
 User = get_user_model()
 
@@ -203,7 +192,7 @@ class AirtableHandler:
         timezone: BaseTzInfo,
     ) -> Union[Tuple[None, None, None], Tuple[Field, FieldType, AirtableColumnType]]:
         """
-        Converts the provided Airtable column dict to the righ a Baserow field object.
+        Converts the provided Airtable column dict to the right Baserow field object.
 
         :param table: The Airtable table dict. This is needed to figure out whether the
             field is the primary field.
@@ -259,7 +248,7 @@ class AirtableHandler:
 
         :param row_id_mapping: A mapping containing the table as key as the value is
             another mapping where the Airtable row id maps the Baserow row id.
-        :param column_mapping: A mapping where the Airtable colum id is the value and
+        :param column_mapping: A mapping where the Airtable column id is the value and
             the value containing another mapping with the Airtable column dict and
             Baserow field dict.
         :param row: The Airtable row that must be converted a Baserow row.
@@ -626,70 +615,3 @@ class AirtableHandler:
         )
 
         return databases, id_mapping
-
-    @staticmethod
-    def get_airtable_import_job(user: User, job_id: int) -> AirtableImportJob:
-        """
-        Fetches an Airtable import job from the database if the user has created it.
-        The properties like `progress_percentage` and `progress_state` are
-        automatically updated by the task that does the actual import.
-
-        :param user: The user on whose behalf the job is requested.
-        :param job_id: The id of the job that must be fetched.
-        :raises AirtableImportJobDoesNotExist: If the import job doesn't exist.
-        :return: The fetched Airtable import job instance related to the provided id.
-        """
-
-        try:
-            return AirtableImportJob.objects.select_related(
-                "user", "group", "database", "database__group"
-            ).get(id=job_id, user_id=user.id)
-        except AirtableImportJob.DoesNotExist:
-            raise AirtableImportJobDoesNotExist(
-                f"The job with id {job_id} does not exist."
-            )
-
-    @staticmethod
-    def create_and_start_airtable_import_job(
-        user: User,
-        group: Group,
-        share_id: str,
-        timezone: Optional[str] = None,
-    ) -> AirtableImportJob:
-        """
-        Creates a new Airtable import jobs and starts the asynchronous task that
-        actually does the import.
-
-        :param user: The user on whose behalf the import is started.
-        :param group: The group where the Airtable base be imported to.
-        :param share_id: The Airtable share id of the page that must be fetched. Note
-            that the base must be shared publicly. The id stars with `shr`.
-        :param timezone: The main timezone used for date conversions if needed.
-        :raises AirtableImportJobAlreadyRunning: If another import job is already
-            running. A user can only have one job running simultaneously.
-        :raises UnknownTimeZoneError: When the provided timezone string is incorrect.
-        :return: The newly created Airtable import job.
-        """
-
-        # Validate the provided timezone.
-        if timezone is not None:
-            pytz_timezone(timezone)
-
-        group.has_user(user, raise_error=True)
-
-        # A user can only have one Airtable import job running simultaneously. If one
-        # is already running, we don't want to start a new one.
-        running_jobs = AirtableImportJob.objects.filter(user_id=user.id).is_running()
-        if len(running_jobs) > 0:
-            raise AirtableImportJobAlreadyRunning(
-                f"Another job is already running with id {running_jobs[0].id}."
-            )
-
-        job = AirtableImportJob.objects.create(
-            user=user,
-            group=group,
-            airtable_share_id=share_id,
-            timezone=timezone,
-        )
-        transaction.on_commit(lambda: run_import_from_airtable.delay(job.id))
-        return job

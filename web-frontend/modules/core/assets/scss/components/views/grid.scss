@@ -528,6 +528,14 @@
 
   .grid-view__description-name {
     @extend %ellipsis;
+
+    .grid-view__quick-edit--editable {
+      user-select: none;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
   }
 
   &.grid-view__description--loading {
@@ -617,9 +625,4 @@
   @include absolute(auto, auto, auto, 0);
 
   border-top: solid 1px $color-primary-900;
-}
-
-.grid-view__public-shared-page {
-  min-height: 100%;
-  background-color: $white;
 }

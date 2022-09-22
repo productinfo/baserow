@@ -2,23 +2,20 @@ from typing import cast
 
 import pytest
 
-from baserow.core.action.scopes import (
-    RootActionScopeType,
-)
 from baserow.core.action.handler import ActionHandler
-from baserow.core.action.registries import (
-    action_type_registry,
-)
+from baserow.core.action.registries import action_type_registry
+from baserow.core.action.scopes import RootActionScopeType
 from baserow.core.actions import (
     CreateGroupActionType,
-    UpdateGroupActionType,
     OrderGroupsActionType,
+    UpdateGroupActionType,
 )
-from baserow.core.handler import GroupForUpdate, CoreHandler
+from baserow.core.handler import CoreHandler, GroupForUpdate
 from baserow.core.models import Group
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_creating_group(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -34,6 +31,7 @@ def test_can_undo_creating_group(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_creating_group(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -59,6 +57,7 @@ def test_can_undo_redo_creating_group(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_updating_group(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -78,6 +77,7 @@ def test_can_undo_updating_group(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_ordering_group(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)
@@ -114,6 +114,7 @@ def test_can_undo_ordering_group(data_fixture, django_assert_num_queries):
 
 
 @pytest.mark.django_db
+@pytest.mark.undo_redo
 def test_can_undo_redo_ordering_group(data_fixture, django_assert_num_queries):
     session_id = "session-id"
     user = data_fixture.create_user(session_id=session_id)

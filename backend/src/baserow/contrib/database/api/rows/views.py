@@ -1,8 +1,9 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
+
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
@@ -17,21 +18,22 @@ from baserow.api.decorators import (
 )
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP
 from baserow.api.exceptions import (
-    RequestBodyValidationException,
     QueryParameterValidationException,
+    RequestBodyValidationException,
 )
 from baserow.api.pagination import PageNumberPagination
-from baserow.api.schemas import get_error_schema, CLIENT_SESSION_ID_SCHEMA_PARAMETER
+from baserow.api.schemas import (
+    CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+    CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
+    get_error_schema,
+)
 from baserow.api.trash.errors import ERROR_CANNOT_DELETE_ALREADY_DELETED_ITEM
-from baserow.api.user_files.errors import ERROR_USER_FILE_DOES_NOT_EXIST
 from baserow.api.utils import validate_data
-from baserow.contrib.database.api.utils import get_include_exclude_fields
 from baserow.contrib.database.api.fields.errors import (
-    ERROR_ORDER_BY_FIELD_NOT_POSSIBLE,
-    ERROR_ORDER_BY_FIELD_NOT_FOUND,
-    ERROR_FILTER_FIELD_NOT_FOUND,
     ERROR_FIELD_DOES_NOT_EXIST,
-    ERROR_INVALID_SELECT_OPTION_VALUES,
+    ERROR_FILTER_FIELD_NOT_FOUND,
+    ERROR_ORDER_BY_FIELD_NOT_FOUND,
+    ERROR_ORDER_BY_FIELD_NOT_POSSIBLE,
 )
 from baserow.contrib.database.api.rows.errors import (
     ERROR_ROW_DOES_NOT_EXIST,
@@ -43,16 +45,21 @@ from baserow.contrib.database.api.rows.serializers import (
 from baserow.contrib.database.api.tables.errors import ERROR_TABLE_DOES_NOT_EXIST
 from baserow.contrib.database.api.tokens.authentications import TokenAuthentication
 from baserow.contrib.database.api.tokens.errors import ERROR_NO_PERMISSION_TO_TABLE
+from baserow.contrib.database.api.utils import get_include_exclude_fields
 from baserow.contrib.database.api.views.errors import (
+    ERROR_VIEW_DOES_NOT_EXIST,
     ERROR_VIEW_FILTER_TYPE_DOES_NOT_EXIST,
     ERROR_VIEW_FILTER_TYPE_UNSUPPORTED_FIELD,
 )
 from baserow.contrib.database.fields.exceptions import (
+    FieldDoesNotExist,
+    FilterFieldNotFound,
     OrderByFieldNotFound,
     OrderByFieldNotPossible,
-    FilterFieldNotFound,
-    FieldDoesNotExist,
-    AllProvidedMultipleSelectValuesMustBeSelectOption,
+)
+from baserow.contrib.database.fields.field_filters import (
+    FILTER_TYPE_AND,
+    FILTER_TYPE_OR,
 )
 from baserow.contrib.database.rows.actions import (
     CreateRowActionType,
@@ -63,7 +70,6 @@ from baserow.contrib.database.rows.actions import (
     UpdateRowActionType,
     UpdateRowsActionType,
 )
-from baserow.core.action.registries import action_type_registry
 from baserow.contrib.database.rows.exceptions import RowDoesNotExist, RowIdsNotUnique
 from baserow.contrib.database.rows.handler import RowHandler
 from baserow.contrib.database.table.exceptions import TableDoesNotExist
@@ -72,30 +78,29 @@ from baserow.contrib.database.table.models import Table
 from baserow.contrib.database.tokens.exceptions import NoPermissionToTable
 from baserow.contrib.database.tokens.handler import TokenHandler
 from baserow.contrib.database.views.exceptions import (
-    ViewFilterTypeNotAllowedForField,
+    ViewDoesNotExist,
     ViewFilterTypeDoesNotExist,
+    ViewFilterTypeNotAllowedForField,
 )
+from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.views.registries import view_filter_type_registry
+from baserow.core.action.registries import action_type_registry
 from baserow.core.exceptions import UserNotInGroup
 from baserow.core.trash.exceptions import CannotDeleteAlreadyDeletedItem
-from baserow.core.user_files.exceptions import UserFileDoesNotExist
+
+from .schemas import row_names_response_schema
 from .serializers import (
-    ListRowsQueryParamsSerializer,
-    MoveRowQueryParamsSerializer,
-    CreateRowQueryParamsSerializer,
-    RowSerializer,
     BatchCreateRowsQueryParamsSerializer,
     BatchDeleteRowsSerializer,
+    CreateRowQueryParamsSerializer,
+    ListRowsQueryParamsSerializer,
+    MoveRowQueryParamsSerializer,
+    RowSerializer,
     get_batch_row_serializer_class,
+    get_example_batch_rows_serializer_class,
     get_example_row_serializer_class,
     get_row_serializer_class,
-    get_example_batch_rows_serializer_class,
 )
-from baserow.contrib.database.fields.field_filters import (
-    FILTER_TYPE_AND,
-    FILTER_TYPE_OR,
-)
-from .schemas import row_names_response_schema
 
 
 class RowsView(APIView):
@@ -222,6 +227,12 @@ class RowsView(APIView):
                     "Baserow field names (field_123 etc). "
                 ),
             ),
+            OpenApiParameter(
+                name="view_id",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.INT,
+                description="Includes all the filters and sorts of the provided view.",
+            ),
         ],
         tags=["Database table rows"],
         operation_id="list_database_table_rows",
@@ -271,6 +282,7 @@ class RowsView(APIView):
             FieldDoesNotExist: ERROR_FIELD_DOES_NOT_EXIST,
             ViewFilterTypeDoesNotExist: ERROR_VIEW_FILTER_TYPE_DOES_NOT_EXIST,
             ViewFilterTypeNotAllowedForField: ERROR_VIEW_FILTER_TYPE_UNSUPPORTED_FIELD,
+            ViewDoesNotExist: ERROR_VIEW_DOES_NOT_EXIST,
         }
     )
     @validate_query_parameters(ListRowsQueryParamsSerializer)
@@ -289,6 +301,7 @@ class RowsView(APIView):
         include = query_params.get("include")
         exclude = query_params.get("exclude")
         user_field_names = query_params.get("user_field_names")
+        view_id = query_params.get("view_id")
         fields = get_include_exclude_fields(
             table, include, exclude, user_field_names=user_field_names
         )
@@ -298,6 +311,16 @@ class RowsView(APIView):
             field_ids=[] if fields else None,
         )
         queryset = model.objects.all().enhance_by_fields()
+
+        if view_id:
+            view_handler = ViewHandler()
+            view = view_handler.get_view(view_id)
+
+            if view.table_id != table.id:
+                raise ViewDoesNotExist()
+
+            queryset = view_handler.apply_filters(view, queryset)
+            queryset = view_handler.apply_sorting(view, queryset)
 
         if search:
             queryset = queryset.search_all_fields(search)
@@ -350,6 +373,7 @@ class RowsView(APIView):
                 ),
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="create_database_table_row",
@@ -379,7 +403,7 @@ class RowsView(APIView):
                 [
                     "ERROR_USER_NOT_IN_GROUP",
                     "ERROR_REQUEST_BODY_VALIDATION",
-                    "ERROR_INVALID_SELECT_OPTION_VALUES",
+                    "ERROR_REQUEST_BODY_VALIDATION",
                 ]
             ),
             401: get_error_schema(["ERROR_NO_PERMISSION_TO_TABLE"]),
@@ -394,8 +418,6 @@ class RowsView(APIView):
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
             TableDoesNotExist: ERROR_TABLE_DOES_NOT_EXIST,
             NoPermissionToTable: ERROR_NO_PERMISSION_TO_TABLE,
-            AllProvidedMultipleSelectValuesMustBeSelectOption: ERROR_INVALID_SELECT_OPTION_VALUES,
-            UserFileDoesNotExist: ERROR_USER_FILE_DOES_NOT_EXIST,
             RowDoesNotExist: ERROR_ROW_DOES_NOT_EXIST,
         }
     )
@@ -655,6 +677,7 @@ class RowView(APIView):
                 ),
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="update_database_table_row",
@@ -685,7 +708,7 @@ class RowView(APIView):
                 [
                     "ERROR_USER_NOT_IN_GROUP",
                     "ERROR_REQUEST_BODY_VALIDATION",
-                    "ERROR_INVALID_SELECT_OPTION_VALUES",
+                    "ERROR_REQUEST_BODY_VALIDATION",
                 ]
             ),
             401: get_error_schema(["ERROR_NO_PERMISSION_TO_TABLE"]),
@@ -700,9 +723,7 @@ class RowView(APIView):
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
             TableDoesNotExist: ERROR_TABLE_DOES_NOT_EXIST,
             RowDoesNotExist: ERROR_ROW_DOES_NOT_EXIST,
-            AllProvidedMultipleSelectValuesMustBeSelectOption: ERROR_INVALID_SELECT_OPTION_VALUES,
             NoPermissionToTable: ERROR_NO_PERMISSION_TO_TABLE,
-            UserFileDoesNotExist: ERROR_USER_FILE_DOES_NOT_EXIST,
         }
     )
     def patch(self, request: Request, table_id: int, row_id: int) -> Response:
@@ -768,6 +789,7 @@ class RowView(APIView):
                 description="Deletes the row related to the value.",
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="delete_database_table_row",
@@ -848,6 +870,7 @@ class RowMoveView(APIView):
                 ),
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="move_database_table_row",
@@ -939,6 +962,7 @@ class BatchRowsView(APIView):
                 ),
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="batch_create_database_table_rows",
@@ -970,7 +994,7 @@ class BatchRowsView(APIView):
                     "ERROR_USER_NOT_IN_GROUP",
                     "ERROR_REQUEST_BODY_VALIDATION",
                     "ERROR_ROW_IDS_NOT_UNIQUE",
-                    "ERROR_INVALID_SELECT_OPTION_VALUES",
+                    "ERROR_REQUEST_BODY_VALIDATION",
                 ]
             ),
             401: get_error_schema(["ERROR_NO_PERMISSION_TO_TABLE"]),
@@ -986,9 +1010,7 @@ class BatchRowsView(APIView):
             TableDoesNotExist: ERROR_TABLE_DOES_NOT_EXIST,
             RowDoesNotExist: ERROR_ROW_DOES_NOT_EXIST,
             RowIdsNotUnique: ERROR_ROW_IDS_NOT_UNIQUE,
-            AllProvidedMultipleSelectValuesMustBeSelectOption: ERROR_INVALID_SELECT_OPTION_VALUES,
             NoPermissionToTable: ERROR_NO_PERMISSION_TO_TABLE,
-            UserFileDoesNotExist: ERROR_USER_FILE_DOES_NOT_EXIST,
         }
     )
     @validate_query_parameters(BatchCreateRowsQueryParamsSerializer)
@@ -1055,6 +1077,7 @@ class BatchRowsView(APIView):
                 ),
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="batch_update_database_table_rows",
@@ -1087,7 +1110,7 @@ class BatchRowsView(APIView):
                     "ERROR_USER_NOT_IN_GROUP",
                     "ERROR_REQUEST_BODY_VALIDATION",
                     "ERROR_ROW_IDS_NOT_UNIQUE",
-                    "ERROR_INVALID_SELECT_OPTION_VALUES",
+                    "ERROR_REQUEST_BODY_VALIDATION",
                 ]
             ),
             401: get_error_schema(["ERROR_NO_PERMISSION_TO_TABLE"]),
@@ -1103,9 +1126,7 @@ class BatchRowsView(APIView):
             TableDoesNotExist: ERROR_TABLE_DOES_NOT_EXIST,
             RowDoesNotExist: ERROR_ROW_DOES_NOT_EXIST,
             RowIdsNotUnique: ERROR_ROW_IDS_NOT_UNIQUE,
-            AllProvidedMultipleSelectValuesMustBeSelectOption: ERROR_INVALID_SELECT_OPTION_VALUES,
             NoPermissionToTable: ERROR_NO_PERMISSION_TO_TABLE,
-            UserFileDoesNotExist: ERROR_USER_FILE_DOES_NOT_EXIST,
         }
     )
     def patch(self, request, table_id):
@@ -1163,6 +1184,7 @@ class BatchDeleteRowsView(APIView):
                 description="Deletes the rows in the table related to the value.",
             ),
             CLIENT_SESSION_ID_SCHEMA_PARAMETER,
+            CLIENT_UNDO_REDO_ACTION_GROUP_ID_SCHEMA_PARAMETER,
         ],
         tags=["Database table rows"],
         operation_id="batch_delete_database_table_rows",

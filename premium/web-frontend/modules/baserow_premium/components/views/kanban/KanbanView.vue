@@ -4,7 +4,6 @@
       :table="table"
       :view="view"
       :fields="fields"
-      :primary="primary"
       :read-only="readOnly"
       :store-prefix="storePrefix"
       :include-field-options-on-refresh="true"
@@ -24,30 +23,30 @@
   >
     <div class="kanban-view__stacks">
       <KanbanViewStack
+        :database="database"
         :table="table"
         :view="view"
         :card-fields="cardFields"
         :fields="fields"
-        :primary="primary"
         :read-only="readOnly"
         :store-prefix="storePrefix"
         @create-row="openCreateRowModal"
-        @edit-row="$refs.rowEditModal.show($event.id)"
+        @edit-row="openRowEditModal($event.id)"
         @refresh="$emit('refresh', $event)"
       ></KanbanViewStack>
       <KanbanViewStack
         v-for="option in existingSelectOption"
         :key="option.id"
         :option="option"
+        :database="database"
         :table="table"
         :view="view"
         :card-fields="cardFields"
         :fields="fields"
-        :primary="primary"
         :read-only="readOnly"
         :store-prefix="storePrefix"
         @create-row="openCreateRowModal"
-        @edit-row="$refs.rowEditModal.show($event.id)"
+        @edit-row="openRowEditModal($event.id)"
         @refresh="$emit('refresh', $event)"
       ></KanbanViewStack>
       <a
@@ -61,14 +60,12 @@
       <KanbanViewCreateStackContext
         ref="addOptionContext"
         :fields="fields"
-        :primary="primary"
         :store-prefix="storePrefix"
       ></KanbanViewCreateStackContext>
     </div>
     <RowCreateModal
       ref="rowCreateModal"
       :table="table"
-      :primary="primary"
       :primary-is-sortable="true"
       :visible-fields="cardFields"
       :hidden-fields="hiddenFields"
@@ -84,14 +81,15 @@
     ></RowCreateModal>
     <RowEditModal
       ref="rowEditModal"
+      :database="database"
       :table="table"
-      :primary="primary"
       :primary-is-sortable="true"
       :visible-fields="cardFields"
       :hidden-fields="hiddenFields"
       :rows="allRows"
       :read-only="false"
       :show-hidden-fields="showHiddenFieldsInRowModal"
+      @hidden="$emit('selected-row', undefined)"
       @toggle-hidden-fields-visibility="
         showHiddenFieldsInRowModal = !showHiddenFieldsInRowModal
       "
@@ -111,6 +109,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import { clone } from '@baserow/modules/core/utils/object'
+import { populateRow } from '@baserow/modules/database/store/view/grid'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import viewHelpers from '@baserow/modules/database/mixins/viewHelpers'
 import {
@@ -152,18 +151,17 @@ export default {
       type: Array,
       required: true,
     },
-    primary: {
-      type: Object,
-      required: true,
-    },
     readOnly: {
       type: Boolean,
+      required: true,
+    },
+    row: {
+      validator: (prop) => typeof prop === 'object' || prop === null,
       required: true,
     },
   },
   data() {
     return {
-      row: {},
       showHiddenFieldsInRowModal: false,
     }
   },
@@ -173,15 +171,13 @@ export default {
      */
     cardFields() {
       const fieldOptions = this.fieldOptions
-      return [this.primary]
-        .concat(this.fields)
+      return this.fields
         .filter(filterVisibleFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
     hiddenFields() {
       const fieldOptions = this.fieldOptions
-      return [this.primary]
-        .concat(this.fields)
+      return this.fields
         .filter(filterHiddenFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
@@ -190,7 +186,7 @@ export default {
      * cards in stacks.
      */
     singleSelectField() {
-      const allFields = [this.primary].concat(this.fields)
+      const allFields = this.fields
       for (let i = 0; i < allFields.length; i++) {
         if (allFields[i].id === this.singleSelectFieldId) {
           return allFields[i]
@@ -219,7 +215,22 @@ export default {
       }),
     }
   },
+  mounted() {
+    if (this.row !== null) {
+      const rowClone = populateRow(clone(this.row))
+      this.$refs.rowEditModal.show(this.row.id, rowClone)
+    }
+  },
   methods: {
+    /**
+     * When the row edit modal is opened we notifiy
+     * the Table component that a new row has been selected,
+     * such that we can update the path to include the row id.
+     */
+    openRowEditModal(rowId) {
+      this.$refs.rowEditModal.show(rowId)
+      this.$emit('selected-row', rowId)
+    },
     openCreateRowModal(event) {
       const defaults = {}
       if (event.option !== null) {
@@ -236,7 +247,6 @@ export default {
             view: this.view,
             table: this.table,
             fields: this.fields,
-            primary: this.primary,
             values: row,
           }
         )
@@ -253,7 +263,6 @@ export default {
             table: this.table,
             view: this.view,
             fields: this.fields,
-            primary: this.primary,
             row,
             field,
             value,

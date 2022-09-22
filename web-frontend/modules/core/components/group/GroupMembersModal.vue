@@ -26,6 +26,7 @@
         :id="user.id"
         :key="'user-' + user.id"
         :name="user.name"
+        :to-be-deleted="user.to_be_deleted"
         :description="getUserDescription(user)"
         :permissions="user.permissions"
         :loading="user._.loading"
@@ -174,6 +175,11 @@ export default {
       this.$refs[name][0].highlight()
     },
     getUserDescription(user) {
+      if (user.to_be_deleted) {
+        return this.$t('groupMemberModal.userDescriptionPendingDeletion', {
+          user: user.email,
+        })
+      }
       return this.$t('groupMemberModal.userDescription', {
         user: user.email,
         since: moment(user.created_on).fromNow(true),
@@ -190,6 +196,11 @@ export default {
 
       try {
         await GroupService(this.$client).updateUser(user.id, { permissions })
+        await this.$store.dispatch('group/forceUpdateGroupUser', {
+          groupId: this.group.id,
+          id: user.id,
+          values: { permissions },
+        })
       } catch (error) {
         user.permissions = oldPermissions
         notifyIf(error, 'group')
@@ -202,7 +213,13 @@ export default {
       try {
         await GroupService(this.$client).deleteUser(user.id)
         const index = this.users.findIndex((u) => u.id === user.id)
+        const userId = this.users[index].user_id
         this.users.splice(index, 1)
+        await this.$store.dispatch('group/forceDeleteGroupUser', {
+          groupId: this.group.id,
+          id: user.id,
+          values: { user_id: userId },
+        })
       } catch (error) {
         user._.loading = false
         notifyIf(error, 'group')

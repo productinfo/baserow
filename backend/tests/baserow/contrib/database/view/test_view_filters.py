@@ -1,20 +1,23 @@
+import random
+from datetime import date, timedelta
+
 from django.db.models import Q
-from freezegun import freeze_time
+from django.utils import timezone as django_timezone
+from django.utils.timezone import datetime, make_aware
 
 import pytest
-from datetime import date, timedelta
+from freezegun import freeze_time
+from pyinstrument import Profiler
 from pytz import timezone
 
-from django.utils.timezone import make_aware, datetime
-
 from baserow.contrib.database.fields.field_filters import OptionallyAnnotatedQ
-from baserow.contrib.database.views.registries import (
-    view_filter_type_registry,
-    ViewFilterType,
-)
-from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.rows.handler import RowHandler
+from baserow.contrib.database.views.handler import ViewHandler
+from baserow.contrib.database.views.registries import (
+    ViewFilterType,
+    view_filter_type_registry,
+)
 from baserow.contrib.database.views.view_filters import BaseDateFieldLookupFilterType
 
 
@@ -1598,6 +1601,392 @@ def test_last_modified_date_equals_days_ago_filter_type(data_fixture):
 
 
 @pytest.mark.django_db
+def test_date_equals_months_ago_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    date_field = data_fixture.create_date_field(table=table, date_include_time=False)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_jan = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 1, 1),
+        }
+    )
+    row_feb = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 2, 3),
+        }
+    )
+    row_march = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 3, 1),
+        }
+    )
+    row_march_2 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 3, 15),
+        }
+    )
+    row_may = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 4, 1),
+        }
+    )
+    row_none = model.objects.create(
+        **{
+            f"field_{date_field.id}": None,
+        }
+    )
+    row_old_year = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2010, 1, 1),
+        }
+    )
+
+    day_in_march = "2022-03-31 10:00"
+
+    months_ago = 0
+    with freeze_time(day_in_march):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=date_field,
+            type="date_equals_months_ago",
+            value=f"Europe/Berlin?{months_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 2
+        assert row_march in rows
+        assert row_march_2 in rows
+
+    months_ago = 1
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_feb in rows
+
+    months_ago = 2
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_jan in rows
+
+    months_ago = 3
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+
+@pytest.mark.django_db
+def test_datetime_equals_months_ago_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    datetime_field = data_fixture.create_date_field(table=table, date_include_time=True)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_jan = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-01-01 00:00",
+        }
+    )
+    row_feb = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-02-03 23:59",
+        }
+    )
+    row_march = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-03-01 15:15",
+        }
+    )
+    row_march_2 = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-03-31 23:59",
+        }
+    )
+    row_may = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-04-01 00:00",
+        }
+    )
+    row_none = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": None,
+        }
+    )
+    row_old_year = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2010-01-01 15:15",
+        }
+    )
+
+    day_in_march = "2022-03-31 10:00"
+
+    months_ago = 0
+    with freeze_time(day_in_march):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=datetime_field,
+            type="date_equals_months_ago",
+            value=f"Europe/Berlin?{months_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 2
+        assert row_march in rows
+        assert row_march_2 in rows
+
+    months_ago = 1
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_feb in rows
+
+    months_ago = 2
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_jan in rows
+
+    months_ago = 3
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+
+@pytest.mark.django_db
+def test_datetime_equals_months_ago_filter_type_timezone(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    datetime_field = data_fixture.create_date_field(table=table, date_include_time=True)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_jan = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-01-01 00:00",
+        }
+    )
+
+    day_in_feb = "2022-02-01 00:00"
+
+    # without timezone shifting the day
+    months_ago = 0
+
+    with freeze_time(day_in_feb):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=datetime_field,
+            type="date_equals_months_ago",
+            value=f"Europe/Berlin?{months_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+    # with timezone moving the day to january
+    with freeze_time(day_in_feb):
+        filter.value = f"America/Havana?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+
+
+@pytest.mark.django_db
+def test_date_equals_years_ago_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    date_field = data_fixture.create_date_field(table=table, date_include_time=False)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_2022 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 1, 1),
+        }
+    )
+    row_2022_2 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2022, 12, 30),
+        }
+    )
+    row_2021 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 3, 1),
+        }
+    )
+    row_2020 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2020, 3, 15),
+        }
+    )
+    row_none = model.objects.create(
+        **{
+            f"field_{date_field.id}": None,
+        }
+    )
+
+    day_in_2022 = "2022-03-31 10:00"
+
+    years_ago = 0
+    with freeze_time(day_in_2022):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=date_field,
+            type="date_equals_years_ago",
+            value=f"Europe/Berlin?{years_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 2
+        assert row_2022 in rows
+        assert row_2022_2 in rows
+
+    years_ago = 1
+    with freeze_time(day_in_2022):
+        filter.value = f"Europe/Berlin?{years_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_2021 in rows
+
+    years_ago = 2
+    with freeze_time(day_in_2022):
+        filter.value = f"Europe/Berlin?{years_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_2020 in rows
+
+    years_ago = 3
+    with freeze_time(day_in_2022):
+        filter.value = f"Europe/Berlin?{years_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+
+@pytest.mark.django_db
+def test_datetime_equals_years_ago_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    datetime_field = data_fixture.create_date_field(table=table, date_include_time=True)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_2022 = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-01-01 00:00",
+        }
+    )
+    row_2022_2 = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2022-02-03 23:59",
+        }
+    )
+    row_2021 = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2021-03-01 15:15",
+        }
+    )
+    row_2020 = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2020-03-31 23:59",
+        }
+    )
+    row_none = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": None,
+        }
+    )
+
+    day_in_march = "2022-03-31 10:00"
+
+    months_ago = 0
+    with freeze_time(day_in_march):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=datetime_field,
+            type="date_equals_years_ago",
+            value=f"Europe/Berlin?{months_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 2
+        assert row_2022 in rows
+        assert row_2022_2 in rows
+
+    months_ago = 1
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_2021 in rows
+
+    months_ago = 2
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+        assert row_2020 in rows
+
+    months_ago = 3
+    with freeze_time(day_in_march):
+        filter.value = f"Europe/Berlin?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+
+@pytest.mark.django_db
+def test_datetime_equals_years_ago_filter_type_timezone(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    datetime_field = data_fixture.create_date_field(table=table, date_include_time=True)
+    handler = ViewHandler()
+    model = table.get_model()
+    row_dec = model.objects.create(
+        **{
+            f"field_{datetime_field.id}": "2021-12-30 00:00",
+        }
+    )
+
+    day_in_2022 = "2022-01-01 00:00"
+
+    # without timezone shifting the day
+    months_ago = 0
+
+    with freeze_time(day_in_2022):
+        filter = data_fixture.create_view_filter(
+            view=grid_view,
+            field=datetime_field,
+            type="date_equals_years_ago",
+            value=f"Europe/Berlin?{months_ago}",
+        )
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 0
+
+    # with timezone moving the day to january
+    with freeze_time(day_in_2022):
+        filter.value = f"America/Havana?{months_ago}"
+        filter.save()
+        rows = handler.apply_filters(grid_view, model.objects.all()).all()
+        assert len(rows) == 1
+
+
+@pytest.mark.django_db
 def test_last_modified_day_filter_type(data_fixture):
     user = data_fixture.create_user()
     table = data_fixture.create_database_table(user=user)
@@ -1994,7 +2383,7 @@ def test_last_modified_year_filter_type(data_fixture):
 
 
 @pytest.mark.django_db
-def test_date_day_month_year_filter_type(data_fixture):
+def test_date_equals_day_week_month_year_filter_type(data_fixture):
     user = data_fixture.create_user()
     table = data_fixture.create_database_table(user=user)
     grid_view = data_fixture.create_grid_view(table=table)
@@ -2016,6 +2405,11 @@ def test_date_day_month_year_filter_type(data_fixture):
     row_3 = model.objects.create(
         **{
             f"field_{date_field.id}": date(2021, 1, 2),
+        }
+    )
+    row_4 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 1, 4),
         }
     )
     model.objects.create(
@@ -2040,7 +2434,7 @@ def test_date_day_month_year_filter_type(data_fixture):
         assert len(ids) == 1
         assert row.id not in ids
 
-        view_filter.type = "date_equals_month"
+        view_filter.type = "date_equals_week"
         view_filter.save()
 
         ids = [
@@ -2050,16 +2444,28 @@ def test_date_day_month_year_filter_type(data_fixture):
         assert row_2.id in ids
         assert row_3.id in ids
 
-        view_filter.type = "date_equals_year"
+        view_filter.type = "date_equals_month"
         view_filter.save()
 
         ids = [
             r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()
         ]
         assert len(ids) == 3
+        assert row_2.id in ids
+        assert row_3.id in ids
+        assert row_4.id in ids
+
+        view_filter.type = "date_equals_year"
+        view_filter.save()
+
+        ids = [
+            r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()
+        ]
+        assert len(ids) == 4
         assert row.id in ids
         assert row_2.id in ids
         assert row_3.id in ids
+        assert row_4.id in ids
 
     view_filter.type = "date_equals_today"
     view_filter.save()
@@ -2088,6 +2494,75 @@ def test_date_day_month_year_filter_type(data_fixture):
         ]
         assert len(ids) == 1
         assert row_3.id in ids
+
+
+@pytest.mark.django_db
+def test_date_before_after_today_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    grid_view = data_fixture.create_grid_view(table=table)
+    date_field = data_fixture.create_date_field(table=table)
+
+    handler = ViewHandler()
+    model = table.get_model()
+
+    row_1 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 2, 1),
+        }
+    )
+    row_2 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 1, 1),
+        }
+    )
+    row_3 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 1, 2),
+        }
+    )
+    row_4 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2021, 1, 4),
+        }
+    )
+    row_5 = model.objects.create(
+        **{
+            f"field_{date_field.id}": None,
+        }
+    )
+    row_6 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2010, 1, 1),
+        }
+    )
+
+    row_7 = model.objects.create(
+        **{
+            f"field_{date_field.id}": date(2020, 12, 31),
+        }
+    )
+
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view, field=date_field, type="date_before_today", value="UTC"
+    )
+
+    with freeze_time("2021-01-02 01:01"):
+        ids = [
+            r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()
+        ]
+        assert len(ids) == 3
+        assert ids == [row_2.id, row_6.id, row_7.id]
+
+        view_filter.type = "date_after_today"
+        view_filter.save()
+
+        ids = [
+            r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()
+        ]
+
+        assert len(ids) == 2
+        assert ids == [row_1.id, row_4.id]
 
 
 @pytest.mark.django_db
@@ -3060,6 +3535,137 @@ def test_link_row_has_filter_type(data_fixture):
 
 
 @pytest.mark.django_db
+def test_link_row_reference_same_table_has_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    field_handler = FieldHandler()
+    link_row_field = field_handler.create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=table,
+    )
+
+    row_handler = RowHandler()
+    model = table.get_model()
+
+    row_0 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [row_0.id],
+        },
+    )
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [row_0.id, row_1.id],
+        },
+    )
+    row_3 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 3",
+            f"field_{link_row_field.id}": [row_2.id],
+        },
+    )
+    row_with_all_relations = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 4",
+            f"field_{link_row_field.id}": [
+                row_0.id,
+                row_1.id,
+                row_2.id,
+                row_3.id,
+            ],
+        },
+    )
+
+    handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_has",
+        value=f"",
+    )
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 5
+
+    view_filter.value = "not_number"
+    view_filter.save()
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 5
+
+    view_filter.value = "-1"
+    view_filter.save()
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 0
+
+    view_filter.value = f"{row_0.id}"
+    view_filter.save()
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 3
+    assert row_1.id in ids
+    assert row_2.id in ids
+    assert row_with_all_relations.id in ids
+
+    view_filter.value = f"{row_2.id}"
+    view_filter.save()
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 2
+    assert row_3.id in ids
+    assert row_with_all_relations.id in ids
+
+    view_filter.value = f"{row_3.id}"
+    view_filter.save()
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 1
+    assert row_with_all_relations.id in ids
+
+    # Chaining filters should also work
+    # creating a second filter for the same field
+    data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_has",
+        value=f"{row_1.id}",
+    )
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 1
+    assert row_with_all_relations.id in ids
+
+    # Changing the view to use "OR" for multiple filters
+    handler.update_view(user=user, view=grid_view, filter_type="OR")
+    ids = [r.id for r in handler.apply_filters(grid_view, model.objects.all()).all()]
+    assert len(ids) == 2
+    assert row_2.id in ids
+    assert row_with_all_relations.id in ids
+
+
+@pytest.mark.django_db
 def test_link_row_has_not_filter_type(data_fixture):
     user = data_fixture.create_user()
     database = data_fixture.create_database_application(user=user)
@@ -3684,3 +4290,749 @@ def test_date_equals_day_of_month_filter_type(data_fixture):
     assert len(ids) == 2
     assert row_2_tz.id in ids
     assert row_3_tz.id in ids
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    related_primary_field = data_fixture.create_text_field(
+        primary=True, table=related_table
+    )
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={
+            f"field_{related_primary_field.id}": "Related row 1",
+        },
+    )
+    related_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={
+            f"field_{related_primary_field.id}": "Related row 2",
+        },
+    )
+    related_row_3 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={
+            f"field_{related_primary_field.id}": "Related row 3",
+        },
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_row_1.id],
+        },
+    )
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_row_2.id],
+        },
+    )
+    row_3 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 3",
+            f"field_{link_row_field.id}": [related_row_3.id],
+        },
+    )
+    row_with_all_relations = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 4",
+            f"field_{link_row_field.id}": [
+                related_row_1.id,
+                related_row_2.id,
+                related_row_3.id,
+            ],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 5
+
+    view_filter.value = "nonsense"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 0
+
+    view_filter.value = "row"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 4
+
+    view_filter.value = "1"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+    assert row_1.id in ids
+    assert row_with_all_relations.id in ids
+
+    view_filter.value = "2"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+    assert row_2.id in ids
+    assert row_with_all_relations.id in ids
+
+    view_filter.value = "3"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+    assert row_3.id in ids
+    assert row_with_all_relations.id in ids
+
+    # Chaining filters should also work
+    # creating a second filter for the same field
+    data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value="1",
+    )
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 1
+    assert row_with_all_relations.id in ids
+
+    # Changing the view to use "OR" for multiple filters
+    view_handler.update_view(user=user, view=grid_view, filter_type="OR")
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+    assert row_1.id in ids
+    assert row_3.id in ids
+    assert row_with_all_relations.id in ids
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type_date_field(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+
+    related_primary_date_field = data_fixture.create_date_field(
+        primary=True, table=related_table, date_format="ISO"
+    )
+
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_date_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_date_field.id}": "2020-02-01 01:23"},
+    )
+
+    related_date_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_date_field.id}": "2021-02-01 01:23"},
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_date_row_1.id],
+        },
+    )
+
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_date_row_2.id],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+
+    view_filter.value = "2020"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 1
+
+    view_filter.value = "01"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type_created_on_field(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+
+    now = django_timezone.now()
+
+    related_primary_created_on_field = data_fixture.create_created_on_field(
+        primary=True, table=related_table
+    )
+
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_created_on_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+    )
+
+    related_created_on_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_created_on_row_1.id],
+        },
+    )
+
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_created_on_row_2.id],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+
+    view_filter.value = now.year
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type_file_field(
+    data_fixture, django_assert_num_queries
+):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+
+    related_primary_file_field = data_fixture.create_file_field(
+        primary=True, table=related_table
+    )
+
+    file_one = data_fixture.create_user_file(original_name="target 1")
+    file_two = data_fixture.create_user_file(original_name="target 2")
+
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_file_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_file_field.id}": [{"name": file_one.name}]},
+    )
+
+    related_file_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_file_field.id}": [{"name": file_two.name}]},
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_file_row_1.id],
+        },
+    )
+
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_file_row_2.id],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+
+    view_filter.value = "target 1"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 1
+
+    view_filter.value = "target"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type_single_select_field(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+
+    related_primary_single_select_field = data_fixture.create_single_select_field(
+        primary=True, table=related_table
+    )
+
+    option_a = data_fixture.create_select_option(
+        field=related_primary_single_select_field, value="target 1", color="blue"
+    )
+    option_b = data_fixture.create_select_option(
+        field=related_primary_single_select_field, value="target 2", color="red"
+    )
+
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_single_select_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_single_select_field.id}": option_a.id},
+    )
+
+    related_single_select_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_single_select_field.id}": option_b.id},
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_single_select_row_1.id],
+        },
+    )
+
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_single_select_row_2.id],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+
+    view_filter.value = "target 1"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 1
+
+    view_filter.value = "target"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+
+
+@pytest.mark.django_db
+def test_link_row_contains_filter_type_multiple_select_field(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+
+    related_primary_multiple_select_field = data_fixture.create_multiple_select_field(
+        primary=True, table=related_table
+    )
+
+    option_a = data_fixture.create_select_option(
+        field=related_primary_multiple_select_field, value="target 1", color="blue"
+    )
+    option_b = data_fixture.create_select_option(
+        field=related_primary_multiple_select_field, value="target 2", color="red"
+    )
+
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_multiple_select_row_1 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_multiple_select_field.id}": [option_a.id]},
+    )
+
+    related_multiple_select_row_2 = row_handler.create_row(
+        user=user,
+        table=related_table,
+        model=related_model,
+        values={f"field_{related_primary_multiple_select_field.id}": [option_b.id]},
+    )
+
+    row_unrelated = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 0",
+        },
+    )
+
+    row_1 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 1",
+            f"field_{link_row_field.id}": [related_multiple_select_row_1.id],
+        },
+    )
+
+    row_2 = row_handler.create_row(
+        user=user,
+        table=table,
+        model=model,
+        values={
+            f"field_{primary_field.id}": "Row 2",
+            f"field_{link_row_field.id}": [related_multiple_select_row_2.id],
+        },
+    )
+
+    view_handler = ViewHandler()
+    view_filter = data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"",
+    )
+
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 3
+
+    view_filter.value = "target 1"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 1
+
+    view_filter.value = "target"
+    view_filter.save()
+    ids = [
+        r.id for r in view_handler.apply_filters(grid_view, model.objects.all()).all()
+    ]
+    assert len(ids) == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.disabled_in_ci
+# You must add --run-disabled-in-ci -s to pytest to run this test, you can do this in
+# intellij by editing the run config for this test and adding --run-disabled-in-ci -s
+# to additional args.
+def test_link_row_contains_filter_type_performance(data_fixture):
+    rows_count = 5000
+    related_rows_count = 5000
+    relations_count = 50
+
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(database=database)
+    related_table = data_fixture.create_database_table(database=database)
+    primary_field = data_fixture.create_text_field(table=table)
+    related_primary_field = data_fixture.create_text_field(
+        primary=True, table=related_table
+    )
+    grid_view = data_fixture.create_grid_view(table=table)
+
+    link_row_field = FieldHandler().create_field(
+        user=user,
+        table=table,
+        type_name="link_row",
+        name="Test",
+        link_row_table=related_table,
+    )
+
+    row_handler = RowHandler()
+    model = table.get_model()
+    related_model = related_table.get_model()
+
+    related_rows = []
+    for i in range(related_rows_count):
+        row = row_handler.create_row(
+            user=user,
+            table=related_table,
+            model=related_model,
+            values={
+                f"field_{related_primary_field.id}": f"Related row {i}",
+            },
+        )
+        related_rows.append(row)
+
+    for i in range(rows_count):
+        related_rows_chosen = random.sample(related_rows, relations_count)
+        related_rows_chosen_ids = [row.id for row in related_rows_chosen]
+        row_handler.create_row(
+            user=user,
+            table=table,
+            model=model,
+            values={
+                f"field_{primary_field.id}": f"Row {i}",
+                f"field_{link_row_field.id}": related_rows_chosen_ids,
+            },
+        )
+
+    view_handler = ViewHandler()
+    data_fixture.create_view_filter(
+        view=grid_view,
+        field=link_row_field,
+        type="link_row_contains",
+        value=f"related row",
+    )
+
+    profiler = Profiler()
+    profiler.start()
+    view_handler.apply_filters(grid_view, model.objects.all()).all()
+    profiler.stop()
+    print(profiler.output_text(unicode=True, color=True))

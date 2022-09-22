@@ -5,6 +5,11 @@
  */
 export default {
   props: {
+    database: {
+      type: Object,
+      required: false,
+      default: undefined,
+    },
     view: {
       type: Object,
       required: false,
@@ -14,15 +19,8 @@ export default {
       type: Array,
       required: true,
     },
-    primary: {
-      type: Object,
-      required: true,
-    },
   },
   computed: {
-    allTableFields() {
-      return [this.primary, ...this.fields]
-    },
     activeDecorations() {
       return this.view.decorations
         .map((decoration) => {
@@ -33,7 +31,9 @@ export default {
             decoration.type
           )
 
-          deco.component = deco.decoratorType.getComponent()
+          deco.component = deco.decoratorType.getComponent(
+            this.database.group.id
+          )
           deco.place = deco.decoratorType.getPlace()
 
           if (decoration.value_provider_type) {
@@ -46,7 +46,7 @@ export default {
               return {
                 value: deco.valueProviderType.getValue({
                   row,
-                  fields: this.allTableFields,
+                  fields: this.fields,
                   options: decoration.value_provider_conf,
                 }),
               }
@@ -57,7 +57,7 @@ export default {
         })
         .filter(
           ({ decoratorType }) =>
-            !decoratorType.isDeactivated({ view: this.view })
+            !decoratorType.isDeactivated(this.database.group.id)
         )
     },
     decorationsByPlace() {

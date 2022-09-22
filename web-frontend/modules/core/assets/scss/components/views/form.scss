@@ -136,6 +136,7 @@
   background-color: $white;
 
   &.form-view__page--rounded {
+    position: relative;
     overflow: hidden;
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
@@ -293,6 +294,10 @@
 
 .form-view__heading {
   padding: 20px 20px 10px 20px;
+
+  // If we're in the form heading, the span.contenteditable
+  // is false, and there's no text value, show the placeholder.
+  @include contenteditable-placeholder();
 }
 
 .form_view__logo {
@@ -345,6 +350,10 @@
     &.form-view__field--selected {
       z-index: 2;
       border-color: $color-neutral-200;
+
+      // If we've selected a form field, the span.contenteditable
+      // is false, and there's no text value, show the placeholder.
+      @include contenteditable-placeholder();
     }
 
     &:not(.form-view__field--selected) {
@@ -457,6 +466,16 @@
   }
 }
 
+.form-view__conditions {
+  margin-top: 6px;
+}
+
+.form-view__add-condition {
+  display: inline-block;
+  margin-top: 6px;
+  color: $color-neutral-700;
+}
+
 .form-view__actions {
   display: flex;
   align-items: center;
@@ -499,6 +518,10 @@
 
 .form-view__meta-controls {
   padding: 20px;
+}
+
+.form-view__meta-controls-help {
+  margin-top: 20px;
 }
 
 .form-view__submitted {

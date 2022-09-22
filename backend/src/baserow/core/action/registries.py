@@ -3,11 +3,15 @@ import dataclasses
 from typing import Any, NewType, Optional
 
 from django.contrib.auth.models import AbstractUser
+
 from rest_framework import serializers
 
-from baserow.api.sessions import get_untrusted_client_session_id
+from baserow.api.sessions import (
+    get_client_undo_redo_action_group_id,
+    get_untrusted_client_session_id,
+)
 from baserow.core.action.models import Action
-from baserow.core.registry import Registry, Instance
+from baserow.core.registry import Instance, Registry
 
 # An alias type of a str (its exactly a str, just with a different name in the type
 # system). We use this instead of a normal str for type safety ensuring
@@ -169,6 +173,7 @@ class ActionType(Instance, abc.ABC):
         """
 
         session = get_untrusted_client_session_id(user)
+        action_group = get_client_undo_redo_action_group_id(user)
 
         action = Action.objects.create(
             user=user,
@@ -176,6 +181,7 @@ class ActionType(Instance, abc.ABC):
             params=params,
             scope=scope,
             session=session,
+            action_group=action_group,
         )
         return action
 

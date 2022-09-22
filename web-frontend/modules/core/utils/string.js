@@ -41,14 +41,24 @@ export const slugify = (string) => {
  * after the dot.
  */
 export const isValidURL = (str) => {
-  const pattern = /^[^\s]{0,255}(?:\.|\/\/)[^\s]{1,}$/gi
+  const pattern = /^[^\s]{0,255}(?:\.|\/\/)[^\s]{1,}$/i
   return !!pattern.test(str)
+}
+
+/**
+ * A slightly stricter URL validator than requires any url begins with a http:// or
+ * https:// and that it also passes the isValidURL validator above.
+ */
+export const isValidURLWithHttpScheme = (str) => {
+  const trimmedStr = str.trim()
+  const pattern = /^https?:\/\//i
+  return !!pattern.test(trimmedStr) && isValidURL(trimmedStr)
 }
 
 export const isValidEmail = (str) => {
   // Please keep these regex in sync with the backend
   // See baserow.contrib.database.fields.field_types.EmailFieldType
-  // Javascript does not support using \w to match unicode letters like python.
+  // JavaScript does not support using \w to match unicode letters like python.
   // Instead we match all unicode letters including ones with modifiers by using the
   // regex \p{L}\p{M}* taken from https://www.regular-expressions.info/unicode.html
   // Unicode Categories section.
@@ -69,6 +79,12 @@ export const isValidEmail = (str) => {
   )
 
   return !!pattern.test(str)
+}
+
+export const getFilenameFromUrl = (url) => {
+  const pathname = new URL(url).pathname
+  const index = pathname.lastIndexOf('/')
+  return pathname.substring(index + 1) // if index === -1 then index+1 will be 0
 }
 
 // Regex duplicated from

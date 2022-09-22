@@ -2,66 +2,32 @@
   <div>
     <Notifications></Notifications>
     <div class="form-view__page">
-      <div
-        v-if="coverImage !== null"
-        class="form-view__cover"
-        :style="{
-          'background-image': `url(${coverImage.url})`,
-        }"
-      ></div>
-      <form
-        v-if="!submitted"
-        class="form-view__body"
-        @submit.prevent="submit(values)"
-      >
-        <div class="form-view__heading">
-          <div v-if="logoImage !== null" class="form_view__logo">
-            <img class="form_view__logo-img" :src="logoImage.url" width="200" />
-          </div>
-          <h1 v-if="title !== ''" class="form-view__title">{{ title }}</h1>
-          <p v-if="description !== ''" class="form-view__description">
-            {{ description }}
-          </p>
-        </div>
-        <FormPageField
-          v-for="field in fields"
-          :ref="'field-' + field.field.id"
-          :key="field.id"
-          v-model="values['field_' + field.field.id]"
-          class="form-view__field"
-          :slug="$route.params.slug"
-          :field="field"
-        ></FormPageField>
-        <div class="form-view__actions">
-          <FormViewPoweredBy></FormViewPoweredBy>
-          <div class="form-view__submit">
-            <button
-              class="button button--primary button--large"
-              :class="{ 'button--loading': loading }"
-              :disabled="loading"
-            >
-              {{ submit_text }}
-            </button>
-          </div>
-        </div>
-      </form>
-      <div v-else-if="submitted" class="form-view__submitted">
-        <template v-if="isRedirect">
-          <div class="form-view__submitted-message">
-            Thanks for submitting the form!
-          </div>
-          <div class="form-view__redirecting-description">
-            You're being redirected to {{ submitActionRedirectURL }}.
-          </div>
-          <div class="form-view__redirecting-loading">
-            <div class="loading-absolute-center"></div>
-          </div>
-        </template>
-        <div v-else class="form-view__submitted-message">
-          {{ submitActionMessage || 'Thanks for submitting the form!' }}
+      <div v-if="fields.length === 0" class="form-view__body">
+        <div class="form-view__no-fields margin-bottom-4">
+          This form doesn't have any fields. Use Baserow to add at least one
+          field.
         </div>
         <FormViewPoweredBy></FormViewPoweredBy>
       </div>
+      <component
+        :is="component"
+        v-else
+        ref="form"
+        v-model="values"
+        :loading="loading"
+        :submitted="submitted"
+        :title="title"
+        :description="description"
+        :cover-image="coverImage"
+        :logo-image="logoImage"
+        :submit-text="submitText"
+        :all-fields="fields"
+        :visible-fields="visibleFields"
+        :is-redirect="isRedirect"
+        :submit-action-redirect-url="submitActionRedirectUrl"
+        :submit-action-message="submitActionMessage"
+        @submit="submit"
+      ></component>
     </div>
   </div>
 </template>
@@ -71,14 +37,13 @@ import { clone, isPromise } from '@baserow/modules/core/utils/object'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import Notifications from '@baserow/modules/core/components/notifications/Notifications'
 import FormService from '@baserow/modules/database/services/view/form'
-import FormPageField from '@baserow/modules/database/components/view/form/FormPageField'
-import FormViewPoweredBy from '@baserow/modules/database/components/view/form/FormViewPoweredBy'
 import { getPrefills } from '@baserow/modules/database/utils/form'
+import { matchSearchFilters } from '@baserow/modules/database/utils/view'
+import FormViewPoweredBy from '@baserow/modules/database/components/view/form/FormViewPoweredBy'
 
 export default {
   components: {
     Notifications,
-    FormPageField,
     FormViewPoweredBy,
   },
   async asyncData({ params, error, app, route, redirect, store }) {
@@ -125,6 +90,7 @@ export default {
         const result = fieldType.parseQueryParameter(field, prefill, {
           slug,
           client: app.$client,
+          publicAuthToken,
         })
 
         if (isPromise(result)) {
@@ -163,8 +129,9 @@ export default {
       description: data.description,
       coverImage: data.cover_image,
       logoImage: data.logo_image,
-      submit_text: data.submit_text,
+      submitText: data.submit_text,
       fields: data.fields,
+      mode: data.mode,
       values,
       publicAuthToken,
     }
@@ -175,7 +142,7 @@ export default {
       submitted: false,
       submitAction: 'MESSAGE',
       submitActionMessage: '',
-      submitActionRedirectURL: '',
+      submitActionRedirectUrl: '',
     }
   },
   head() {
@@ -189,8 +156,76 @@ export default {
   computed: {
     isRedirect() {
       return (
-        this.submitAction === 'REDIRECT' && this.submitActionRedirectURL !== ''
+        this.submitAction === 'REDIRECT' && this.submitActionRedirectUrl !== ''
       )
+    },
+    /**
+     * Returns all the fields that should be visible to the visitor. They can change
+     * depending on the values because some fields have conditions whether they
+     * should be visible.
+     */
+    visibleFields() {
+      return this.fields.reduce((visibleFields, field, index, tmp) => {
+        // If the conditional visibility is disabled, we must always show the field.
+        if (!field.show_when_matching_conditions) {
+          return [...visibleFields, field]
+        }
+
+        // A condition is only valid if the filter field is before this field because
+        // you can only filter fields before. Therefore, we check which fields are
+        // before.
+        const fieldsBefore = this.fields.slice(0, index).map((f) => f.field)
+        // Find the valid filters by checking if the filter field is before this field
+        // and if the filter type is compatible with the field.
+        const conditions = field.conditions.filter((condition) => {
+          const filterType = this.$registry.get('viewFilter', condition.type)
+          const filterField = fieldsBefore.find((f) => f.id === condition.field)
+          return (
+            filterField !== undefined &&
+            filterType.fieldIsCompatible(filterField)
+          )
+        })
+        const conditionType = field.condition_type
+
+        // If there aren't any conditions, we must always show the field.
+        if (conditions.length === 0) {
+          return [...visibleFields, field]
+        }
+
+        // We only want to work with the values of fields that are actually visible.
+        // This to avoid matching the conditions on values of fields that aren't
+        // visible, but were filled out in the past and are still remembered in memory.
+        const visibleFieldIds = visibleFields.map((f) => f.field.id)
+        const visibleValues = clone(this.values)
+        this.fields
+          .filter(
+            (f) =>
+              !visibleFieldIds.includes(f.field.id) &&
+              f.field.id !== field.field.id
+          )
+          .forEach((f) => {
+            visibleValues['field_' + f.field.id] = this.$registry
+              .get('field', f.field.type)
+              .getEmptyValue(f.field)
+          })
+
+        if (
+          matchSearchFilters(
+            this.$registry,
+            conditionType,
+            conditions,
+            fieldsBefore,
+            visibleValues
+          )
+        ) {
+          return [...visibleFields, field]
+        }
+
+        return visibleFields
+      }, [])
+    },
+    component() {
+      return this.$registry.get('formViewMode', this.mode).getFormComponent()
     },
   },
   methods: {
@@ -202,13 +237,15 @@ export default {
       this.touch()
       this.loading = true
       const values = clone(this.values)
+      const submitValues = {}
 
-      for (let i = 0; i < this.fields.length; i++) {
-        const field = this.fields[i]
+      // Loop over the visible fields, because we only want to submit those values.
+      for (let i = 0; i < this.visibleFields.length; i++) {
+        const field = this.visibleFields[i]
         const fieldType = this.$registry.get('field', field.field.type)
         const valueName = `field_${field.field.id}`
         const value = values[valueName]
-        const ref = this.$refs['field-' + field.field.id][0]
+        const ref = this.$refs.form.$refs['field-' + field.field.id][0]
 
         // If the field required and empty or if the value has a validation error, then
         // we don't want to submit the form, focus on the field and top the loading.
@@ -224,7 +261,7 @@ export default {
           return
         }
 
-        values[valueName] = fieldType.prepareValueForUpdate(
+        submitValues[valueName] = fieldType.prepareValueForUpdate(
           field.field,
           values[valueName]
         )
@@ -234,20 +271,23 @@ export default {
         const slug = this.$route.params.slug
         const { data } = await FormService(this.$client).submit(
           slug,
-          values,
+          submitValues,
           this.publicAuthToken
         )
 
         this.submitted = true
         this.submitAction = data.submit_action
         this.submitActionMessage = data.submit_action_message
-        this.submitActionRedirectURL = data.submit_action_redirect_url
+        this.submitActionRedirectUrl = data.submit_action_redirect_url.replace(
+          `{row_id}`,
+          data.row_id
+        )
 
         // If the submit action is a redirect, then we need to redirect safely to the
         // provided URL.
         if (this.isRedirect) {
           setTimeout(() => {
-            window.location.assign(data.submit_action_redirect_url)
+            window.location.assign(this.submitActionRedirectUrl)
           }, 4000)
         }
       } catch (error) {
@@ -260,7 +300,7 @@ export default {
      * if there are any.
      */
     touch() {
-      this.fields.forEach((field) => {
+      this.visibleFields.forEach((field) => {
         field._.touched = true
       })
     },

@@ -40,7 +40,7 @@
       @selected="selectedCell"
       @unselected="unselectedCell"
       @select-next="selectNextCell"
-      @edit-modal="$refs.rowEditModal.show($event.id)"
+      @edit-modal="openRowEditModal($event.id)"
       @scroll="scroll($event.pixelY, 0)"
     >
       <template #foot>
@@ -58,7 +58,7 @@
       class="grid-view__divider-width"
       :style="{ left: leftWidth + 'px' }"
       :grid="view"
-      :field="primary"
+      :field="leftFields[0]"
       :width="leftFieldsWidth"
       :read-only="readOnly"
       :store-prefix="storePrefix"
@@ -89,7 +89,7 @@
       @selected="selectedCell"
       @unselected="unselectedCell"
       @select-next="selectNextCell"
-      @edit-modal="$refs.rowEditModal.show($event.id)"
+      @edit-modal="openRowEditModal($event.id)"
       @scroll="scroll($event.pixelY, $event.pixelX)"
     >
       <template #foot>
@@ -112,8 +112,7 @@
       ref="rowDragging"
       :table="table"
       :view="view"
-      :primary="primary"
-      :fields="visibleFields"
+      :fields="allVisibleFields"
       :store-prefix="storePrefix"
       vertical="getVerticalScrollbarElement"
       @scroll="scroll($event.pixelY, $event.pixelX)"
@@ -121,9 +120,9 @@
     <Context ref="rowContext">
       <ul v-show="isMultiSelectActive" class="context__menu">
         <li>
-          <a @click=";[exportMultiSelect(), $refs.rowContext.hide()]">
+          <a @click=";[copySelection(), $refs.rowContext.hide()]">
             <i class="context__menu-icon fas fa-fw fa-copy"></i>
-            {{ $t('action.copy') }}
+            {{ $t('gridView.copyCells') }}
           </a>
         </li>
         <li>
@@ -132,11 +131,19 @@
             @click.stop="deleteRowsFromMultipleCellSelection()"
           >
             <i class="context__menu-icon fas fa-fw fa-trash"></i>
-            {{ $t('action.delete') }}
+            {{ $t('gridView.deleteRows') }}
           </a>
         </li>
       </ul>
       <ul v-show="!isMultiSelectActive" class="context__menu">
+        <li>
+          <a
+            @click=";[selectRow($event, selectedRow), $refs.rowContext.hide()]"
+          >
+            <i class="context__menu-icon fas fa-fw fa-check-square"></i>
+            {{ $t('gridView.selectRow') }}
+          </a>
+        </li>
         <li v-if="!readOnly">
           <a @click=";[addRow(selectedRow), $refs.rowContext.hide()]">
             <i class="context__menu-icon fas fa-fw fa-arrow-up"></i>
@@ -162,10 +169,7 @@
         <li>
           <a
             @click="
-              ;[
-                $refs.rowEditModal.show(selectedRow.id),
-                $refs.rowContext.hide(),
-              ]
+              ;[openRowEditModal(selectedRow.id), $refs.rowContext.hide()]
             "
           >
             <i class="context__menu-icon fas fa-fw fa-expand"></i>
@@ -182,9 +186,9 @@
     </Context>
     <RowEditModal
       ref="rowEditModal"
+      :database="database"
       :table="table"
-      :primary="primary"
-      :visible-fields="[primary].concat(visibleFields)"
+      :visible-fields="allVisibleFields"
       :hidden-fields="hiddenFields"
       :rows="allRows"
       :read-only="readOnly"
@@ -220,6 +224,9 @@ import {
 import viewHelpers from '@baserow/modules/database/mixins/viewHelpers'
 import { isElement } from '@baserow/modules/core/utils/dom'
 import viewDecoration from '@baserow/modules/database/mixins/viewDecoration'
+import { populateRow } from '@baserow/modules/database/store/view/grid'
+import { clone } from '@baserow/modules/core/utils/object'
+import copyPasteHelper from '@baserow/modules/database/mixins/copyPasteHelper'
 
 export default {
   name: 'GridView',
@@ -229,12 +236,8 @@ export default {
     GridViewRowDragging,
     RowEditModal,
   },
-  mixins: [viewHelpers, gridViewHelpers, viewDecoration],
+  mixins: [viewHelpers, gridViewHelpers, viewDecoration, copyPasteHelper],
   props: {
-    primary: {
-      type: Object,
-      required: true,
-    },
     fields: {
       type: Array,
       required: true,
@@ -251,6 +254,10 @@ export default {
       type: Object,
       required: true,
     },
+    row: {
+      validator: (prop) => typeof prop === 'object' || prop === null,
+      required: true,
+    },
     readOnly: {
       type: Boolean,
       required: true,
@@ -265,12 +272,15 @@ export default {
     }
   },
   computed: {
+    allVisibleFields() {
+      return this.leftFields.concat(this.visibleFields)
+    },
     /**
      * Returns only the visible fields in the correct order.
      */
     visibleFields() {
       const fieldOptions = this.fieldOptions
-      return this.fields
+      return this.rightFields
         .filter(filterVisibleFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
@@ -279,12 +289,15 @@ export default {
      */
     hiddenFields() {
       const fieldOptions = this.fieldOptions
-      return this.fields
+      return this.rightFields
         .filter(filterHiddenFieldsFunction(fieldOptions))
         .sort(sortFieldsByOrderAndIdFunction(fieldOptions))
     },
     leftFields() {
-      return [this.primary]
+      return this.fields.filter((field) => field.primary)
+    },
+    rightFields() {
+      return this.fields.filter((field) => !field.primary)
     },
     leftFieldsWidth() {
       return this.leftFields.reduce(
@@ -339,7 +352,7 @@ export default {
     this.$el.resizeEvent()
     window.addEventListener('resize', this.$el.resizeEvent)
     window.addEventListener('keydown', this.keyDownEvent)
-    window.addEventListener('copy', this.exportMultiSelect)
+    window.addEventListener('copy', this.copySelection)
     window.addEventListener('paste', this.pasteFromMultipleCellSelection)
     window.addEventListener('click', this.cancelMultiSelectIfActive)
     window.addEventListener('mouseup', this.multiSelectStop)
@@ -351,11 +364,16 @@ export default {
       this.storePrefix + 'view/grid/fetchAllFieldAggregationData',
       { view: this.view }
     )
+
+    if (this.row !== null) {
+      const rowClone = populateRow(clone(this.row))
+      this.$refs.rowEditModal.show(this.row.id, rowClone)
+    }
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.$el.resizeEvent)
     window.removeEventListener('keydown', this.keyDownEvent)
-    window.removeEventListener('copy', this.exportMultiSelect)
+    window.removeEventListener('copy', this.copySelection)
     window.removeEventListener('paste', this.pasteFromMultipleCellSelection)
     window.removeEventListener('click', this.cancelMultiSelectIfActive)
     window.removeEventListener('mouseup', this.multiSelectStop)
@@ -406,7 +424,6 @@ export default {
             table: this.table,
             view: this.view,
             fields: this.fields,
-            primary: this.primary,
             row,
             field,
             value,
@@ -428,7 +445,6 @@ export default {
         view: this.view,
         row,
         fields: this.fields,
-        primary: this.primary,
         overrides,
       })
     },
@@ -475,7 +491,6 @@ export default {
         {
           scrollTop: this.$refs.left.$refs.body.scrollTop,
           fields: this.fields,
-          primary: this.primary,
         }
       )
     },
@@ -491,6 +506,24 @@ export default {
       $divider.classList.toggle('shadow', canScroll && left > 0)
       $right.scrollLeft = left
     },
+    /**
+     * Selects the entire row.
+     */
+    async selectRow(event, row) {
+      event.stopPropagation()
+      const rowIndex = this.$store.getters[
+        this.storePrefix + 'view/grid/getRowIndexById'
+      ](row.id)
+      await this.$store.dispatch(
+        this.storePrefix + 'view/grid/setMultipleSelect',
+        {
+          rowHeadIndex: rowIndex,
+          rowTailIndex: rowIndex,
+          fieldHeadIndex: 0,
+          fieldTailIndex: this.visibleFields.length,
+        }
+      )
+    },
     async addRow(before = null, values = {}) {
       try {
         await this.$store.dispatch(
@@ -500,7 +533,6 @@ export default {
             table: this.table,
             // We need a list of all fields including the primary one here.
             fields: this.fields,
-            primary: this.primary,
             values,
             before,
           }
@@ -538,7 +570,6 @@ export default {
             table: this.table,
             view: this.view,
             fields: this.fields,
-            primary: this.primary,
             row,
             getScrollTop,
           }
@@ -594,6 +625,8 @@ export default {
      * must be deleted.
      */
     rowEditModalHidden({ row }) {
+      this.$emit('selected-row', undefined)
+
       // It could be that the row is not in the buffer anymore and in that case we also
       // don't need to refresh the row.
       if (
@@ -606,10 +639,18 @@ export default {
       this.$store.dispatch(this.storePrefix + 'view/grid/refreshRow', {
         grid: this.view,
         fields: this.fields,
-        primary: this.primary,
         row,
         getScrollTop: () => this.$refs.left.$refs.body.scrollTop,
       })
+    },
+    /**
+     * When the row edit modal is opened we notifiy
+     * the Table component that a new row has been selected,
+     * such that we can update the path to include the row id.
+     */
+    openRowEditModal(rowId) {
+      this.$refs.rowEditModal.show(rowId)
+      this.$emit('selected-row', rowId)
     },
     /**
      * When a cell is selected we want to make sure it is visible in the viewport, so
@@ -697,7 +738,6 @@ export default {
           {
             grid: this.view,
             fields: this.fields,
-            primary: this.primary,
             row,
             field,
             getScrollTop,
@@ -712,7 +752,7 @@ export default {
      */
     selectNextCell({ row, field, direction = 'next' }) {
       const fields = this.visibleFields
-      const primary = this.primary
+      const primary = this.leftFields[0]
       let nextFieldId = -1
       let nextRowId = -1
 
@@ -839,34 +879,39 @@ export default {
       }
     },
     keyDownEvent(event) {
-      // Check if arrow key was pressed.
       if (
-        this.$store.getters[
-          this.storePrefix + 'view/grid/isMultiSelectActive'
-        ] &&
-        ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(event.key)
+        this.$store.getters[this.storePrefix + 'view/grid/isMultiSelectActive']
       ) {
-        // Cancels multi-select if it's currently active.
-        this.$store.dispatch(
-          this.storePrefix + 'view/grid/clearAndDisableMultiSelect'
-        )
+        // Check if arrow key was pressed.
+        if (
+          ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(
+            event.key
+          )
+        ) {
+          // Cancels multi-select if it's currently active.
+          this.$store.dispatch(
+            this.storePrefix + 'view/grid/clearAndDisableMultiSelect'
+          )
+        }
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          this.clearValuesFromMultipleCellSelection()
+        }
       }
     },
     /**
      * Prepare and copy the multi-select cells into the clipboard,
      * formatted as TSV
      */
-    async exportMultiSelect(event) {
+    async copySelection(event) {
       try {
         this.$store.dispatch('notification/setCopying', true)
-        const output = await this.$store.dispatch(
-          this.storePrefix + 'view/grid/exportMultiSelect',
-          this.leftFields.concat(this.visibleFields)
+        const selection = await this.$store.dispatch(
+          this.storePrefix + 'view/grid/getCurrentSelection',
+          { fields: this.allVisibleFields }
         )
-        // If the output is undefined, it means that there is no multiple selection.
-        if (output !== undefined) {
-          const tsv = this.$papa.unparse(output, { delimiter: '\t' })
-          navigator.clipboard.writeText(tsv)
+        if (selection !== undefined) {
+          const [fields, rows] = selection
+          this.copySelectionToClipboard(fields, rows)
         }
       } catch (error) {
         notifyIf(error, 'view')
@@ -879,13 +924,13 @@ export default {
      * This happens when the individual cell doesn't understand the pasted data and
      * needs to emit it up. This typically happens when multiple cell values are pasted.
      */
-    async multiplePasteFromCell({ data, field, row }) {
+    async multiplePasteFromCell({ data: { textData, jsonData }, field, row }) {
       const rowIndex = this.$store.getters[
         this.storePrefix + 'view/grid/getRowIndexById'
       ](row.id)
       const fieldIndex =
         this.visibleFields.findIndex((f) => f.id === field.id) + 1
-      await this.pasteData(data, rowIndex, fieldIndex)
+      await this.pasteData(textData, jsonData, rowIndex, fieldIndex)
     },
     /**
      * Called when the user pastes data without having an individual cell selected. It
@@ -897,12 +942,9 @@ export default {
         return
       }
 
-      const parsed = await this.$papa.parsePromise(
-        event.clipboardData.getData('text'),
-        { delimiter: '\t' }
-      )
-      const data = parsed.data
-      await this.pasteData(data)
+      const [textData, jsonData] = await this.extractClipboardData(event)
+
+      await this.pasteData(textData, jsonData)
     },
     /**
      * Called when data must be pasted into the grid view. It basically forwards the
@@ -910,11 +952,11 @@ export default {
      * shows a loading animation while busy, so the user knows something is while the
      * update is in progress.
      */
-    async pasteData(data, rowIndex, fieldIndex) {
+    async pasteData(textData, jsonData, rowIndex, fieldIndex) {
       // If the data is an empty array, we don't have to do anything because there is
       // nothing to update. If the view is in read only mode, we can't paste so not
       // doing anything.
-      if (data.length === 0 || data[0].length === 0 || this.readOnly) {
+      if (textData.length === 0 || textData[0].length === 0 || this.readOnly) {
         return
       }
 
@@ -926,10 +968,10 @@ export default {
           {
             table: this.table,
             view: this.view,
-            primary: this.primary,
-            fields: this.leftFields.concat(this.visibleFields),
+            fields: this.allVisibleFields,
             getScrollTop: () => this.$refs.left.$refs.body.scrollTop,
-            data,
+            textData,
+            jsonData,
             rowIndex,
             fieldIndex,
           }
@@ -954,8 +996,7 @@ export default {
           {
             table: this.table,
             view: this.view,
-            primary: this.primary,
-            fields: this.leftFields.concat(this.visibleFields),
+            fields: this.allVisibleFields,
             getScrollTop: () => this.$refs.left.$refs.body.scrollTop,
           }
         )
@@ -965,6 +1006,29 @@ export default {
       }
       this.deletingRow = false
       return true
+    },
+    /**
+     * Called when the backspace key is pressed while multi-cell select is active.
+     * Clears the values of all selected cells by updating them to their null values.
+     */
+    async clearValuesFromMultipleCellSelection() {
+      try {
+        this.$store.dispatch('notification/setClearing', true)
+
+        await this.$store.dispatch(
+          this.storePrefix + 'view/grid/clearValuesFromMultipleCellSelection',
+          {
+            table: this.table,
+            view: this.view,
+            fields: this.allVisibleFields,
+            getScrollTop: () => this.$refs.left.$refs.body.scrollTop,
+          }
+        )
+      } catch (error) {
+        notifyIf(error, 'view')
+      } finally {
+        this.$store.dispatch('notification/setClearing', false)
+      }
     },
   },
 }

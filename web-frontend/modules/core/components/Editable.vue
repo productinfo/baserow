@@ -2,6 +2,7 @@
   <span
     ref="editable"
     :contenteditable="editing"
+    :placeholder="placeholder"
     :class="{ 'forced-user-select-initial': editing }"
     @input="update"
     @keydown="keydown"
@@ -20,6 +21,11 @@ export default {
     value: {
       type: String,
       required: true,
+    },
+    placeholder: {
+      type: String,
+      required: false,
+      default: '',
     },
   },
   data() {
@@ -52,10 +58,8 @@ export default {
         // need to see if the scrollLeft must be changed so that we can see the cursor
         // which has been placed at the end.
         const parent = this.$el.parentElement
-        if (parent.scrollWidth > parent.clientWidth) {
-          parent.scrollLeft = parent.scrollWidth - parent.clientWidth
-          parent.classList.add('forced-text-overflow-initial')
-        }
+        parent.scrollLeft = parent.scrollWidth - parent.clientWidth
+        parent.classList.add('forced-text-overflow-initial')
       })
     },
     /**

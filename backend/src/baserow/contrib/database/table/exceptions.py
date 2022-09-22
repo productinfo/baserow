@@ -1,3 +1,6 @@
+from baserow.core.exceptions import LockConflict
+
+
 class TableDoesNotExist(Exception):
     """Raised when trying to get a table that doesn't exist."""
 
@@ -22,6 +25,13 @@ class TableDoesNotBelongToGroup(Exception):
     """Raised when the table does not belong to the related group."""
 
 
+class InitialSyncTableDataLimitExceeded(Exception):
+    """
+    Raised when the initial table data limit has been exceeded when creating a new
+    table in synchronous way.
+    """
+
+
 class InitialTableDataLimitExceeded(Exception):
     """
     Raised when the initial table data limit has been exceeded when creating a new
@@ -32,4 +42,11 @@ class InitialTableDataLimitExceeded(Exception):
 class InitialTableDataDuplicateName(Exception):
     """
     Raised when the initial table data contains duplicate field names.
+    """
+
+
+class FailedToLockTableDueToConflict(LockConflict):
+    """
+    Raised when the table is in use by some concurrent operation and the lock cannot
+    be obtained immediately.
     """

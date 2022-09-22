@@ -1,7 +1,8 @@
 from decimal import Decimal
 
-import pytest
 from django.shortcuts import reverse
+
+import pytest
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -28,6 +29,11 @@ def test_list_rows(api_client, data_fixture):
     field_2 = data_fixture.create_number_field(name="Price", table=table)
     field_3 = data_fixture.create_text_field()
     field_4 = data_fixture.create_boolean_field(name="InStock", table=table)
+    grid_view = data_fixture.create_grid_view(user=user, table=table)
+    unrelated_view = data_fixture.create_grid_view(user=user, table=table_2)
+    data_fixture.create_view_filter(
+        view=grid_view, user=user, field=field_1, value="Product 1"
+    )
 
     token = TokenHandler().create_token(user, table.database.group, "Good")
     wrong_token = TokenHandler().create_token(user, table.database.group, "Wrong")
@@ -222,7 +228,7 @@ def test_list_rows(api_client, data_fixture):
     number_field_type = field_type_registry.get("number")
     old_can_order_by = number_field_type._can_order_by
     number_field_type._can_order_by = False
-    invalidate_table_in_model_cache(table.id, invalidate_related_tables=True)
+    invalidate_table_in_model_cache(table.id)
     url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
     response = api_client.get(
         f"{url}?order_by=-field_{field_2.id}",
@@ -237,7 +243,7 @@ def test_list_rows(api_client, data_fixture):
         f"number does not support filtering."
     )
     number_field_type._can_order_by = old_can_order_by
-    invalidate_table_in_model_cache(table.id, invalidate_related_tables=True)
+    invalidate_table_in_model_cache(table.id)
 
     url = reverse("api:database:rows:list", kwargs={"table_id": table.id})
     response = api_client.get(
@@ -355,6 +361,101 @@ def test_list_rows(api_client, data_fixture):
     assert response_json["results"][1]["id"] == row_3.id
     assert response_json["results"][2]["id"] == row_4.id
     assert response_json["results"][3]["id"] == row_2.id
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+        data={"view_id": grid_view.id},
+    )
+    response_json = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json["count"] == 1
+    assert len(response_json["results"]) == 1
+    assert response_json["results"][0]["id"] == row_1.id
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+        data={"view_id": -1},
+    )
+    response_json = response.json()
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert response_json["error"] == "ERROR_VIEW_DOES_NOT_EXIST"
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+        data={"view_id": unrelated_view.id},
+    )
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert response_json["error"] == "ERROR_VIEW_DOES_NOT_EXIST"
+
+
+@pytest.mark.django_db
+def test_list_rows_sort_query_overrides_existing_sort(data_fixture, api_client):
+    user, jwt_token = data_fixture.create_user_and_token(
+        email="test@test.nl", password="password", first_name="Test1"
+    )
+    table = data_fixture.create_database_table(user=user)
+    field_1 = data_fixture.create_text_field(name="Name", table=table, primary=True)
+    grid_view = data_fixture.create_grid_view(user=user, table=table)
+    data_fixture.create_view_sort(
+        user=user, view=grid_view, field=field_1, order="DESC"
+    )
+
+    model = table.get_model(attribute_names=True)
+    row_1 = model.objects.create(name="a")
+    row_2 = model.objects.create(name="b")
+    row_3 = model.objects.create(name="c")
+    row_4 = model.objects.create(name="d")
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+        data={"view_id": grid_view.id, "order_by": field_1.id},
+    )
+
+    response_json = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json["results"][0]["id"] == row_1.id
+
+
+@pytest.mark.django_db
+def test_list_rows_filter_stacks_with_existing_filter(data_fixture, api_client):
+    user, jwt_token = data_fixture.create_user_and_token(
+        email="test@test.nl", password="password", first_name="Test1"
+    )
+    table = data_fixture.create_database_table(user=user)
+    field_1 = data_fixture.create_text_field(name="Name", table=table, primary=True)
+    field_2 = data_fixture.create_number_field(name="Number", table=table)
+    grid_view = data_fixture.create_grid_view(user=user, table=table)
+    data_fixture.create_view_filter(
+        view=grid_view, user=user, field=field_1, value="ab", type="contains"
+    )
+
+    model = table.get_model(attribute_names=True)
+    row_1 = model.objects.create(name="a", number="1")
+    row_2 = model.objects.create(name="ab", number="2")
+    row_3 = model.objects.create(name="abc", number="3")
+    row_4 = model.objects.create(name="abcd", number="1")
+
+    response = api_client.get(
+        reverse("api:database:rows:list", kwargs={"table_id": table.id}),
+        format="json",
+        HTTP_AUTHORIZATION=f"JWT {jwt_token}",
+        data={"view_id": grid_view.id, f"filter__field_{field_2.id}__contains": "1"},
+    )
+
+    # The only row that matches both filters is row_4
+    response_json = response.json()
+    assert response.status_code == HTTP_200_OK
+    assert response_json["count"] == 1
+    assert len(response_json["results"]) == 1
+    assert response_json["results"][0]["id"] == row_4.id
 
 
 @pytest.mark.django_db
@@ -629,7 +730,7 @@ def test_create_empty_row_for_interesting_fields(api_client, data_fixture):
     Test a common case: create a row with empty values.
     """
 
-    table, user, row, _ = setup_interesting_test_table(data_fixture)
+    table, user, row, _, context = setup_interesting_test_table(data_fixture)
     jwt_token = data_fixture.generate_token(user)
 
     response = api_client.post(

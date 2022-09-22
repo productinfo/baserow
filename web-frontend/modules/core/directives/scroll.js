@@ -24,9 +24,16 @@ export default {
     const DOM_DELTA_PIXEL = 0
     const DOM_DELTA_LINE = 1
     el.scrollDirectiveEvent = (event) => {
-      event.preventDefault()
+      const deltaMode = event.deltaMode
+      let { deltaY, deltaX } = event
 
-      const { deltaY, deltaX, deltaMode } = event
+      // shiftKey enable the horizontal scroll, so swap deltaX and deltaY.
+      // Mac OSX already swap the values and set DeltaY to 0, so no need to swap them again.
+      if (event.shiftKey && deltaY !== 0) {
+        deltaX = deltaY
+        deltaY = 0
+      }
+
       let pixelY = 0
       let pixelX = 0
 
@@ -46,7 +53,11 @@ export default {
         return
       }
 
-      binding.value(pixelY, pixelX)
+      const shouldNotPreventDefault = binding.value(pixelY, pixelX)
+
+      if (shouldNotPreventDefault !== true) {
+        event.preventDefault()
+      }
     }
     el.addEventListener('wheel', el.scrollDirectiveEvent)
 

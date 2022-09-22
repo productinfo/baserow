@@ -12,7 +12,7 @@ export class FakeDecoratorType extends ViewDecoratorType {
     return 'first_cell'
   }
 
-  isDeactivated({ view }) {
+  isDeactivated(groupId) {
     return false
   }
 
@@ -127,22 +127,20 @@ describe('GalleryView component with decoration', () => {
     })
     mockServer.createFields(application, table, fieldData)
     await store.dispatch('field/fetchAll', table)
-    const primary = store.getters['field/getPrimary']
     const fields = store.getters['field/getAll']
 
     mockServer.createGalleryRows(view, fields, rows)
     await store.dispatch('page/view/gallery/fetchInitial', {
       viewId: 1,
       fields,
-      primary,
     })
     await store.dispatch('view/fetchAll', { id: 1 })
 
-    return { table, primary, fields, view }
+    return { application, table, fields, view }
   }
 
   test('Default component with first_cell decoration', async () => {
-    const { table, primary, fields, view } = await populateStore([
+    const { application, table, fields, view } = await populateStore([
       {
         type: 'fake_decorator',
         value_provider_type: 'fake_value_provider_type',
@@ -162,19 +160,20 @@ describe('GalleryView component with decoration', () => {
     store.$registry.register('decoratorValueProvider', fakeValueProvider)
 
     const wrapper1 = await mountComponent({
+      database: application,
       table,
       view,
-      primary,
       fields,
       readOnly: false,
       storePrefix: 'page/',
+      row: null,
     })
 
     expect(wrapper1.element).toMatchSnapshot()
   })
 
   test('Default component with row wrapper decoration', async () => {
-    const { table, primary, fields, view } = await populateStore([
+    const { application, table, fields, view } = await populateStore([
       {
         type: 'fake_decorator',
         value_provider_type: 'fake_value_provider_type',
@@ -210,19 +209,20 @@ describe('GalleryView component with decoration', () => {
     store.$registry.register('decoratorValueProvider', fakeValueProvider)
 
     const wrapper1 = await mountComponent({
+      database: application,
       table,
       view,
-      primary,
       fields,
       readOnly: false,
       storePrefix: 'page/',
+      row: null,
     })
 
     expect(wrapper1.element).toMatchSnapshot()
   })
 
   test('Default component with unavailable decoration', async () => {
-    const { table, primary, fields, view } = await populateStore([
+    const { application, table, fields, view } = await populateStore([
       {
         type: 'fake_decorator',
         value_provider_type: 'fake_value_provider_type',
@@ -239,12 +239,13 @@ describe('GalleryView component with decoration', () => {
     store.$registry.register('decoratorValueProvider', fakeValueProvider)
 
     const wrapper1 = await mountComponent({
+      database: application,
       table,
       view,
-      primary,
       fields,
       readOnly: false,
       storePrefix: 'page/',
+      row: null,
     })
 
     expect(wrapper1.element).toMatchSnapshot()

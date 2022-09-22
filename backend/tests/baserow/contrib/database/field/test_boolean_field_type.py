@@ -34,7 +34,7 @@ def test_alter_boolean_field_column_type(data_fixture):
     for value in mapping.keys():
         model.objects.create(**{f"field_{field.id}": value})
 
-    # Change the field type to a number and test if the values have been changed.
+    # Change the field type to a boolean and test if the values have been changed.
     field = handler.update_field(user=user, field=field, new_type_name="boolean")
 
     model = table.get_model()
@@ -71,6 +71,7 @@ def test_get_set_export_serialized_value_boolean_field(data_fixture):
             row_1, boolean_field_name, {}, None, None
         ),
         {},
+        {},
         None,
         None,
     )
@@ -81,6 +82,7 @@ def test_get_set_export_serialized_value_boolean_field(data_fixture):
             row_2, boolean_field_name, {}, None, None
         ),
         {},
+        {},
         None,
         None,
     )
@@ -90,6 +92,7 @@ def test_get_set_export_serialized_value_boolean_field(data_fixture):
         boolean_field_type.get_export_serialized_value(
             row_3, boolean_field_name, {}, None, None
         ),
+        {},
         {},
         None,
         None,

@@ -2,73 +2,85 @@ from typing import List
 
 from django.conf import settings
 from django.db import transaction
+
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from itsdangerous.exc import BadSignature, BadTimeSignature, SignatureExpired
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_jwt.settings import api_settings
+from rest_framework_jwt.views import ObtainJSONWebTokenView as RegularObtainJSONWebToken
 from rest_framework_jwt.views import (
-    ObtainJSONWebTokenView as RegularObtainJSONWebToken,
     RefreshJSONWebTokenView as RegularRefreshJSONWebToken,
-    VerifyJSONWebTokenView as RegularVerifyJSONWebToken,
 )
+from rest_framework_jwt.views import VerifyJSONWebTokenView as RegularVerifyJSONWebToken
 
+from baserow.api.actions.serializers import (
+    UndoRedoResponseSerializer,
+    get_undo_request_serializer,
+)
 from baserow.api.decorators import map_exceptions, validate_body
 from baserow.api.errors import (
     BAD_TOKEN_SIGNATURE,
-    EXPIRED_TOKEN_SIGNATURE,
     ERROR_HOSTNAME_IS_NOT_ALLOWED,
+    EXPIRED_TOKEN_SIGNATURE,
 )
 from baserow.api.groups.invitations.errors import (
     ERROR_GROUP_INVITATION_DOES_NOT_EXIST,
     ERROR_GROUP_INVITATION_EMAIL_MISMATCH,
 )
 from baserow.api.schemas import get_error_schema
+from baserow.api.sessions import get_untrusted_client_session_id
 from baserow.api.user.registries import user_data_registry
 from baserow.core.action.handler import ActionHandler
 from baserow.core.action.registries import ActionScopeStr
 from baserow.core.exceptions import (
     BaseURLHostnameNotAllowed,
-    GroupInvitationEmailMismatch,
     GroupInvitationDoesNotExist,
+    GroupInvitationEmailMismatch,
+    LockConflict,
 )
 from baserow.core.models import GroupInvitation, Template
 from baserow.core.user.exceptions import (
-    UserAlreadyExist,
-    UserNotFound,
-    InvalidPassword,
     DisabledSignupError,
+    InvalidPassword,
     ResetPasswordDisabledError,
+    UserAlreadyExist,
+    UserIsLastAdmin,
+    UserNotFound,
 )
 from baserow.core.user.handler import UserHandler
-from baserow.api.sessions import get_untrusted_client_session_id
+
 from .errors import (
     ERROR_ALREADY_EXISTS,
-    ERROR_USER_NOT_FOUND,
-    ERROR_INVALID_OLD_PASSWORD,
-    ERROR_DISABLED_SIGNUP,
     ERROR_CLIENT_SESSION_ID_HEADER_NOT_SET,
     ERROR_DISABLED_RESET_PASSWORD,
+    ERROR_DISABLED_SIGNUP,
+    ERROR_INVALID_OLD_PASSWORD,
+    ERROR_INVALID_PASSWORD,
+    ERROR_UNDO_REDO_LOCK_CONFLICT,
+    ERROR_USER_IS_LAST_ADMIN,
+    ERROR_USER_NOT_FOUND,
 )
 from .exceptions import ClientSessionIdHeaderNotSetException
-from .schemas import create_user_response_schema, authenticate_user_schema
+from .schemas import authenticate_user_schema, create_user_response_schema
 from .serializers import (
     AccountSerializer,
-    RegisterSerializer,
-    UserSerializer,
-    SendResetPasswordEmailBodyValidationSerializer,
-    ResetPasswordBodyValidationSerializer,
     ChangePasswordBodyValidationSerializer,
-    NormalizedEmailWebTokenSerializer,
     DashboardSerializer,
-    UndoRedoRequestSerializer,
-    UndoRedoResponseSerializer,
+    DeleteUserBodyValidationSerializer,
+    NormalizedEmailWebTokenSerializer,
+    RegisterSerializer,
+    ResetPasswordBodyValidationSerializer,
+    SendResetPasswordEmailBodyValidationSerializer,
+    UserSerializer,
 )
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+
+UndoRedoRequestSerializer = get_undo_request_serializer()
 
 
 class ObtainJSONWebToken(RegularObtainJSONWebToken):
@@ -111,7 +123,7 @@ class RefreshJSONWebToken(RegularRefreshJSONWebToken):
         tags=["User"],
         operation_id="token_refresh",
         description=(
-            "Refreshes an existing JWT token. If the the token is valid, a new "
+            "Refreshes an existing JWT token. If the token is valid, a new "
             "token will be included in the response. It will be valid for {valid} "
             "minutes.".format(
                 valid=int(settings.JWT_AUTH["JWT_EXPIRATION_DELTA"].seconds / 60)
@@ -159,7 +171,7 @@ class UserView(APIView):
             400: get_error_schema(
                 [
                     "ERROR_ALREADY_EXISTS",
-                    "ERROR_GROUP_INVITATION_DOES_NOT_EXIST"
+                    "ERROR_GROUP_INVITATION_DOES_NOT_EXIST",
                     "ERROR_REQUEST_BODY_VALIDATION",
                     "BAD_TOKEN_SIGNATURE",
                 ]
@@ -361,13 +373,53 @@ class AccountView(APIView):
     @transaction.atomic
     @validate_body(AccountSerializer)
     def patch(self, request, data):
-        """Update editable user account information."""
+        """Updates editable user account information."""
 
         user = UserHandler().update_user(
             request.user,
             **data,
         )
         return Response(AccountSerializer(user).data)
+
+
+class ScheduleAccountDeletionView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @extend_schema(
+        tags=["User"],
+        request=DeleteUserBodyValidationSerializer,
+        operation_id="schedule_account_deletion",
+        description=(
+            "Schedules the account deletion of the authenticated user. "
+            "The user will be permanently deleted after the grace delay defined "
+            "by the instance administrator."
+        ),
+        responses={
+            204: None,
+            400: get_error_schema(
+                [
+                    "ERROR_INVALID_PASSWORD",
+                    "ERROR_REQUEST_BODY_VALIDATION",
+                ]
+            ),
+        },
+    )
+    @transaction.atomic
+    @map_exceptions(
+        {
+            InvalidPassword: ERROR_INVALID_PASSWORD,
+            UserIsLastAdmin: ERROR_USER_IS_LAST_ADMIN,
+        }
+    )
+    @validate_body(DeleteUserBodyValidationSerializer)
+    def post(self, request, data):
+        """Schedules user account deletion."""
+
+        UserHandler().schedule_user_deletion(
+            request.user,
+            **data,
+        )
+        return Response(status=204)
 
 
 class DashboardView(APIView):
@@ -394,6 +446,12 @@ class DashboardView(APIView):
             {"group_invitations": group_invitations}
         )
         return Response(dashboard_serializer.data)
+
+
+UNDO_REDO_EXCEPTIONS_MAP = {
+    ClientSessionIdHeaderNotSetException: ERROR_CLIENT_SESSION_ID_HEADER_NOT_SET,
+    LockConflict: ERROR_UNDO_REDO_LOCK_CONFLICT,
+}
 
 
 class UndoView(APIView):
@@ -427,16 +485,14 @@ class UndoView(APIView):
         responses={200: UndoRedoResponseSerializer},
     )
     @validate_body(UndoRedoRequestSerializer)
-    @map_exceptions(
-        {ClientSessionIdHeaderNotSetException: ERROR_CLIENT_SESSION_ID_HEADER_NOT_SET}
-    )
+    @map_exceptions(UNDO_REDO_EXCEPTIONS_MAP)
     @transaction.atomic
     def patch(self, request, data: List[ActionScopeStr]):
         session_id = get_untrusted_client_session_id(request.user)
         if session_id is None:
             raise ClientSessionIdHeaderNotSetException()
-        undone_action = ActionHandler.undo(request.user, data, session_id)
-        serializer = UndoRedoResponseSerializer(undone_action)
+        undone_actions = ActionHandler.undo(request.user, data, session_id)
+        serializer = UndoRedoResponseSerializer({"actions": undone_actions})
         return Response(serializer.data, status=200)
 
 
@@ -471,17 +527,12 @@ class RedoView(APIView):
         responses={200: UndoRedoResponseSerializer},
     )
     @validate_body(UndoRedoRequestSerializer)
-    @map_exceptions(
-        {ClientSessionIdHeaderNotSetException: ERROR_CLIENT_SESSION_ID_HEADER_NOT_SET}
-    )
+    @map_exceptions(UNDO_REDO_EXCEPTIONS_MAP)
     @transaction.atomic
     def patch(self, request, data: List[ActionScopeStr]):
         session_id = get_untrusted_client_session_id(request.user)
         if session_id is None:
             raise ClientSessionIdHeaderNotSetException()
-        redone_action = ActionHandler.redo(
-            request.user,
-            data,
-            session_id,
-        )
-        return Response(UndoRedoResponseSerializer(redone_action).data, status=200)
+        redone_actions = ActionHandler.redo(request.user, data, session_id)
+        serializer = UndoRedoResponseSerializer({"actions": redone_actions})
+        return Response(serializer.data, status=200)

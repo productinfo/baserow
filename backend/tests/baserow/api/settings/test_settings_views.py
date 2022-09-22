@@ -1,5 +1,6 @@
-import pytest
+from django.shortcuts import reverse
 
+import pytest
 from rest_framework.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -7,10 +8,8 @@ from rest_framework.status import (
     HTTP_403_FORBIDDEN,
 )
 
-from django.shortcuts import reverse
-
-from baserow.core.models import Settings
 from baserow.core.handler import CoreHandler
+from baserow.core.models import Settings
 
 
 @pytest.mark.django_db
@@ -30,6 +29,36 @@ def test_get_settings(api_client):
     response_json = response.json()
     assert "instance_id" not in response_json
     assert response_json["allow_new_signups"] is False
+
+
+@pytest.mark.django_db
+def test_require_first_admin_user_is_false_after_admin_creation(api_client):
+    response = api_client.get(reverse("api:settings:get"))
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    assert response_json["show_admin_signup_page"] is True
+
+    # create the admin user
+    response = api_client.post(
+        reverse("api:user:index"),
+        {
+            "name": "admin",
+            "email": "admin@baserow.io",
+            "password": "admin1234",
+            "language": "en",
+            "authenticate": True,
+        },
+    )
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    token = response_json["token"]
+
+    response = api_client.get(
+        reverse("api:settings:get"),
+        HTTP_AUTHORIZATION=f"JWT {token}",
+    )
+    response_json = response.json()
+    assert response_json["show_admin_signup_page"] is False
 
 
 @pytest.mark.django_db

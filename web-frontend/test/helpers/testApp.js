@@ -1,6 +1,10 @@
 import setupCore from '@baserow/modules/core/plugin'
+import Papa from 'papaparse'
 import axios from 'axios'
-import setupClient from '@baserow/modules/core/plugins/clientHandler'
+import setupClient, {
+  ClientErrorMap,
+} from '@baserow/modules/core/plugins/clientHandler'
+
 import setupDatabasePlugin from '@baserow/modules/database/plugin'
 import { bootstrapVueContext } from '@baserow/test/helpers/components'
 import MockAdapter from 'axios-mock-adapter'
@@ -99,11 +103,15 @@ export class TestApp {
         t: (key) => key,
         tc: (key) => key,
       },
+      $i18n: {
+        getBrowserLocale: () => 'en',
+      },
       $route: {
         params: {},
       },
       $featureFlags: { includes: () => true },
     }
+    this._app.$clientErrorMap = new ClientErrorMap(this._app)
     this._vueContext = bootstrapVueContext()
     this.store = _createBaserowStoreAndRegistry(
       this._app,
@@ -111,6 +119,13 @@ export class TestApp {
       extraPluginSetupFunc
     )
     this._initialCleanStoreState = _.cloneDeep(this.store.state)
+    Papa.arrayToString = (array) => {
+      return Papa.unparse([array])
+    }
+    Papa.stringToArray = (str) => {
+      return Papa.parse(str).data[0]
+    }
+    this._app.$papa = Papa
     this.mockServer = new MockServer(this.mock, this.store)
     this.failTestOnErrorResponse = true
     this._app.client.interceptors.response.use(

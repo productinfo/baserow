@@ -31,11 +31,18 @@ import { mapGetters } from 'vuex'
 import AuthLogin from '@baserow/modules/core/components/auth/AuthLogin'
 import groupInvitationToken from '@baserow/modules/core/mixins/groupInvitationToken'
 import LangPicker from '@baserow/modules/core/components/LangPicker'
+import { isRelativeUrl } from '@baserow/modules/core/utils/url'
 
 export default {
   components: { AuthLogin, LangPicker },
-  mixins: [groupInvitationToken],
   layout: 'login',
+  async asyncData({ redirect, route, app, store }) {
+    if (store.getters['settings/get'].show_admin_signup_page === true) {
+      redirect('signup')
+    }
+
+    return await groupInvitationToken.asyncData({ route, app })
+  },
   head() {
     return {
       title: this.$t('login.title'),
@@ -55,7 +62,7 @@ export default {
   methods: {
     success() {
       const { original } = this.$route.query
-      if (original) {
+      if (original && isRelativeUrl(original)) {
         this.$nuxt.$router.push(original)
       } else {
         this.$nuxt.$router.push({ name: 'dashboard' })

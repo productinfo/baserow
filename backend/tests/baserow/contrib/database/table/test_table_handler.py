@@ -1,40 +1,42 @@
 import os
 import random
-
-import pytest
+from decimal import Decimal
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import connection
-from django.conf import settings
-from decimal import Decimal
+from django.test.utils import override_settings
 
+import pytest
 from pyinstrument import Profiler
 
-from baserow.contrib.database.fields.handler import FieldHandler
-from baserow.contrib.database.management.commands.fill_table_rows import fill_table_rows
-from baserow.core.exceptions import UserNotInGroup
 from baserow.contrib.database.fields.exceptions import (
     MaxFieldLimitExceeded,
     MaxFieldNameLengthExceeded,
 )
-from baserow.contrib.database.table.models import Table
-from baserow.contrib.database.table.handler import TableHandler
+from baserow.contrib.database.fields.handler import FieldHandler
+from baserow.contrib.database.fields.models import (
+    BooleanField,
+    LinkRowField,
+    LongTextField,
+    TextField,
+)
+from baserow.contrib.database.management.commands.fill_table_rows import fill_table_rows
 from baserow.contrib.database.table.exceptions import (
+    InitialTableDataLimitExceeded,
+    InvalidInitialTableData,
     TableDoesNotExist,
     TableNotInDatabase,
-    InvalidInitialTableData,
-    InitialTableDataLimitExceeded,
 )
-from baserow.contrib.database.fields.models import (
-    TextField,
-    LongTextField,
-    BooleanField,
-)
+from baserow.contrib.database.table.handler import TableHandler
+from baserow.contrib.database.table.models import Table
 from baserow.contrib.database.views.models import GridView, GridViewFieldOptions
+from baserow.core.exceptions import UserNotInGroup
 from baserow.core.handler import CoreHandler
 from baserow.core.models import TrashEntry
 from baserow.core.trash.handler import TrashHandler
+from baserow.test_utils.helpers import setup_interesting_test_table
 
 
 @pytest.mark.django_db
@@ -70,7 +72,7 @@ def test_get_database_table(data_fixture):
 
 @pytest.mark.django_db
 @patch("baserow.contrib.database.table.signals.table_created.send")
-def test_create_database_table(send_mock, data_fixture):
+def test_create_database_minimum_table(send_mock, data_fixture):
     user = data_fixture.create_user()
     user_2 = data_fixture.create_user()
     database = data_fixture.create_database_application(user=user)
@@ -93,7 +95,7 @@ def test_create_database_table(send_mock, data_fixture):
 
     send_mock.assert_called_once()
     assert send_mock.call_args[1]["table"].id == table.id
-    assert send_mock.call_args[1]["user"].id == user.id
+    assert send_mock.call_args[1]["user"] == user
 
     with pytest.raises(UserNotInGroup):
         handler.create_table(user=user_2, database=database, name="")
@@ -113,13 +115,13 @@ def test_create_database_table(send_mock, data_fixture):
 
 
 @pytest.mark.django_db
-def test_fill_example_table_data(data_fixture):
+def test_create_example_table(data_fixture):
     user = data_fixture.create_user()
     database = data_fixture.create_database_application(user=user)
 
     table_handler = TableHandler()
-    table = table_handler.create_table(
-        user, database, fill_example=True, name="Table 1"
+    table, _ = table_handler.create_table(
+        user, database, name="Table 1", fill_example=True
     )
 
     assert Table.objects.all().count() == 1
@@ -129,15 +131,12 @@ def test_fill_example_table_data(data_fixture):
     assert BooleanField.objects.all().count() == 1
     assert GridViewFieldOptions.objects.all().count() == 2
 
-    model = table.get_model()
-    results = model.objects.all()
+    model = table.get_model(attribute_names=True)
 
-    assert len(results) == 2
-    assert results[0].order == Decimal("1.00000000000000000000")
-    assert results[1].order == Decimal("2.00000000000000000000")
+    assert model.objects.count() == 2
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_fill_table_with_initial_data(data_fixture):
     user = data_fixture.create_user()
     database = data_fixture.create_database_application(user=user)
@@ -150,18 +149,11 @@ def test_fill_table_with_initial_data(data_fixture):
     with pytest.raises(InvalidInitialTableData):
         table_handler.create_table(user, database, name="Table 1", data=[[]])
 
-    limit = settings.INITIAL_TABLE_DATA_LIMIT
-    settings.INITIAL_TABLE_DATA_LIMIT = 2
-
-    with pytest.raises(InitialTableDataLimitExceeded):
+    with override_settings(INITIAL_TABLE_DATA_LIMIT=2), pytest.raises(
+        InitialTableDataLimitExceeded
+    ):
         table_handler.create_table(user, database, name="Table 1", data=[[], [], []])
-
-    settings.INITIAL_TABLE_DATA_LIMIT = limit
-
-    field_limit = settings.MAX_FIELD_LIMIT
-    settings.MAX_FIELD_LIMIT = 2
-
-    with pytest.raises(MaxFieldLimitExceeded):
+    with override_settings(MAX_FIELD_LIMIT=2), pytest.raises(MaxFieldLimitExceeded):
         table_handler.create_table(
             user,
             database,
@@ -169,15 +161,13 @@ def test_fill_table_with_initial_data(data_fixture):
             data=[["field1", "field2", "field3"], ["rows"] * 3],
         )
 
-    settings.MAX_FIELD_LIMIT = field_limit
-
     data = [
         ["A", "B", "C", "D"],
         ["1-1", "1-2", "1-3", "1-4", "1-5"],
         ["2-1", "2-2", "2-3"],
         ["3-1", "3-2"],
     ]
-    table = table_handler.create_table(
+    table, _ = table_handler.create_table(
         user, database, name="Table 1", data=data, first_row_header=True
     )
 
@@ -193,6 +183,8 @@ def test_fill_table_with_initial_data(data_fixture):
     model = table.get_model()
     results = model.objects.all()
 
+    assert results.count() == 3
+
     assert results[0].order == Decimal("1.00000000000000000000")
     assert results[1].order == Decimal("2.00000000000000000000")
     assert results[2].order == Decimal("3.00000000000000000000")
@@ -206,21 +198,21 @@ def test_fill_table_with_initial_data(data_fixture):
     assert getattr(results[1], f"field_{text_fields[0].id}") == "2-1"
     assert getattr(results[1], f"field_{text_fields[1].id}") == "2-2"
     assert getattr(results[1], f"field_{text_fields[2].id}") == "2-3"
-    assert getattr(results[1], f"field_{text_fields[3].id}") == ""
-    assert getattr(results[1], f"field_{text_fields[4].id}") == ""
+    assert getattr(results[1], f"field_{text_fields[3].id}") is None
+    assert getattr(results[1], f"field_{text_fields[4].id}") is None
 
     assert getattr(results[2], f"field_{text_fields[0].id}") == "3-1"
     assert getattr(results[2], f"field_{text_fields[1].id}") == "3-2"
-    assert getattr(results[2], f"field_{text_fields[2].id}") == ""
-    assert getattr(results[2], f"field_{text_fields[3].id}") == ""
-    assert getattr(results[2], f"field_{text_fields[4].id}") == ""
+    assert getattr(results[2], f"field_{text_fields[2].id}") is None
+    assert getattr(results[2], f"field_{text_fields[3].id}") is None
+    assert getattr(results[2], f"field_{text_fields[4].id}") is None
 
     data = [
         ["1-1"],
         ["2-1", "2-2", "2-3"],
         ["3-1", "3-2"],
     ]
-    table = table_handler.create_table(
+    table, _ = table_handler.create_table(
         user, database, name="Table 2", data=data, first_row_header=False
     )
 
@@ -235,8 +227,8 @@ def test_fill_table_with_initial_data(data_fixture):
     results = model.objects.all()
 
     assert getattr(results[0], f"field_{text_fields[0].id}") == "1-1"
-    assert getattr(results[0], f"field_{text_fields[1].id}") == ""
-    assert getattr(results[0], f"field_{text_fields[2].id}") == ""
+    assert getattr(results[0], f"field_{text_fields[1].id}") is None
+    assert getattr(results[0], f"field_{text_fields[2].id}") is None
 
     assert getattr(results[1], f"field_{text_fields[0].id}") == "2-1"
     assert getattr(results[1], f"field_{text_fields[1].id}") == "2-2"
@@ -245,21 +237,17 @@ def test_fill_table_with_initial_data(data_fixture):
     assert getattr(results[2], f"field_{text_fields[0].id}") == "3-1"
     assert getattr(results[2], f"field_{text_fields[1].id}") == "3-2"
 
-    field_limit = settings.MAX_FIELD_LIMIT
-    settings.MAX_FIELD_LIMIT = 5
     data = [
         ["A", "B", "C", "D", "E"],
         ["1-1", "1-2", "1-3", "1-4", "1-5"],
     ]
-    table = table_handler.create_table(
-        user, database, name="Table 3", data=data, first_row_header=True
-    )
-    num_fields = table.field_set.count()
+    with override_settings(MAX_FIELD_LIMIT=5):
+        table, _ = table_handler.create_table(
+            user, database, name="Table 3", data=data, first_row_header=True
+        )
 
     assert GridView.objects.all().count() == 3
-    assert num_fields == settings.MAX_FIELD_LIMIT
-
-    settings.MAX_FIELD_LIMIT = field_limit
+    assert table.field_set.count() == 5
 
     too_long_field_name = "x" * 256
     field_name_with_ok_length = "x" * 255
@@ -268,7 +256,6 @@ def test_fill_table_with_initial_data(data_fixture):
         [too_long_field_name, "B", "C", "D", "E"],
         ["1-1", "1-2", "1-3", "1-4", "1-5"],
     ]
-
     with pytest.raises(MaxFieldNameLengthExceeded):
         table_handler.create_table(
             user, database, name="Table 3", data=data, first_row_header=True
@@ -278,12 +265,11 @@ def test_fill_table_with_initial_data(data_fixture):
         [field_name_with_ok_length, "B", "C", "D", "E"],
         ["1-1", "1-2", "1-3", "1-4", "1-5"],
     ]
-    table = table_handler.create_table(
+    table, _ = table_handler.create_table(
         user, database, name="Table 3", data=data, first_row_header=True
     )
-    num_fields = table.field_set.count()
 
-    assert num_fields == 5
+    assert table.field_set.count() == 5
 
 
 @pytest.mark.django_db
@@ -429,9 +415,14 @@ def test_deleting_table_trashes_all_fields_and_any_related_links(
     assert table_deleted_send_mock.call_args[1]["user"].id == user.id
 
     field_updated_send_mock.assert_called_once()
-    assert field_updated_send_mock.call_args[1]["field"].id == dependant_field.id
+    updated_field_id = field_updated_send_mock.call_args[1]["field"].id
+    related_updated_fields = field_updated_send_mock.call_args[1]["related_fields"]
+    assert (
+        updated_field_id == other_dependant_field.id
+        or updated_field_id == dependant_field.id
+    )
     assert field_updated_send_mock.call_args[1]["user"] is None
-    assert field_updated_send_mock.call_args[1]["related_fields"] == [
+    assert related_updated_fields == [dependant_field] or related_updated_fields == [
         other_dependant_field
     ]
 
@@ -546,6 +537,38 @@ def test_count_rows_ignores_templates(data_fixture, tmpdir):
     settings.APPLICATION_TEMPLATES_DIR = old_templates
 
 
+@pytest.mark.django_db(transaction=True)
+def test_count_rows_table_gets_deleted(data_fixture):
+    table = data_fixture.create_database_table()
+    table_deleted = data_fixture.create_database_table(create_table=False)
+    grid_view = data_fixture.create_grid_view(table=table)
+    field = data_fixture.create_text_field(table=table)
+    model = table.get_model()
+
+    count_expected = random.randint(0, 100)
+
+    for i in range(count_expected):
+        model.objects.create(**{f"field_{field.id}": i})
+
+    TableHandler().count_rows()
+
+    table.refresh_from_db()
+    table_deleted.refresh_from_db()
+    assert table.row_count == count_expected
+    assert table_deleted.row_count is None
+
+
+@pytest.mark.django_db
+def test_exception_is_raised_if_something_goes_wrong(data_fixture):
+    data_fixture.create_database_table()
+
+    with patch("baserow.contrib.database.table.models.Table.get_model") as mock:
+        mock.side_effect = Exception("Something went wrong")
+
+        with pytest.raises(Exception):
+            TableHandler().count_rows()
+
+
 @pytest.mark.django_db
 @pytest.mark.disabled_in_ci
 # You must add --run-disabled-in-ci -s to pytest to run this test, you can do this in
@@ -590,3 +613,63 @@ def test_counting_many_rows_in_many_tables(data_fixture):
     profiler.stop()
 
     print(profiler.output_text(unicode=True, color=True))
+
+
+@pytest.mark.django_db
+def test_get_total_row_count_of_group(data_fixture):
+    group = data_fixture.create_group()
+    database = data_fixture.create_database_application(group=group)
+    table = data_fixture.create_database_table(database=database)
+    table_not_in_group = data_fixture.create_database_table()
+
+    assert TableHandler.get_total_row_count_of_group(group.id) == 0
+
+    fill_table_rows(10, table)
+    fill_table_rows(10, table_not_in_group)
+
+    TableHandler.count_rows()
+
+    assert TableHandler.get_total_row_count_of_group(group.id) == 10
+
+
+@pytest.mark.django_db
+@pytest.mark.undo_redo
+def test_duplicate_interesting_table(data_fixture):
+    session_id = "session-id"
+    user = data_fixture.create_user(session_id=session_id)
+    database = data_fixture.create_database_application(user=user)
+
+    original_table_name = "original-table-name"
+    table, _, _, _, context = setup_interesting_test_table(
+        data_fixture, user, database, original_table_name
+    )
+
+    table_handler = TableHandler()
+    duplicated_table = table_handler.duplicate_table(user, table)
+    assert (
+        table_handler.get_table(duplicated_table.id).name == f"{original_table_name} 2"
+    )
+
+    # check link_row fields referencing other tables has been cloned correctly,
+    # while self-referencing fields now points to the new duplicated table
+    for field_object in duplicated_table.get_model()._field_objects.values():
+        field_instance = field_object["field"]
+        if not isinstance(field_instance, LinkRowField):
+            continue
+
+        if field_instance.name == "self_link_row":
+            assert field_instance.link_row_table_id == duplicated_table.id
+        else:
+            linkrow_fields = field_instance.link_row_table.linkrowfield_set.filter(
+                name=field_instance.name
+            )
+            original_link, duplicated_link = linkrow_fields
+            assert original_link.name == duplicated_link.name
+            assert original_link.link_row_table_id == duplicated_link.link_row_table_id
+            assert bool(original_link.link_row_related_field_id) == bool(
+                duplicated_link.link_row_related_field_id
+            )
+            assert (
+                original_link.link_row_table_has_related_field
+                == duplicated_link.link_row_table_has_related_field
+            )

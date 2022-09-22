@@ -7,7 +7,11 @@
     }"
   >
     <div class="tree__action tree__action--has-options" data-sortable-handle>
-      <a class="tree__link" @click="$emit('selected', application)">
+      <a
+        class="tree__link"
+        :title="application.name"
+        @click="$emit('selected', application)"
+      >
         <i
           class="tree__icon tree__icon--type fas"
           :class="'fa-' + application._.type.iconClass"
@@ -34,12 +38,29 @@
             <a @click="enableRename()">
               <i class="context__menu-icon fas fa-fw fa-pen"></i>
               {{
-                $t('sidebarApplication.renameApplication', {
+                $t('sidebarApplication.rename', {
                   type: application._.type.name.toLowerCase(),
                 })
               }}
             </a>
           </li>
+          <li>
+            <SidebarDuplicateApplicationContextItem
+              :application="application"
+              :disabled="deleting"
+              @click="$refs.context.hide()"
+            ></SidebarDuplicateApplicationContextItem>
+          </li>
+          <li>
+            <a @click="openSnapshots">
+              <i class="context__menu-icon fas fa-fw fa-history"></i>
+              {{ $t('sidebarApplication.snapshots') }}
+            </a>
+          </li>
+          <SnapshotsModal
+            ref="snapshotsModal"
+            :application="application"
+          ></SnapshotsModal>
           <li>
             <a @click="showApplicationTrashModal">
               <i class="context__menu-icon fas fa-fw fa-recycle"></i>
@@ -48,12 +69,12 @@
           </li>
           <li>
             <a
-              :class="{ 'context__menu-item--loading': deleteLoading }"
+              :class="{ 'context__menu-item--loading': deleting }"
               @click="deleteApplication()"
             >
               <i class="context__menu-icon fas fa-fw fa-trash"></i>
               {{
-                $t('sidebarApplication.deleteApplication', {
+                $t('sidebarApplication.delete', {
                   type: application._.type.name.toLowerCase(),
                 })
               }}
@@ -74,11 +95,17 @@
 
 <script>
 import { notifyIf } from '@baserow/modules/core/utils/error'
+import SidebarDuplicateApplicationContextItem from '@baserow/modules/core/components/sidebar/SidebarDuplicateApplicationContextItem.vue'
 import TrashModal from '@baserow/modules/core/components/trash/TrashModal'
+import SnapshotsModal from '@baserow/modules/core/components/snapshots/SnapshotsModal'
 
 export default {
   name: 'SidebarApplication',
-  components: { TrashModal },
+  components: {
+    TrashModal,
+    SidebarDuplicateApplicationContextItem,
+    SnapshotsModal,
+  },
   props: {
     application: {
       type: Object,
@@ -91,7 +118,7 @@ export default {
   },
   data() {
     return {
-      deleteLoading: false,
+      deleting: false,
     }
   },
   methods: {
@@ -123,7 +150,11 @@ export default {
       this.setLoading(application, false)
     },
     async deleteApplication() {
-      this.deleteLoading = true
+      if (this.deleting) {
+        return
+      }
+
+      this.deleting = true
 
       try {
         await this.$store.dispatch('application/delete', this.application)
@@ -135,11 +166,15 @@ export default {
         notifyIf(error, 'application')
       }
 
-      this.deleteLoading = false
+      this.deleting = false
     },
     showApplicationTrashModal() {
       this.$refs.context.hide()
       this.$refs.applicationTrashModal.show()
+    },
+    openSnapshots() {
+      this.$refs.context.hide()
+      this.$refs.snapshotsModal.show()
     },
   },
 }

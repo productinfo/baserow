@@ -10,6 +10,8 @@ ENV GID=${GID:-9999}
 # Everything is OK and we should just continue on.
 RUN groupadd -g $GID baserow_docker_group || exit 0
 RUN useradd --shell /bin/bash -u $UID -g $GID -o -c "" -m baserow_docker_user -l || exit 0
+ENV DOCKER_USER=baserow_docker_user
+ENV BASEROW_IMAGE_TYPE="backend"
 
 RUN apt-get update &&  \
     apt-get upgrade -y && \
@@ -28,6 +30,8 @@ RUN apt-get update &&  \
     python3-dev \
     nano \
     vim \
+    git \
+    gosu \
     && apt-get autoclean \
     && apt-get clean \
     && apt-get autoremove \
@@ -63,21 +67,34 @@ COPY --chown=$UID:$GID ./docs /baserow/docs
 #        and not cached even though we already have separate layers above.
 COPY --chown=$UID:$GID ./backend /baserow/backend
 COPY --chown=$UID:$GID ./premium/backend /baserow/premium/backend
+COPY --chown=$UID:$GID ./enterprise/backend /baserow/enterprise/backend
 
 WORKDIR /baserow/backend
 
 # Ensure that Python outputs everything that's printed inside
 # the application rather than buffering it.
 ENV PYTHONUNBUFFERED 1
-ENV PYTHONPATH $PYTHONPATH:/baserow/backend/src:/baserow/premium/backend/src
+ENV PYTHONPATH $PYTHONPATH:/baserow/backend/src:/baserow/premium/backend/src:/baserow/enterprise/backend/src
 
+COPY --chown=$UID:$GID ./deploy/plugins/*.sh /baserow/plugins/
 RUN dos2unix /baserow/backend/docker/docker-entrypoint.sh && \
     chmod a+x /baserow/backend/docker/docker-entrypoint.sh
 
-HEALTHCHECK CMD ["/bin/bash", "/baserow/backend/docker/docker-entrypoint.sh", "backend-healthcheck"]
+HEALTHCHECK --interval=60s CMD ["/bin/bash", "/baserow/backend/docker/docker-entrypoint.sh", "backend-healthcheck"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/bin/bash", "/baserow/backend/docker/docker-entrypoint.sh"]
 
 FROM core as dev
+
+
+USER root
+RUN apt-get update &&  \
+    apt-get install -y --no-install-recommends \
+    graphviz \
+    && apt-get autoclean \
+    && apt-get clean \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
+USER $UID:$GID
 
 # Override virtualenv with one containing dev dependencies.
 COPY --chown=$UID:$GID --from=dev_deps /baserow/venv /baserow/venv

@@ -17,6 +17,8 @@
         "change": "Change",
         "delete": "Delete",
         "rename": "Rename",
+        "remove": "Remove",
+        "duplicate": "Duplicate",
         "add": "Add",
         "makeChoice": "Make a choice",
         "cancel": "Cancel",
@@ -39,7 +41,8 @@
     "settingType": {
         "account": "Account",
         "password": "Password",
-        "tokens": "API Tokens"
+        "tokens": "API Tokens",
+        "deleteAccount": "Delete account"
     },
     "userFileUploadType": {
         "file": "my device",
@@ -79,7 +82,8 @@
         "multipleSelect": "Multiple select",
         "phoneNumber": "Phone number",
         "formula": "Formula",
-        "lookup": "Lookup"
+        "lookup": "Lookup",
+        "multipleCollaborators": "Collaborators"
     },
     "fieldErrors": {
         "invalidNumber": "Invalid number",
@@ -108,12 +112,13 @@
         "createdOnReadOnly": "The created on field is a read only field.",
         "url": "Accepts a string that must be a URL.",
         "email": "Accepts a string that must be an email address.",
-        "file": "Accepts an array of objects containing at least the name of the user file.",
+        "file": "Accepts an array of objects containing at least the name of the user file. You can use the \"File uploads\" endpoints to upload the file. The response of those calls can be provided directly as object here. The endpoints can be found in the left sidebar.",
         "singleSelect": "Accepts an integer representing the chosen select option id or null if none is selected.",
         "multipleSelect": "Accepts an array of integers each representing the chosen select option id.",
         "phoneNumber": "Accepts a phone number which has a maximum length of 100 characters consisting solely of digits, spaces and the following characters: Nx,._+*()#=;/- .",
         "formula": "A read-only field defined by a formula written in the Baserow formula language.",
-        "lookup": "A read-only field connected to a link row field which returns an array of values and row ids from the chosen lookup field in the linked table."
+        "lookup": "A read-only field connected to a link row field which returns an array of values and row ids from the chosen lookup field in the linked table.",
+        "multipleCollaborators": "Accepts an array of objects where each object contains a user's id."
     },
     "viewFilter": {
         "contains": "contains",
@@ -132,7 +137,12 @@
         "isAfterDate": "is after date",
         "isNotDate": "is not date",
         "isToday": "is today",
+        "beforeToday": "is before today",
+        "afterToday": "is after today",
         "isDaysAgo": "is days ago",
+        "isMonthsAgo": "is months ago",
+        "isYearsAgo": "is years ago",
+        "inThisWeek": "in this week",
         "inThisMonth": "in this month",
         "inThisYear": "in this year",
         "lowerThan": "lower than",
@@ -148,9 +158,6 @@
             "formLinkName": "form"
         }
     },
-    "premium": {
-        "deactivated": "Available in premium version"
-    },
     "trashType": {
         "group": "group",
         "application": "application",
@@ -164,6 +171,10 @@
         "request": "Request",
         "response": "Response",
         "successfullyUpdated": "Webhook successfully updated.",
+        "form": {
+            "invalidURLTitle": "Invalid URL.",
+            "invalidURLDescription": "The webhook URL is invalid, inaccessible or prohibited."
+        },
         "status": {
             "noStatus": "NO STATUS",
             "statusOK": "OK",
@@ -171,8 +182,11 @@
         },
         "eventType": {
             "rowCreated": "When a row is created",
+            "rowsCreated": "Rows are created",
             "rowUpdated": "When a row is updated",
-            "rowDeleted": "When a row is deleted"
+            "rowsUpdated": "Rows are updated",
+            "rowDeleted": "When a row is deleted",
+            "rowsDeleted": "Rows are deleted"
         }
     },
     "clientHandler": {
@@ -183,7 +197,7 @@
         "tooManyRequestsTitle": "Too many requests",
         "tooManyRequestsDescription": "You are sending too many requests to the server. Please wait a moment.",
         "notCompletedTitle": "Action not completed.",
-        "notCompletedDescription": "The action couldn't be completed because an unknown error has occured.",
+        "notCompletedDescription": "The action couldn't be completed because an unknown error has occurred.",
         "userNotInGroupTitle": "Action not allowed.",
         "userNotInGroupDescription": "The action couldn't be completed because you aren't a member of the related group.",
         "invalidGroupPermissionsTitle": "Action not allowed.",
@@ -211,7 +225,30 @@
         "cannotRestoreAsRelatedTableTrashedTitle": "Please restore the related tables first.",
         "cannotRestoreAsRelatedTableTrashedDescription": "You cannot restore this field because it depends on other tables which are still trashed. Please restore the other related tables first.",
         "groupUserIsLastAdminTitle": "Can't leave the group",
-        "groupUserIsLastAdminDescription": "It's not possible to leave the group because you're the last admin. Please delete the group or give another user admin permissions."
+        "groupUserIsLastAdminDescription": "It's not possible to leave the group because you're the last admin or because other admin's accounts are pending deletion. Please delete the group or give another user admin permissions.",
+        "errorMaxJobCountExceededTitle": "Couldn't start action.",
+        "errorMaxJobCountExceededDescription": "You cannot start any more of these actions as you have others still running in the background. Please try again once the previous actions complete.",
+        "failedToLockFieldDueToConflictTitle": "Can't change field",
+        "failedToLockFieldDueToConflictDescription": "Another operation is currently updating or using this field, please wait until it finishes before trying again.",
+        "failedToLockTableDueToConflictTitle": "Can't create field",
+        "failedToLockTableDueToConflictDescription": "Another operation is currently updating or using this table, please wait until it finishes before trying again.",
+        "failedToUndoRedoDueToConflictTitle": "Can't undo/redo",
+        "failedToUndoRedoDueToConflictDescription": "Another operation is currently running blocking your undo or redo, please wait until it finishes before trying again.",
+        "errorMaxJobCountExceededDescription": "You cannot start any more of these actions as you have others still running in the background. Please try again once the previous actions complete.",
+        "groupUserIsLastAdminDescription": "It's not possible to leave the group because you're the last admin or because other admin's accounts are pending deletion. Please delete the group or give another user admin permissions.",
+        "errorMaxJobCountExceededDescription": "You cannot start any more of these actions as you have others still running in the background. Please try again once the previous actions complete.",
+        "maximumSnapshotsReachedTitle": "Snapshots limit reached",
+        "maximumSnapshotsReachedDescription": "The maximum number of snapshots in a group has been reached.",
+        "snapshotBeingCreatedTitle": "A snapshot is already being created",
+        "snapshotBeingCreatedDescription": "It is not possible to create multiple snapshots at the same time.",
+        "snapshotBeingRestoredTitle": "The snapshot is being restored",
+        "snapshotBeingRestoredDescription": "It is not possible to use snapshots that are currently being restored.",
+        "snapshotBeingDeletedTitle": "The snapshot is being deleted",
+        "snapshotBeingDeletedDescription": "It is not possible to use snapshots that are currently being deleted.",
+        "snapshotNameNotUniqueTitle": "The snapshot name has to be unique.",
+        "snapshotNameNotUniqueDescription": "All snapshot names have to be unique per application.",
+        "snapshotOperationLimitExceededTitle": "Limit reached",
+        "snapshotOperationLimitExceededDescription": "You have reached a limit on the number of running snapshot operations. Please wait until previous operation finishes."
     },
     "importerType": {
         "csv": "Import a CSV file",
@@ -236,12 +273,17 @@
         "moveRow": "Move row",
         "deleteRow": "Delete row",
         "deleteRows": "Delete rows",
+        "uploadFile": "Upload file",
+        "uploadFileDescription": "The `file` multipart containing the file contents.",
+        "uploadFileViaUrl": "Upload file via URL",
+        "uploadFileViaUrlDescription": "Uploads a file to Baserow by downloading it from the provided URL.",
         "queryParameters": "Query parameters",
         "pathParameters": "Path parameters",
         "requestBodySchema": "Request body schema",
         "userFieldNamesDescription": "When any value is provided for the `user_field_names` GET param then field names returned by this endpoint will be the actual names of the fields.\n\n If the `user_field_names` GET param is not provided, then all returned field names will be `field_` followed by the id of the field. For example `field_1` refers to the field with an id of `1`.",
         "singleRow": "Single",
-        "batchRows": "Batch"
+        "batchRows": "Batch",
+        "fileUploads": "File uploads"
     },
     "exporterType": {
         "csv": "Export to CSV"
@@ -316,9 +358,19 @@
         "variancePopDescription": "Calculates the population variance of the values and returns the result. The population variance should be used when the provided values contain a  value for every single piece of data in the population.",
         "avgDescription": "Averages all of the values and returns the result.",
         "sumDescription": "Sums all of the values and returns the result.",
-        "filterDescription": "Filters down an expression involving a lookup/link field reference or a lookup function call."
+        "filterDescription": "Filters down an expression involving a lookup/link field reference or a lookup function call.",
+        "linkDescription": "Creates a hyperlink using the URI provided in the first argument.",
+        "buttonDescription": "Creates a button using the URI (first argument) and label (second argument).",
+        "getLinkLabelDescription": "Gets the label from a formula using the link or button functions.",
+        "getLinkUrlDescription": "Gets the url from a formula using the link or button functions.",
+        "roundDescription": "Returns first argument rounded to the number of digits specified by the second argument.",
+        "truncDescription": "Returns only the first argument converted into an integer by truncating any decimal places."
     },
     "functionnalGridViewFieldLinkRow": {
         "unnamed": "unnamed row {value}"
+    },
+    "urlCheck": {
+        "invalidUrlEnvVarTitle": "Invalid {name}",
+        "invalidUrlEnvVarDescription": "The {name} environment variable has been set to an invalid value. Your site admin must change {name} to a valid URL starting with http:// or https:// and then restart Baserow to fix this error."
     }
 }

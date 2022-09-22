@@ -2,6 +2,7 @@
   <Context>
     <ViewDecoratorList
       v-if="activeDecorations.length === 0"
+      :database="database"
       :view="view"
       @select="addDecoration($event)"
     />
@@ -59,7 +60,6 @@
             v-if="dec.valueProviderType"
             :view="view"
             :table="table"
-            :primary="primary"
             :fields="fields"
             :read-only="readOnly"
             :options="dec.decoration.value_provider_conf"
@@ -92,6 +92,7 @@
         </a>
         <SelectViewDecoratorContext
           ref="selectDecoratorContext"
+          :database="database"
           :view="view"
           @select="
             ;[$refs.selectDecoratorContext.hide(), addDecoration($event)]
@@ -123,7 +124,7 @@ export default {
   },
   mixins: [context, viewDecoration],
   props: {
-    primary: {
+    database: {
       type: Object,
       required: true,
     },
@@ -167,7 +168,7 @@ export default {
             value_provider_type: valueProviderType.getType(),
             value_provider_conf: valueProviderType.getDefaultConfiguration({
               view: this.view,
-              fields: this.allTableFields,
+              fields: this.fields,
             }),
           },
           decoration,

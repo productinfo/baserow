@@ -1,33 +1,34 @@
+import datetime
 from decimal import Decimal
-from typing import List, Type, Optional, Any, Union
+from typing import Any, List, Optional, Type, Union
+
+from django.db import models
+from django.db.models import JSONField, Q, Value
+from django.utils import timezone
 
 from dateutil import parser
-from django.db import models
-from django.db.models import Q, JSONField, Value
 from rest_framework import serializers
 from rest_framework.fields import Field
 
-from baserow.contrib.database.fields.mixins import (
-    get_date_time_format,
-)
+from baserow.contrib.database.fields.mixins import get_date_time_format
 from baserow.contrib.database.formula.ast.tree import (
-    BaserowExpression,
-    BaserowFunctionCall,
-    BaserowStringLiteral,
-    BaserowIntegerLiteral,
     BaserowBooleanLiteral,
     BaserowDecimalLiteral,
+    BaserowExpression,
+    BaserowFunctionCall,
+    BaserowIntegerLiteral,
+    BaserowStringLiteral,
 )
-from baserow.contrib.database.formula.registries import (
-    formula_function_registry,
-)
+from baserow.contrib.database.formula.registries import formula_function_registry
 from baserow.contrib.database.formula.types.exceptions import UnknownFormulaType
 from baserow.contrib.database.formula.types.formula_type import (
+    BaserowFormulaInvalidType,
+    BaserowFormulaType,
     BaserowFormulaValidType,
     UnTyped,
-    BaserowFormulaType,
-    BaserowFormulaInvalidType,
 )
+from baserow.contrib.database.formula.types.serializers import LinkSerializer
+from baserow.core.utils import list_to_comma_separated_string
 
 
 class BaserowFormulaTextType(BaserowFormulaValidType):
@@ -42,6 +43,7 @@ class BaserowFormulaTextType(BaserowFormulaValidType):
             BaserowFormulaNumberType,
             BaserowFormulaBooleanType,
             BaserowFormulaCharType,
+            BaserowFormulaLinkType,
         ]
 
     @property
@@ -49,11 +51,11 @@ class BaserowFormulaTextType(BaserowFormulaValidType):
         # Force users to explicitly convert to text before doing any limit comparison
         # operators as lexicographical comparison can be surprising and so should be opt
         # in
-        return [BaserowFormulaTextType, BaserowFormulaCharType]
+        return [BaserowFormulaTextType, BaserowFormulaCharType, BaserowFormulaLinkType]
 
     @property
     def addable_types(self) -> List[Type["BaserowFormulaValidType"]]:
-        return [BaserowFormulaTextType, BaserowFormulaCharType]
+        return [BaserowFormulaTextType, BaserowFormulaCharType, BaserowFormulaLinkType]
 
     def add(
         self,
@@ -75,6 +77,9 @@ class BaserowFormulaTextType(BaserowFormulaValidType):
         # arg.
         return arg
 
+    def placeholder_empty_value(self):
+        return Value("", output_field=models.TextField())
+
 
 class BaserowFormulaCharType(BaserowFormulaTextType):
     type = "char"
@@ -87,6 +92,94 @@ class BaserowFormulaCharType(BaserowFormulaTextType):
     ) -> "BaserowExpression[BaserowFormulaType]":
         # Force char fields to be casted to text so Django does not complain
         return to_text_func_call.with_valid_type(BaserowFormulaTextType())
+
+
+class BaserowFormulaLinkType(BaserowFormulaTextType):
+    type = "link"
+    baserow_field_type = None
+    can_order_by = False
+
+    @property
+    def comparable_types(self) -> List[Type["BaserowFormulaValidType"]]:
+        return [
+            type(self),
+        ]
+
+    @property
+    def limit_comparable_types(self) -> List[Type["BaserowFormulaValidType"]]:
+        return []
+
+    @property
+    def addable_types(self) -> List[Type["BaserowFormulaValidType"]]:
+        return []
+
+    @property
+    def subtractable_types(self) -> List[Type["BaserowFormulaValidType"]]:
+        return []
+
+    def cast_to_text(
+        self,
+        to_text_func_call: "BaserowFunctionCall[UnTyped]",
+        arg: "BaserowExpression[BaserowFormulaValidType]",
+    ) -> "BaserowExpression[BaserowFormulaType]":
+        return formula_function_registry.get("get_link_label")(arg)
+
+    def get_baserow_field_instance_and_type(self):
+        return self, self
+
+    def get_model_field(self, instance, **kwargs) -> models.Field:
+        kwargs["null"] = True
+        kwargs["blank"] = True
+
+        return JSONField(default=dict, **kwargs)
+
+    def get_response_serializer_field(self, instance, **kwargs) -> Optional[Field]:
+        return self.get_serializer_field(instance, **kwargs)
+
+    def get_serializer_field(self, instance, **kwargs) -> Optional[Field]:
+        required = kwargs.get("required", False)
+
+        return LinkSerializer(
+            **{"required": required, "allow_null": not required, **kwargs}
+        )
+
+    def get_export_value(self, value, field_object, rich_value=False) -> Any:
+        if rich_value:
+            return value
+        elif value is not None:
+            if "label" in value:
+                return f"{value['label']} ({value['url']})"
+            else:
+                return f"{value['url']}"
+        else:
+            return ""
+
+    def contains_query(self, field_name, value, model_field, field):
+        value = value.strip()
+        # If an empty value has been provided we do not want to filter at all.
+        if value == "":
+            return Q()
+        return Q(**{f"{field_name}__url__icontains": value}) | Q(
+            **{f"{field_name}__label__icontains": value}
+        )
+
+    def get_alter_column_prepare_old_value(self, connection, from_field, to_field):
+        sql = f"""
+            p_in = p_in->'label' + ' (' + p_in->'url' + ')';
+        """
+        return sql, {}
+
+    def get_human_readable_value(self, value: Any, field_object) -> str:
+        human_readable_value = self.get_export_value(
+            value, field_object, rich_value=False
+        )
+        if human_readable_value is None:
+            return ""
+        else:
+            return str(human_readable_value)
+
+    def placeholder_empty_value(self):
+        return Value({}, output_field=JSONField())
 
 
 class BaserowFormulaNumberType(BaserowFormulaValidType):
@@ -144,10 +237,15 @@ class BaserowFormulaNumberType(BaserowFormulaValidType):
             return True
 
     def wrap_at_field_level(self, expr: "BaserowExpression[BaserowFormulaType]"):
-        return formula_function_registry.get("error_to_nan").call_and_type_with(expr)
+        return formula_function_registry.get("error_to_nan")(expr)
 
     def unwrap_at_field_level(self, expr: "BaserowFunctionCall[BaserowFormulaType]"):
         return expr.args[0].with_valid_type(expr.expression_type)
+
+    def placeholder_empty_value(self):
+        return Value(
+            0, output_field=models.DecimalField(max_digits=50, decimal_places=0)
+        )
 
     def __str__(self) -> str:
         return f"number({self.number_decimal_places})"
@@ -168,6 +266,9 @@ class BaserowFormulaBooleanType(BaserowFormulaValidType):
     def limit_comparable_types(self) -> List[Type["BaserowFormulaValidType"]]:
         # true > true makes no sense
         return []
+
+    def placeholder_empty_value(self):
+        return Value(False, output_field=models.BooleanField())
 
 
 def _calculate_addition_interval_type(
@@ -236,9 +337,14 @@ class BaserowFormulaDateIntervalType(BaserowFormulaValidType):
         return self, self
 
     def get_model_field(self, instance, **kwargs) -> models.Field:
+        from baserow.contrib.database.fields.fields import (
+            DurationFieldUsingPostgresFormatting,
+        )
+
         kwargs["null"] = True
         kwargs["blank"] = True
-        return models.DurationField()
+
+        return DurationFieldUsingPostgresFormatting(**kwargs)
 
     def get_response_serializer_field(self, instance, **kwargs) -> Optional[Field]:
         return self.get_serializer_field(instance, **kwargs)
@@ -246,12 +352,15 @@ class BaserowFormulaDateIntervalType(BaserowFormulaValidType):
     def get_serializer_field(self, instance, **kwargs) -> Optional[Field]:
         required = kwargs.get("required", False)
 
-        return serializers.DurationField(
+        return serializers.CharField(
             **{"required": required, "allow_null": not required, **kwargs}
         )
 
-    def get_export_value(self, value, field_object) -> Any:
-        return value
+    def get_export_value(self, value, field_object, rich_value=False) -> Any:
+        if rich_value:
+            return value
+        else:
+            return value if value is not None else ""
 
     def contains_query(self, field_name, value, model_field, field):
         return Q()
@@ -260,11 +369,16 @@ class BaserowFormulaDateIntervalType(BaserowFormulaValidType):
         return None
 
     def get_human_readable_value(self, value: Any, field_object) -> str:
-        human_readable_value = self.get_export_value(value, field_object)
+        human_readable_value = self.get_export_value(
+            value, field_object, rich_value=False
+        )
         if human_readable_value is None:
             return ""
         else:
             return str(human_readable_value)
+
+    def placeholder_empty_value(self):
+        return Value(datetime.timedelta(hours=1), output_field=models.DurationField())
 
 
 class BaserowFormulaDateType(BaserowFormulaValidType):
@@ -334,6 +448,14 @@ class BaserowFormulaDateType(BaserowFormulaValidType):
         else:
             return True
 
+    def wrap_at_field_level(self, expr: "BaserowExpression[BaserowFormulaType]"):
+        wrapped = formula_function_registry.get("bc_to_null")(expr)
+        return super().wrap_at_field_level(wrapped)
+
+    def unwrap_at_field_level(self, expr: "BaserowFunctionCall[BaserowFormulaType]"):
+        unwrapped = super().unwrap_at_field_level(expr)
+        return expr.args[0].with_valid_type(unwrapped.expression_type)
+
     def cast_to_text(
         self,
         to_text_func_call: BaserowFunctionCall[UnTyped],
@@ -349,6 +471,14 @@ class BaserowFormulaDateType(BaserowFormulaValidType):
             ],
             BaserowFormulaTextType(),
         )
+
+    def placeholder_empty_value(self):
+        if self.date_include_time:
+            field = models.DateTimeField()
+        else:
+            field = models.DateField()
+
+        return Value(timezone.now(), output_field=field)
 
     def __str__(self) -> str:
         date_or_datetime = "datetime" if self.date_include_time else "date"
@@ -390,7 +520,7 @@ class BaserowFormulaArrayType(BaserowFormulaValidType):
 
     def collapse_many(self, expr: "BaserowExpression[BaserowFormulaType]"):
         func = formula_function_registry.get("array_agg_unnesting")
-        return func.call_and_type_with(expr)
+        return func(expr)
 
     def placeholder_empty_value(self):
         """
@@ -410,7 +540,7 @@ class BaserowFormulaArrayType(BaserowFormulaValidType):
         return Value([], output_field=JSONField())
 
     def wrap_at_field_level(self, expr: "BaserowExpression[BaserowFormulaType]"):
-        return formula_function_registry.get("error_to_null").call_and_type_with(expr)
+        return formula_function_registry.get("error_to_null")(expr)
 
     def unwrap_at_field_level(self, expr: "BaserowFunctionCall[BaserowFormulaType]"):
         arg = expr.args[0]
@@ -472,26 +602,28 @@ class BaserowFormulaArrayType(BaserowFormulaValidType):
             }
         )
 
-    def get_export_value(self, value, field_object) -> Any:
+    def get_export_value(self, value, field_object, rich_value=False) -> Any:
         if value is None:
-            return []
+            return [] if rich_value else ""
 
-        i, field_type = self.sub_type.get_baserow_field_instance_and_type()
+        field_instance, field_type = self.sub_type.get_baserow_field_instance_and_type()
+        field_obj = {
+            "field": field_instance,
+            "type": field_type,
+            "name": field_object["name"],
+        }
 
-        field_obj = {"field": i, "type": field_type, "name": field_object["name"]}
-        result = []
-        for v in value:
-            value = v["value"]
-            if value is not None and self.sub_type.type == "date":
-                # Arrays are stored as JSON which means the dates are converted to
-                # strings, we need to reparse them back first before giving it to
-                # the date field type.
-                value = parser.isoparse(value)
-            export_value = field_type.get_export_value(value, field_obj)
-            if export_value is None:
-                export_value = ""
-            result.append(export_value)
-        return result
+        result = self._map_safely_across_lookup_json_value_list(
+            lambda safe_value: field_type.get_export_value(
+                safe_value, field_obj, rich_value=rich_value
+            ),
+            value,
+        )
+
+        if rich_value:
+            return result
+        else:
+            return list_to_comma_separated_string(result)
 
     def contains_query(self, field_name, value, model_field, field):
         return Q()
@@ -503,13 +635,38 @@ class BaserowFormulaArrayType(BaserowFormulaValidType):
         if value is None:
             return ""
 
-        i, field_type = self.sub_type.get_baserow_field_instance_and_type()
+        field_instance, field_type = self.sub_type.get_baserow_field_instance_and_type()
+        field_obj = {
+            "field": field_instance,
+            "type": field_type,
+            "name": field_object["name"],
+        }
 
-        export_values = self.get_export_value(value, field_object)
-        field_obj = {"field": i, "type": field_type, "name": field_object["name"]}
-        return ", ".join(
-            [field_type.get_human_readable_value(v, field_obj) for v in export_values]
+        human_readable_values = self._map_safely_across_lookup_json_value_list(
+            lambda safe_value: field_type.get_human_readable_value(
+                safe_value, field_obj
+            ),
+            value,
         )
+
+        return ", ".join(human_readable_values)
+
+    def _map_safely_across_lookup_json_value_list(
+        self, map_func, lookup_json_value_list
+    ):
+        human_readable_values = []
+        for v in lookup_json_value_list:
+            lookup_json_value_list = v["value"]
+            if lookup_json_value_list is not None and self.sub_type.type == "date":
+                # Arrays are stored as JSON which means the dates are converted to
+                # strings, we need to reparse them back first before giving it to
+                # the date field type.
+                lookup_json_value_list = parser.isoparse(lookup_json_value_list)
+            export_value = map_func(lookup_json_value_list)
+            if export_value is None:
+                export_value = ""
+            human_readable_values.append(export_value)
+        return human_readable_values
 
     def __str__(self) -> str:
         return f"array({self.sub_type})"
@@ -546,9 +703,9 @@ class BaserowFormulaSingleSelectType(BaserowFormulaValidType):
         instance, field_type = super().get_baserow_field_instance_and_type()
         return field_type.get_response_serializer_field(instance, **kwargs)
 
-    def get_export_value(self, value, field_object) -> Any:
+    def get_export_value(self, value, field_object, rich_value=False) -> Any:
         if value is None:
-            return value
+            return value if rich_value else ""
         return value["value"]
 
     def contains_query(self, field_name, value, model_field, field):
@@ -567,7 +724,7 @@ class BaserowFormulaSingleSelectType(BaserowFormulaValidType):
     def get_human_readable_value(self, value, field_object) -> str:
         if value is None:
             return ""
-        return self.get_export_value(value, field_object)
+        return self.get_export_value(value, field_object, rich_value=False)
 
     def cast_to_text(
         self,
@@ -575,13 +732,14 @@ class BaserowFormulaSingleSelectType(BaserowFormulaValidType):
         arg: "BaserowExpression[BaserowFormulaValidType]",
     ) -> "BaserowExpression[BaserowFormulaType]":
         get_value_func = formula_function_registry.get("get_single_select_value")
-        return get_value_func.call_and_type_with(arg)
+        return get_value_func(arg)
 
 
 BASEROW_FORMULA_TYPES = [
     BaserowFormulaInvalidType,
     BaserowFormulaTextType,
     BaserowFormulaCharType,
+    BaserowFormulaLinkType,
     BaserowFormulaDateIntervalType,
     BaserowFormulaDateType,
     BaserowFormulaBooleanType,
@@ -629,7 +787,7 @@ def literal(
     """
     A helper function for building BaserowExpressions with literals
     :param arg: The literal
-    :return: The literal wrapped in the corrosponding valid typed BaserowExpression
+    :return: The literal wrapped in the corresponding valid typed BaserowExpression
         literal.
     """
 

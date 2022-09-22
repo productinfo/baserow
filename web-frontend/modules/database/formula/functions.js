@@ -977,7 +977,11 @@ export class BaserowLeft extends BaserowFunctionDefinition {
   }
 
   getExamples() {
-    return ['left("abcd", 2) = "ab"']
+    return [
+      'left("abcde", 2) = "ab"',
+      'left("abcde", -2) = "abc"',
+      'when_empty(left("abcd", 1/0), "error") = "error"',
+    ]
   }
 
   getFormulaType() {
@@ -1000,7 +1004,11 @@ export class BaserowRight extends BaserowFunctionDefinition {
   }
 
   getExamples() {
-    return ['right("abcd", 2) = "cd"']
+    return [
+      'right("abcde", 2) = "de"',
+      'right("abcde", -2) = "cde"',
+      'when_empty(right("abcd", 1/0), "error") = "error"',
+    ]
   }
 
   getFormulaType() {
@@ -1054,6 +1062,100 @@ export class BaserowRegexReplace extends BaserowFunctionDefinition {
   }
 }
 
+export class BaserowLink extends BaserowFunctionDefinition {
+  static getType() {
+    return 'link'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.linkDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['link(text)']
+  }
+
+  getExamples() {
+    return ["link('http://your-text-here.com')"]
+  }
+
+  getFormulaType() {
+    return 'link'
+  }
+}
+
+export class BaserowButton extends BaserowFunctionDefinition {
+  static getType() {
+    return 'button'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.buttonDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['button(text, text)']
+  }
+
+  getExamples() {
+    return ["button('http://your-text-here.com', 'your-label')"]
+  }
+
+  getFormulaType() {
+    return 'link'
+  }
+}
+
+export class BaserowGetLinkUrl extends BaserowFunctionDefinition {
+  static getType() {
+    return 'get_link_url'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.getLinkUrlDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['get_link_url(link)']
+  }
+
+  getExamples() {
+    return [
+      "get_link_url(field('formula link field')) = 'http://your-text-here.com'",
+    ]
+  }
+
+  getFormulaType() {
+    return 'link'
+  }
+}
+
+export class BaserowGetLinkLabel extends BaserowFunctionDefinition {
+  static getType() {
+    return 'get_link_label'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.getLinkLabelDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['get_link_label(link)']
+  }
+
+  getExamples() {
+    return ["get_link_url(field('formula link field')) = 'your-label'"]
+  }
+
+  getFormulaType() {
+    return 'link'
+  }
+}
+
 export class BaserowGreatest extends BaserowFunctionDefinition {
   static getType() {
     return 'greatest'
@@ -1070,6 +1172,64 @@ export class BaserowGreatest extends BaserowFunctionDefinition {
 
   getExamples() {
     return ['greatest(1,2) = 2']
+  }
+
+  getFormulaType() {
+    return 'number'
+  }
+}
+export class BaserowRound extends BaserowFunctionDefinition {
+  static getType() {
+    return 'round'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.roundDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['round(number, number)']
+  }
+
+  getExamples() {
+    return [
+      'round(1.12345,2) = 1.12',
+      'round(1234.5678, -2) = 1200',
+      'round(1234.11111, 2.999) = 1234.11',
+      'round(1234.11111, 1/0) = NaN',
+      'round(1234.11111, tonumber("invalid number")) = NaN',
+    ]
+  }
+
+  getFormulaType() {
+    return 'number'
+  }
+}
+
+export class BaserowTrunc extends BaserowFunctionDefinition {
+  static getType() {
+    return 'trunc'
+  }
+
+  getDescription() {
+    const { i18n } = this.app
+    return i18n.t('formulaFunctions.truncDescription')
+  }
+
+  getSyntaxUsage() {
+    return ['trunc(number)']
+  }
+
+  getExamples() {
+    return [
+      'trunc(1.49) = 1',
+      'trunc(1.51) = 1',
+      'trunc(-1.51) = -1',
+      'trunc(-1.49) = -1',
+      'trunc(1/0) = NaN',
+      'trunc(tonumber("invalid")) = NaN',
+    ]
   }
 
   getFormulaType() {
