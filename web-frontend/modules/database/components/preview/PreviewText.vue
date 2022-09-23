@@ -1,12 +1,13 @@
 <template>
-  <div class="preview__text">
+  <div v-if="!fileFetchFailed" class="preview__text">
     {{ text }}
+  </div>
+  <div v-else class="preview__text--failed">
+    <i class="fas fa-exclamation-circle"></i>
   </div>
 </template>
 
 <script>
-import { notifyIf } from '@baserow/modules/core/utils/error'
-
 export default {
   name: 'PreviewText',
   props: {
@@ -18,13 +19,18 @@ export default {
   data() {
     return {
       text: null,
+      fileFetchFailed: false,
     }
   },
   async created() {
     try {
       this.text = (await (await fetch(this.url)).text()) || ''
     } catch (error) {
-      notifyIf(error)
+      await this.$store.dispatch('notification/error', {
+        title: this.$t('previewText.error.title'),
+        message: this.$t('previewText.error.message'),
+      })
+      this.fileFetchFailed = true
     }
   },
 }

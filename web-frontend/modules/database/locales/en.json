@@ -714,5 +714,11 @@
         "titlePlaceholder": "Title",
         "descriptionPlaceholder": "Description",
         "noFields": "This form doesn't have any fields. Click on a field in the left sidebar to add one."
+    },
+    "previewText": {
+        "error": {
+            "title": "Error",
+            "message": "Couldn't fetch your file."
+        }
     }
 }

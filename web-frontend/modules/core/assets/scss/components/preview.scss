@@ -44,6 +44,11 @@
   word-wrap: break-word;
   white-space: pre-wrap;
   padding: 20px;
+
+  &--failed {
+    color: $color-error-500;
+    font-size: 200px;
+  }
 }
 
 .preview__loading {
