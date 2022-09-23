@@ -12,6 +12,7 @@ For example:
 * Added support for placeholders in form headings and fields. [#1168](https://gitlab.com/bramw/baserow/-/issues/1168)
 * Fixed an issue where customers with malformed file extensions were unable to snapshot or duplicate properly [#1194](https://gitlab.com/bramw/baserow/-/issues/1194).
 * Added the ability to double click a grid field name so that quick edits can be made. [#1147](https://gitlab.com/bramw/baserow/-/issues/1147).
+* Added support for text file previews. [#1003](https://gitlab.com/bramw/baserow/-/issues/1003)
 
 ### New Features
 
@@ -199,7 +200,6 @@ For example:
 ### New Features
 
 * Added prefill query parameters for forms. [#852](https://gitlab.com/bramw/baserow/-/issues/852)
-* Added support for text file previews. [#1003](https://gitlab.com/bramw/baserow/-/issues/1003)
 * Added Link Row contains filter. [874](https://gitlab.com/bramw/baserow/-/issues/874)
 * Made the styling of the dashboard cleaner and more efficient.
   [#1023](https://gitlab.com/bramw/baserow/-/issues/1023)
