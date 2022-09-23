@@ -173,7 +173,7 @@ export class TextFilePreview extends FilePreviewType {
   }
 
   isCompatible(mimeType, fileName) {
-    return mimeType === 'text/plain'
+    return mimeType.startsWith('text/')
   }
 
   getPreviewComponent() {
