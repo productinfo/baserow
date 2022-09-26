@@ -36,7 +36,8 @@
 }
 
 .preview__text {
-  width: 60%;
+  width: 100%;
+  max-width: 1000px;
   height: 70%;
   font-family: monospace;
   background-color: $white;
