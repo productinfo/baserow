@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from baserow.api.sessions import (
     set_client_undo_redo_action_group_id,
@@ -14,6 +14,9 @@ User = get_user_model()
 class UserFixtures:
     def generate_token(self, user):
         return str(AccessToken.for_user(user))
+
+    def generate_refresh_token(self, user):
+        return str(RefreshToken.for_user(user))
 
     def create_user(self, **kwargs):
         profile_data = {}

@@ -1,10 +1,19 @@
 export default (client) => {
+  const transformResponseToAvoidAuthorizationErrorPopup = (data) => {
+    const parseData = JSON.parse(data || '{}')
+    // This flag will be used in the clientHandler to avoid showing the authorization error popup
+    if (parseData.error?.startsWith('ERROR')) {
+      parseData._disableAuthorizationError = true
+    }
+    return parseData
+  }
   return {
-    login(username, password) {
-      return client.post('/user/token-auth/', {
-        username,
-        password,
-      })
+    login(email, password) {
+      return client.post(
+        '/user/token-auth/',
+        { email, password },
+        { transformResponse: [transformResponseToAvoidAuthorizationErrorPopup] }
+      )
     },
     refresh(refreshToken) {
       return client.post('/user/token-refresh/', {

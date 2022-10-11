@@ -1,27 +1,12 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework import exceptions
-from rest_framework_simplejwt.authentication import (
-    JWTAuthentication as JWTJSONWebTokenAuthentication,
-)
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
 
-from baserow.api.sessions import (
-    set_client_undo_redo_action_group_id_from_request_or_raise_if_invalid,
-    set_untrusted_client_session_id_from_request_or_raise_if_invalid,
-)
+from .sessions import set_user_session_data_from_request
 
 
-class JSONWebTokenAuthentication(JWTJSONWebTokenAuthentication):
-    def get_token_from_request(self, request):
-        header = self.get_header(request)
-        if header is None:
-            return None
-
-        raw_token = self.get_raw_token(header)
-        if raw_token is None:
-            return None
-        return raw_token
-
+class JSONWebTokenAuthentication(JWTAuthentication):
     def authenticate(self, request):
         """
         This method is basically a copy of
@@ -32,26 +17,18 @@ class JSONWebTokenAuthentication(JWTJSONWebTokenAuthentication):
         supplied using JWT-based authentication.  Otherwise returns `None`.
         """
 
-        token = self.get_token_from_request(request)
-        if token is None:
-            return None
-
         try:
-            payload = self.get_validated_token(token)
+            auth_response = super().authenticate(request)
+            if auth_response is None:
+                return None
+            user, token = auth_response
+
         except InvalidToken:
-            msg = "Invalid token."
             raise exceptions.AuthenticationFailed(
-                {"detail": msg, "error": "ERROR_INVALID_TOKEN"}
+                {"detail": "Invalid token", "error": "ERROR_INVALID_TOKEN"}
             )
 
-        user = self.get_user(payload)
-
-        # @TODO this should actually somehow be moved to the ws app.
-        user.web_socket_id = request.headers.get("WebSocketId")
-        set_untrusted_client_session_id_from_request_or_raise_if_invalid(user, request)
-        set_client_undo_redo_action_group_id_from_request_or_raise_if_invalid(
-            user, request
-        )
+        set_user_session_data_from_request(user, request)
 
         return user, token
 

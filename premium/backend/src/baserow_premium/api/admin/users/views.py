@@ -27,11 +27,12 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from baserow.api.decorators import map_exceptions, validate_body
 from baserow.api.schemas import get_error_schema
 from baserow.api.user.schemas import authenticate_user_schema
-from baserow.api.user.serializers import UserSerializer
+from baserow.api.user.serializers import get_all_user_data_serialized
 
 from .serializers import BaserowImpersonateAuthTokenSerializer
 
@@ -205,17 +206,16 @@ class UserAdminImpersonateView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        validated_data = serializer.validated_data
-        user = validated_data.get("user")
+        user = serializer.validated_data["user"]
 
         logger.info(
             f"{request.user.username} ({request.user.id}) requested an "
             f"impersonate token for {user.username} ({user.id})."
         )
-        response = {
-            "access": validated_data["access"],
-            "refresh": validated_data["refresh"],
-            "user": UserSerializer(user).data,
+        serialized_data = {
+            "access": str(AccessToken.for_user(user)),
+            "refresh": str(RefreshToken.for_user(user)),
+            **get_all_user_data_serialized(user, request),
         }
 
-        return Response(response, status=HTTP_200_OK)
+        return Response(serialized_data, status=HTTP_200_OK)

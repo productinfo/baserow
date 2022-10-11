@@ -22,6 +22,7 @@ export const mutations = {
   SET_USER_DATA(state, { access, refresh, user, ...additional }) {
     state.token = access
     state.refresh = refresh
+    state.refresh = refresh
     state.token_data = jwtDecode(access)
     state.user = user
     // Additional entries in the response payload could have been added via the
@@ -111,8 +112,10 @@ export const actions = {
   async refresh({ commit, state, dispatch, getters }, refreshToken) {
     try {
       const { data } = await AuthService(this.$client).refresh(refreshToken)
-      if (!getters.getPreventSetToken) {
-        setToken(data.refresh, this.app)
+      // if ROTATE_REFRESH_TOKEN=False in the backend the response does not contain
+      // a new refresh token. In that case we keep using the old one stored in the cookie.
+      if (data.refresh === undefined) {
+        data.refresh = refreshToken
       }
       commit('SET_USER_DATA', data)
       dispatch('startRefreshTimeout')

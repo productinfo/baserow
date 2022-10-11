@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.fields import CharField, EmailField
 from rest_framework.serializers import ModelSerializer
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from baserow.api.mixins import UnknownFieldRaisesExceptionSerializerMixin
 from baserow.api.user.validators import password_validation
@@ -97,14 +96,3 @@ class BaserowImpersonateAuthTokenSerializer(serializers.Serializer):
 
     class Meta:
         fields = ("user",)
-
-    def validate(self, data):
-        user = data["user"]
-        token = AccessToken.for_user(user)
-        refresh = RefreshToken.for_user(user)
-        return {
-            "user": user,
-            "access": str(token),
-            "refresh": str(refresh),
-            "issued_at": token["iat"],
-        }

@@ -38,14 +38,13 @@ def test_token_auth(api_client, data_fixture):
     assert not user.last_login
 
     response = api_client.post(
-        reverse("api:user:token_auth"),
-        {"email": "no_existing@test.nl", "password": "password"},
-        format="json",
+        reverse("api:user:token_auth"), {"password": "password"}, format="json"
     )
     json = response.json()
     assert response.status_code == HTTP_400_BAD_REQUEST
-    assert json["username"] == ["This field is required."]
+    assert json["email"] == ["This field is required."]
 
+    # accept username for backward compatibility
     response = api_client.post(
         reverse("api:user:token_auth"),
         {"username": "invalid_mail", "password": "password"},
@@ -57,7 +56,16 @@ def test_token_auth(api_client, data_fixture):
 
     response = api_client.post(
         reverse("api:user:token_auth"),
-        {"username": "no_existing@test.nl", "password": "password"},
+        {"email": "invalid_mail", "password": "password"},
+        format="json",
+    )
+    json = response.json()
+    assert response.status_code == HTTP_400_BAD_REQUEST
+    assert json["email"] == ["Enter a valid email address."]
+
+    response = api_client.post(
+        reverse("api:user:token_auth"),
+        {"email": "no_existing@test.nl", "password": "password"},
         format="json",
     )
     json = response.json()
@@ -66,7 +74,7 @@ def test_token_auth(api_client, data_fixture):
 
     response = api_client.post(
         reverse("api:user:token_auth"),
-        {"username": "test@test.nl", "password": "wrong_password"},
+        {"email": "test@test.nl", "password": "wrong_password"},
         format="json",
     )
     json = response.json()
@@ -77,7 +85,7 @@ def test_token_auth(api_client, data_fixture):
         with freeze_time("2020-01-01 12:00"):
             response = api_client.post(
                 reverse("api:user:token_auth"),
-                {"username": "test@test.nl", "password": "password"},
+                {"email": "test@test.nl", "password": "password"},
                 format="json",
             )
             json = response.json()
@@ -103,7 +111,7 @@ def test_token_auth(api_client, data_fixture):
     with freeze_time("2020-01-02 12:00"):
         response = api_client.post(
             reverse("api:user:token_auth"),
-            {"username": " teSt@teSt.nL ", "password": "password"},
+            {"email": " teSt@teSt.nL ", "password": "password"},
             format="json",
         )
         json = response.json()
@@ -124,7 +132,7 @@ def test_token_auth(api_client, data_fixture):
     )
     response = api_client.post(
         reverse("api:user:token_auth"),
-        {"username": "test2@test.nl", "password": "password"},
+        {"email": "test2@test.nl", "password": "password"},
         format="json",
     )
     json = response.json()
@@ -135,15 +143,33 @@ def test_token_auth(api_client, data_fixture):
     user_to_be_deleted = data_fixture.create_user(
         email="test3@test.nl", password="password", to_be_deleted=True
     )
+
+    # check that the user cannot refresh the token if set to be deleted
+    refresh = str(RefreshToken.for_user(user_to_be_deleted))
+    response = api_client.post(
+        reverse("api:user:token_refresh"), {"refresh": refresh}, format="json"
+    )
+    assert response.status_code == HTTP_401_UNAUTHORIZED
+    json = response.json()
+    assert json["detail"] == "No active account found with the given credentials"
+
     response = api_client.post(
         reverse("api:user:token_auth"),
-        {"username": "test3@test.nl", "password": "password"},
+        {"email": "test3@test.nl", "password": "password"},
         format="json",
     )
 
     user_to_be_deleted.refresh_from_db()
-
     assert user_to_be_deleted.profile.to_be_deleted is False
+
+    # check that now the user can refresh the token
+    response = api_client.post(
+        reverse("api:user:token_refresh"), {"refresh": refresh}, format="json"
+    )
+    assert response.status_code == HTTP_200_OK
+    json = response.json()
+    assert "access" in json
+    assert "user" in json
 
 
 @pytest.mark.django_db

@@ -11,8 +11,11 @@ from rest_framework.status import (
     HTTP_200_OK,
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
 )
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from baserow.api.user.registries import UserDataType, user_data_registry
 from baserow.contrib.database.models import Database, Table
@@ -720,7 +723,7 @@ def test_additional_user_data(api_client, data_fixture):
 
         response = api_client.post(
             reverse("api:user:token_auth"),
-            {"username": "test@test.nl", "password": "thisIsAValidPassword"},
+            {"email": "test@test.nl", "password": "thisIsAValidPassword"},
             format="json",
         )
         response_json = response.json()
@@ -792,3 +795,66 @@ def test_schedule_user_deletion(client, data_fixture):
 
     user.refresh_from_db()
     assert user.profile.to_be_deleted is True
+
+
+@pytest.mark.django_db
+def test_token_error_if_user_deleted_or_disabled(api_client, data_fixture):
+    user, token = data_fixture.create_user_and_token(
+        email="test@localhost", password="test"
+    )
+    refresh_token = data_fixture.generate_refresh_token(user)
+
+    # deactivate user and see that token is no longer valid
+    user.is_active = False
+    user.save()
+
+    response = api_client.post(
+        reverse("api:user:token_refresh"),
+        {"refresh": refresh_token},
+        format="json",
+    )
+    assert response.status_code == HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "error": "ERROR_NO_ACTIVE_ACCOUNT",
+        "detail": "No active account found with the given credentials",
+    }
+
+    # reactivate the user
+    user.is_active = True
+    user.save()
+
+    response = api_client.post(
+        reverse("api:user:token_refresh"),
+        {"refresh": refresh_token},
+        format="json",
+    )
+    assert response.status_code == HTTP_200_OK
+
+    # schedule the user for deletion and see that token is no longer valid again
+    user.profile.to_be_deleted = True
+    user.profile.save()
+
+    response = api_client.post(
+        reverse("api:user:token_refresh"),
+        {"refresh": refresh_token},
+        format="json",
+    )
+    assert response.status_code == HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "error": "ERROR_NO_ACTIVE_ACCOUNT",
+        "detail": "No active account found with the given credentials",
+    }
+
+    # remove the user_id from the token
+    token_object = RefreshToken(refresh_token)
+    del token_object.payload[jwt_settings.USER_ID_CLAIM]
+    response = api_client.post(
+        reverse("api:user:token_refresh"),
+        {"refresh": str(token_object)},
+        format="json",
+    )
+    assert response.status_code == HTTP_401_UNAUTHORIZED
+    assert response.json() == {
+        "error": "ERROR_INVALID_TOKEN",
+        "detail": "Token is invalid",
+    }

@@ -274,75 +274,31 @@ MAX_CLIENT_SESSION_ID_LENGTH = 256
 
 CLIENT_UNDO_REDO_ACTION_GROUP_ID_HEADER = "ClientUndoRedoActionGroupId"
 MAX_UNDOABLE_ACTIONS_PER_ACTION_GROUP = 2
+WEBSOCKET_ID_HEADER = "WebsocketId"
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
-    "WebSocketId",
+    WEBSOCKET_ID_HEADER,
     PUBLIC_VIEW_AUTHORIZATION_HEADER,
     CLIENT_SESSION_ID_HEADER,
     CLIENT_UNDO_REDO_ACTION_GROUP_ID_HEADER,
 ]
 
-
-def get_env_timedelta(env_name: str, default: str) -> datetime.timedelta:
-    """
-    Returns the value of the environment variable with the given name as a timedelta.
-    It uses 'm' as suffix for minutes, 'h' for hours, 'd' for days and 's' for seconds.
-    If the environment variable is not set then the default value is returned.
-    """
-
-    value = os.getenv(env_name, default)
-    if isinstance(value, str):
-        if value.endswith("s"):
-            return datetime.timedelta(seconds=int(value))
-        elif value.endswith("m"):
-            return datetime.timedelta(minutes=int(value[:-1]))
-        elif value.endswith("h"):
-            return datetime.timedelta(hours=int(value[:-1]))
-        elif value.endswith("d"):
-            return datetime.timedelta(days=int(value[:-1]))
-        else:
-            raise ValueError(
-                "Invalid time format. Use and interger plus a suffix between s, m, h and d."
-            )
-    return value
-
-
-ACCESS_TOKEN_LIFETIME = get_env_timedelta("BASEROW_ACCESS_TOKEN_LIFETIME", "10m")
-REFRESH_TOKEN_LIFETIME = get_env_timedelta("BASEROW_REFRESH_TOKEN_LIFETIME", "7d")
+ACCESS_TOKEN_LIFETIME = datetime.timedelta(
+    minutes=int(os.getenv("BASEROW_ACCESS_TOKEN_LIFETIME_MINUTES", 10))  # 10 mintues
+)
+REFRESH_TOKEN_LIFETIME = datetime.timedelta(
+    hours=int(os.getenv("BASEROW_REFRESH_TOKEN_LIFETIME_HOURS", 7 * 24))  # 7 days
+)
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
     "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
-    "UPDATE_LAST_LOGIN": False,
-    "ALGORITHM": "HS256",
-    "VERIFYING_KEY": None,
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "JWK_URL": None,
-    "LEEWAY": 0,
     "AUTH_HEADER_TYPES": ("JWT",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
-    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
-    "JTI_CLAIM": "jti",
-    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": None,
-    "SLIDING_TOKEN_REFRESH_LIFETIME": None,
+    # It is recommended that you set BASEROW_JWT_SIGNING_KEY so it is independent
+    # from the Django SECRET_KEY. This will make changing the signing key used for
+    # tokens easier in the event that it is compromised.
+    "SIGNING_KEY": os.getenv("BASEROW_JWT_SIGNING_KEY", os.getenv("SECRET_KEY")),
 }
-
-BASEROW_JWT_SIGNING_KEY = os.getenv("BASEROW_JWT_SIGNING_KEY")
-if BASEROW_JWT_SIGNING_KEY:
-    SIMPLE_JWT["SIGNING_KEY"] = BASEROW_JWT_SIGNING_KEY
-elif "SECRET_KEY" in os.environ:
-    # SECURITY WARNING: BASEROW_JWT_SIGNING_KEY default to the SECRET_KEY value.
-    # Set it to a different value to prevent the SECRET_KEY from being compromised.
-    SIMPLE_JWT["SIGNING_KEY"] = os.getenv("SECRET_KEY")
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Baserow API spec",

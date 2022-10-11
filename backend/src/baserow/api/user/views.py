@@ -11,12 +11,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView as RegularObtainJSONWebToken,
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
 )
-from rest_framework_simplejwt.views import (
-    TokenRefreshView as RegularRefreshJSONWebToken,
-)
-from rest_framework_simplejwt.views import TokenVerifyView as RegularVerifyJSONWebToken
 
 from baserow.api.actions.serializers import (
     UndoRedoResponseSerializer,
@@ -83,7 +81,7 @@ from .serializers import (
 UndoRedoRequestSerializer = get_undo_request_serializer()
 
 
-class ObtainJSONWebToken(RegularObtainJSONWebToken):
+class ObtainJSONWebToken(TokenObtainPairView):
     """
     A slightly modified version of the ObtainJSONWebToken that uses an email as
     username and normalizes that email address using the normalize_email_address
@@ -118,7 +116,7 @@ class ObtainJSONWebToken(RegularObtainJSONWebToken):
         return super().post(*args, **kwargs)
 
 
-class RefreshJSONWebToken(RegularRefreshJSONWebToken):
+class RefreshJSONWebToken(TokenRefreshView):
     serializer_class = TokenRefreshWithUserSerializer
 
     @extend_schema(
@@ -137,11 +135,11 @@ class RefreshJSONWebToken(RegularRefreshJSONWebToken):
         },
         auth=[],
     )
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+    def post(self, *args, **kwargs):
+        return super().post(*args, **kwargs)
 
 
-class VerifyJSONWebToken(RegularVerifyJSONWebToken):
+class VerifyJSONWebToken(TokenVerifyView):
     @extend_schema(
         tags=["User"],
         operation_id="token_verify",
@@ -218,9 +216,9 @@ class UserView(APIView):
                 {
                     "access": str(AccessToken.for_user(user)),
                     "refresh": str(RefreshToken.for_user(user)),
+                    **user_data_registry.get_all_user_data(user, request),
                 }
             )
-            response.update(**user_data_registry.get_all_user_data(user, request))
 
         return Response(response)
 
@@ -265,7 +263,7 @@ class SendResetPasswordEmailView(APIView):
         handler = UserHandler()
 
         try:
-            user = handler.get_user(email=data["email"])
+            user = handler.get_active_user(email=data["email"])
             handler.send_reset_password_email(user, data["base_url"])
         except UserNotFound:
             pass
