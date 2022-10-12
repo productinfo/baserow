@@ -7,8 +7,10 @@ import de from '@baserow_enterprise/locales/de.json'
 import es from '@baserow_enterprise/locales/es.json'
 import it from '@baserow_enterprise/locales/it.json'
 
+import memberStore from '@baserow_enterprise/store/member.js'
+
 export default (context) => {
-  const { app, isDev } = context
+  const { store, app, isDev } = context
 
   // Allow locale file hot reloading
   if (isDev && app.i18n) {
@@ -20,6 +22,8 @@ export default (context) => {
     i18n.mergeLocaleMessage('es', es)
     i18n.mergeLocaleMessage('it', it)
   }
+
+  store.registerModule('member', memberStore)
 
   registerRealtimeEvents(app.$realtime)
 }

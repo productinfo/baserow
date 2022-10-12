@@ -1,5 +1,19 @@
 {
     "enterprise": {
         "licence": "Enterprise"
+    },
+    "MemberRolesModal": {
+        "MemberRolesDatabaseTabTitle": "Database",
+        "MemberRolesTableTabTitle": "Current Table"
+    },
+    "MemberRolesDatabaseTab": {
+        "title": "{databaseName} database",
+        "selectMembers": "Select members",
+        "everyoneHasAccess": "Everyone at {databaseName} workspace can access this database.",
+        "onlyYouHaveAccess": "Only you can access this database."
+    },
+    "MemberRolesShareToggle": {
+        "label": "Share with everyone at {name}",
+        "subLabel": "{totalUserAmount} workspace members"
     }
 }

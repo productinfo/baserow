@@ -1,0 +1,24 @@
+.member-roles-database-tab__header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.member-roles-database-tab__everyone_access_label {
+  color: $color-neutral-700;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.member-roles-share-toggle {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  padding-top: 15px;
+  font-size: 14px;
+  align-items: center;
+}
+
+.member-roles-share-toggle__sub-label {
+  color: $color-neutral-500;
+  font-size: 12px;
+}
