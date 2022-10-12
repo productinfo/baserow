@@ -42,5 +42,10 @@
     "loginError": {
         "title": "Ouch! Something went wrong...",
         "defaultMessage": "An error occurred while trying to log in."
-    }
+    },
+	"sso": {
+	    "providerName": "Name",
+	    "clientId": "Client ID",
+	    "secret": "secret"
+	}
 }

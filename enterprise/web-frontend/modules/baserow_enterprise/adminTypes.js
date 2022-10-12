@@ -7,7 +7,6 @@ class EnterpriseAdminType extends AdminType {
   }
 
   isDeactivated() {
-    // TODO: change with enterprise license
     return !this.app.$registry
       .get('plugin', PremiumPlugin.getType())
       .activeLicenseHasPremiumFeatures()

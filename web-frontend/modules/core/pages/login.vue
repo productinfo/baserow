@@ -9,6 +9,16 @@
       <h1 class="box__head-title">{{ $t('login.title') }}</h1>
       <LangPicker />
     </div>
+    <div v-if="loginButtons.length > 0" class="auth-provider-buttons">
+      <div v-for="loginButton in loginButtons" :key="loginButton.redirect_url">
+        <component
+          :is="getLoginButtonComponent(loginButton)"
+          :redirect-url="loginButton.redirect_url"
+          :name="loginButton.name"
+        >
+        </component>
+      </div>
+    </div>
     <AuthLogin :invitation="invitation" @success="success"> </AuthLogin>
     <div>
       <ul class="login-action__links">
@@ -72,6 +82,7 @@ export default {
     ...mapGetters({
       settings: 'settings/get',
       loginActions: 'authProvider/getAllLoginActions',
+      loginButtons: 'authProvider/getAllLoginButtons',
     }),
   },
   methods: {
@@ -79,6 +90,11 @@ export default {
       return this.$registry
         .get('authProvider', loginAction.type)
         .getLoginActionComponent()
+    },
+    getLoginButtonComponent(loginAction) {
+      return this.$registry
+        .get('authProvider', loginAction.type)
+        .getLoginButtonComponent()
     },
     success() {
       const { original } = this.$route.query
