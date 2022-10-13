@@ -7,7 +7,8 @@ import de from '@baserow_enterprise/locales/de.json'
 import es from '@baserow_enterprise/locales/es.json'
 import it from '@baserow_enterprise/locales/it.json'
 
-import memberStore from '@baserow_enterprise/store/member.js'
+import memberStore from '@baserow_enterprise/store/member'
+import { EnterprisePlugin } from '@baserow_enterprise/plugins'
 
 export default (context) => {
   const { store, app, isDev } = context
@@ -24,6 +25,8 @@ export default (context) => {
   }
 
   store.registerModule('member', memberStore)
+
+  app.$registry.register('plugin', new EnterprisePlugin(context))
 
   registerRealtimeEvents(app.$realtime)
 }

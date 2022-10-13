@@ -5,6 +5,12 @@
     @selected="selected"
   >
     <template #context>
+      <li
+        v-for="(component, index) in additionalContextComponents"
+        :key="index"
+      >
+        <component :is="component" :application="application"></component>
+      </li>
       <li>
         <nuxt-link
           :to="{
@@ -89,6 +95,15 @@ export default {
           .get('job', job.type)
           .isJobPartOfApplication(job, this.application)
       )
+    },
+    additionalContextComponents() {
+      return Object.values(this.$registry.getAll('plugin'))
+        .reduce(
+          (components, plugin) =>
+            components.concat(plugin.getAdditionalDatabaseContextComponents()),
+          []
+        )
+        .filter((component) => component !== null)
     },
   },
   methods: {

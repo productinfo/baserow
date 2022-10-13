@@ -15,5 +15,8 @@
     "MemberRolesShareToggle": {
         "label": "Share with everyone at {name}",
         "subLabel": "{totalUserAmount} workspace members"
+    },
+    "MemberRolesContexItem": {
+        "label": "Manage database members"
     }
 }
