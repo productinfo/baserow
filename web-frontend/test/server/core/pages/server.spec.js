@@ -50,7 +50,7 @@ describe('index redirect', () => {
 
   test('login page renders', async () => {
     const { html } = await nuxt.server.renderRoute('/login')
-    expect(html).toContain('Login')
+    expect(html).toContain('Sign In')
   })
 
   test('sign up page renders', async () => {

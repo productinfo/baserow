@@ -193,7 +193,7 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
         validated_data.update(
             **get_all_user_data_serialized(self.user, self.context["request"])
         )
-        UserHandler().user_signed_in(self.user)
+        UserHandler().user_signed_in_via_default_provider(self.user)
 
         return validated_data
 
