@@ -118,6 +118,7 @@ export class TestApp {
         matched: [],
       },
       $featureFlags: { includes: () => true },
+      $hasPermission: () => true,
     }
     this._app.$clientErrorMap = new ClientErrorMap(this._app)
     this._vueContext = bootstrapVueContext()

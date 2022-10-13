@@ -307,6 +307,8 @@ SIMPLE_JWT = {
     "USER_AUTHENTICATION_RULE": lambda user: user is not None,
 }
 
+PERMISSION_MANAGERS = ["core", "staff", "member", "basic"]
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Baserow API spec",
     "DESCRIPTION": "",
