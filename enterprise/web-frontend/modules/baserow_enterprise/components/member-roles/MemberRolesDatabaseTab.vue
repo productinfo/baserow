@@ -15,16 +15,16 @@
     <span class="member-roles-database-tab__everyone_access_label">
       {{ descriptionText }}
     </span>
-    <member-roles-share-toggle
+    <MemberRolesShareToggle
       :name="database.name"
       :toggled.sync="isSharedWithEveryone"
     />
-    <member-roles-members-list
+    <MemberRolesMembersList
       :members="databaseMembers"
       scope-type="database"
       :scope="scope"
     />
-    <role-assignment-modal ref="roleAssignmentModal" />
+    <RoleAssignmentModal ref="roleAssignmentModal" />
   </div>
 </template>
 

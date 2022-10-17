@@ -6,11 +6,11 @@
         {{ $t('MemberRolesShareToggle.subLabel', { totalUserAmount }) }}
       </div>
     </div>
-    <switch-input
+    <SwitchInput
       :value="toggled"
       large
       @input="$emit('update:toggled', $event)"
-    ></switch-input>
+    ></SwitchInput>
   </div>
 </template>
 

@@ -18,5 +18,16 @@
     },
     "MemberRolesContexItem": {
         "label": "Manage database members"
+    },
+    "RoleAssignmentModal": {
+        "membersTab": "Members",
+        "teamsTab": "Teams",
+        "subjectTypeNameMembers": "members",
+        "subjectTypeNameTeams": "teams"
+    },
+    "SubjectSelectList": {
+       "searchPlaceholder": "Find {subjectTypeName}...",
+        "invite": "Invite {subjectsSelectedCount} {subjectTypeName}",
+        "selectedAmountLabel": "{subjectsSelectedCount} {subjectTypeName} selected"
     }
 }
