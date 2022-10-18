@@ -15,10 +15,8 @@ export default (client) => {
         { transformResponse: [transformResponseToAvoidAuthorizationErrorPopup] }
       )
     },
-    refresh(refreshToken) {
-      return client.post('/user/token-refresh/', {
-        refresh: refreshToken,
-      })
+    refresh(refresh) {
+      return client.post('/user/token-refresh/', { refresh })
     },
     register(
       email,

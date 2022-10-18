@@ -2,8 +2,9 @@ from typing import Optional, Type
 
 from django.contrib.auth.models import AbstractUser
 
+from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.settings import api_settings as jwt_settings
-from rest_framework_simplejwt.tokens import AccessToken, Token, TokenError
+from rest_framework_simplejwt.tokens import AccessToken, Token
 
 
 def get_user_from_jwt_token(
@@ -33,4 +34,4 @@ def get_user_from_jwt_token(
         )
     except UserNotFound:
         # It could happen if the user was deleted after the token was issued.
-        raise TokenError("User does not exist.")
+        raise InvalidToken("User does not exist.")

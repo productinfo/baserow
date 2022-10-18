@@ -6,9 +6,11 @@ from django.db import transaction
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from itsdangerous.exc import BadSignature, BadTimeSignature, SignatureExpired
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -57,8 +59,10 @@ from .errors import (
     ERROR_CLIENT_SESSION_ID_HEADER_NOT_SET,
     ERROR_DISABLED_RESET_PASSWORD,
     ERROR_DISABLED_SIGNUP,
+    ERROR_INVALID_CREDENTIALS,
     ERROR_INVALID_OLD_PASSWORD,
     ERROR_INVALID_PASSWORD,
+    ERROR_INVALID_TOKEN,
     ERROR_UNDO_REDO_LOCK_CONFLICT,
     ERROR_USER_IS_LAST_ADMIN,
     ERROR_USER_NOT_FOUND,
@@ -112,6 +116,7 @@ class ObtainJSONWebToken(TokenObtainPairView):
         },
         auth=[],
     )
+    @map_exceptions({AuthenticationFailed: ERROR_INVALID_CREDENTIALS})
     def post(self, *args, **kwargs):
         return super().post(*args, **kwargs)
 
@@ -135,6 +140,9 @@ class RefreshJSONWebToken(TokenRefreshView):
         },
         auth=[],
     )
+    @map_exceptions(
+        {KeyError: ERROR_INVALID_TOKEN, InvalidToken: ERROR_INVALID_CREDENTIALS}
+    )
     def post(self, *args, **kwargs):
         return super().post(*args, **kwargs)
 
@@ -150,6 +158,7 @@ class VerifyJSONWebToken(TokenVerifyView):
         },
         auth=[],
     )
+    @map_exceptions({InvalidToken: ERROR_INVALID_CREDENTIALS})
     def post(self, *args, **kwargs):
         return super().post(*args, **kwargs)
 

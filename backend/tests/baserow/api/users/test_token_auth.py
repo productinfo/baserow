@@ -70,7 +70,7 @@ def test_token_auth(api_client, data_fixture):
     )
     json = response.json()
     assert response.status_code == HTTP_401_UNAUTHORIZED
-    assert json["detail"] == "No active account found with the given credentials"
+    assert json["detail"] == "No active account found with the given credentials."
 
     response = api_client.post(
         reverse("api:user:token_auth"),
@@ -79,7 +79,7 @@ def test_token_auth(api_client, data_fixture):
     )
     json = response.json()
     assert response.status_code == HTTP_401_UNAUTHORIZED
-    assert json["detail"] == "No active account found with the given credentials"
+    assert json["detail"] == "No active account found with the given credentials."
 
     with patch.dict(plugin_registry.registry, {"tmp": plugin_mock}):
         with freeze_time("2020-01-01 12:00"):
@@ -137,7 +137,7 @@ def test_token_auth(api_client, data_fixture):
     )
     json = response.json()
     assert response.status_code == HTTP_401_UNAUTHORIZED
-    assert json["detail"] == "No active account found with the given credentials"
+    assert json["detail"] == "No active account found with the given credentials."
 
     # Check that a login cancel user deletion
     user_to_be_deleted = data_fixture.create_user(
@@ -151,7 +151,7 @@ def test_token_auth(api_client, data_fixture):
     )
     assert response.status_code == HTTP_401_UNAUTHORIZED
     json = response.json()
-    assert json["detail"] == "No active account found with the given credentials"
+    assert json["detail"] == "No active account found with the given credentials."
 
     response = api_client.post(
         reverse("api:user:token_auth"),

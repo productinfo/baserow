@@ -815,8 +815,8 @@ def test_token_error_if_user_deleted_or_disabled(api_client, data_fixture):
     )
     assert response.status_code == HTTP_401_UNAUTHORIZED
     assert response.json() == {
-        "error": "ERROR_NO_ACTIVE_ACCOUNT",
-        "detail": "No active account found with the given credentials",
+        "error": "ERROR_INVALID_CREDENTIALS",
+        "detail": "No active account found with the given credentials.",
     }
 
     # reactivate the user
@@ -841,8 +841,8 @@ def test_token_error_if_user_deleted_or_disabled(api_client, data_fixture):
     )
     assert response.status_code == HTTP_401_UNAUTHORIZED
     assert response.json() == {
-        "error": "ERROR_NO_ACTIVE_ACCOUNT",
-        "detail": "No active account found with the given credentials",
+        "error": "ERROR_INVALID_CREDENTIALS",
+        "detail": "No active account found with the given credentials.",
     }
 
     # remove the user_id from the token
@@ -856,5 +856,5 @@ def test_token_error_if_user_deleted_or_disabled(api_client, data_fixture):
     assert response.status_code == HTTP_401_UNAUTHORIZED
     assert response.json() == {
         "error": "ERROR_INVALID_TOKEN",
-        "detail": "Token is invalid",
+        "detail": "Token is invalid.",
     }

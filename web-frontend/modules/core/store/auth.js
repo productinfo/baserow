@@ -22,8 +22,7 @@ export const mutations = {
   SET_USER_DATA(state, { access, refresh, user, ...additional }) {
     state.token = access
     state.refresh = refresh
-    state.refresh = refresh
-    state.token_data = jwtDecode(access)
+    state.token_data = jwtDecode(state.token)
     state.user = user
     // Additional entries in the response payload could have been added via the
     // backend user data registry. We want to store them in the `additional` state so
@@ -109,13 +108,16 @@ export const actions = {
    * new refresh timeout. If unsuccessful the existing cookie and user data is
    * cleared.
    */
-  async refresh({ commit, state, dispatch, getters }, refreshToken) {
+  async refresh({ commit, dispatch, getters }, refreshToken) {
     try {
       const { data } = await AuthService(this.$client).refresh(refreshToken)
-      // if ROTATE_REFRESH_TOKEN=False in the backend the response does not contain
-      // a new refresh token. In that case we keep using the old one stored in the cookie.
+      // if ROTATE_REFRESH_TOKEN=False in the backend the response will not contain
+      // a new refresh token. In that case we keep using the old originally one stored in the cookie.
       if (data.refresh === undefined) {
         data.refresh = refreshToken
+      }
+      if (!getters.getPreventSetToken) {
+        setToken(data.refresh, this.app)
       }
       commit('SET_USER_DATA', data)
       dispatch('startRefreshTimeout')

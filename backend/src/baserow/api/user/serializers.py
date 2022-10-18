@@ -4,13 +4,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 
-from rest_framework import exceptions, serializers
+from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer,
     TokenRefreshSerializer,
 )
-from rest_framework_simplejwt.tokens import TokenError
 
 from baserow.api.groups.invitations.serializers import UserGroupInvitationSerializer
 from baserow.api.user.jwt import get_user_from_jwt_token
@@ -190,13 +189,7 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
                 raise serializers.ValidationError({"email": "This field is required."})
             attrs[self.username_field] = email
 
-        try:
-            validated_data = super().validate(attrs)
-        except serializers.ValidationError as exc:
-            raise serializers.ValidationError(
-                {"detail": exc.detail, "error": "ERROR_INVALID_CREDENTIALS"}, exc.code
-            )
-
+        validated_data = super().validate(attrs)
         validated_data.update(
             **get_all_user_data_serialized(self.user, self.context["request"])
         )
@@ -206,26 +199,12 @@ class TokenObtainPairWithUserSerializer(TokenObtainPairSerializer):
 
 
 class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
-
-    default_error_messages = TokenObtainPairSerializer.default_error_messages
-
     def validate(self, attrs):
         validated_data = super().validate(attrs)
         access_token = validated_data["access"]
-        try:
-            user = get_user_from_jwt_token(access_token)
-        except KeyError:
-            raise exceptions.AuthenticationFailed(
-                {"detail": "Token is invalid", "error": "ERROR_INVALID_TOKEN"}
-            )
-        except TokenError:
-            # can happen if the user has been deleted/disabled in the meantime
-            raise exceptions.AuthenticationFailed(
-                {
-                    "detail": self.error_messages["no_active_account"],
-                    "error": "ERROR_NO_ACTIVE_ACCOUNT",
-                }
-            )
+
+        user = get_user_from_jwt_token(access_token)
+
         validated_data.update(
             **get_all_user_data_serialized(user, self.context["request"])
         )

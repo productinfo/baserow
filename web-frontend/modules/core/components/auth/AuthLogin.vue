@@ -160,8 +160,6 @@ export default {
       } catch (error) {
         if (error.handler) {
           const response = error.handler.response
-          // Because the API server does not yet respond with proper error codes we
-          // manually have to add the error here.
           if (response && response.status === 401) {
             this.showError(
               this.$t('error.incorrectCredentialTitle'),

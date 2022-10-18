@@ -408,9 +408,11 @@ export function makeErrorResponseInterceptor(store, app, clientErrorMap) {
 
     // Add the error message in the response to the error object.
     const rspCode = error.response?.status
-    const rspData = error.response?.data || {}
+    const rspData = error.response?.data
+    // disabled in the login page because the error is handled by the login form
+    const showAuthorizationError = !rspData?._disableAuthorizationError
 
-    if (rspCode === 401 && !rspData._disableAuthorizationError) {
+    if (rspCode === 401 && showAuthorizationError) {
       store.dispatch('notification/setAuthorizationError', true)
       error.handler.handled()
     } else if (

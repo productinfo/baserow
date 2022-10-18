@@ -20,11 +20,6 @@ describe('index redirect', () => {
         'VybmFtZSI6InRlc3RAdGVzdCIsImV4cCI6MTk5OTk5OTk5OSwiZW1haWwiO' +
         'iJ0ZXN0QHRlc3QubmwiLCJvcmlnX2lhdCI6MTU2Mjc3MzQxNH0.2i0gqrcH' +
         '5uy7mk4kf3LoLpZYXoyMrOfi0fDQneVcaFE',
-      refresh:
-        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ1c2' +
-        'VybmFtZSI6InRlc3RAdGVzdCIsImV4cCI6MTk5OTk5OTk5OSwiZW1haWwiO' +
-        'iJ0ZXN0QHRlc3QubmwiLCJvcmlnX2lhdCI6MTU2Mjc3MzQxNH0.2i0gqrcH' +
-        '5uy7mk4kf3LoLpZYXoyMrOfi0fDQneVcaFE',
       user: {
         first_name: 'Test',
         username: 'test@test.nl',
