@@ -3,6 +3,7 @@
     :disabled="disabled"
     :value="value"
     :show-search="false"
+    class="data-table__table-cell-content-full-width"
     @input="onInput"
   >
     <DropdownItem
@@ -25,6 +26,7 @@
 
 <script>
 import DropdownAction from '@baserow/modules/core/components/DropdownAction'
+
 export default {
   name: 'DropdownField',
   components: { DropdownAction },

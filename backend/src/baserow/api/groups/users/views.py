@@ -43,11 +43,10 @@ from .serializers import (
 
 
 class GroupUsersView(APIView, SearchableViewMixin, SortableViewMixin):
-    search_fields = ["user__username", "user__email", "permissions"]
+    search_fields = ["user__username", "user__email"]
     sort_field_mapping = {
         "name": "user__username",
-        "email": "user__email",
-        "permissions": "permissions",
+        "email": "user__email"
     }
 
     @extend_schema(

@@ -28,7 +28,7 @@
         </div>
       </template>
     </CrudTable>
-    <MembersInviteModal
+    <GroupMemberInviteModal
       ref="inviteModal"
       :group="group"
       @invite-submitted="$refs.crudTable.fetch()"
@@ -45,11 +45,11 @@ import SimpleField from '@baserow/modules/core/components/crudTable/fields/Simpl
 import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import ActionsField from '@baserow/modules/core/components/crudTable/fields/ActionsField'
-import MembersInviteModal from '@baserow/modules/core/components/settings/members/MembersInviteModal'
+import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
 
 export default {
   name: 'MembersInvitesTable',
-  components: { CrudTable, MembersInviteModal },
+  components: { CrudTable, GroupMemberInviteModal },
   props: {
     group: {
       type: Object,
@@ -97,7 +97,9 @@ export default {
           'permissions',
           this.$t('membersSettings.invitesTable.columns.role'),
           DropdownField,
-          true,
+          false,
+          false,
+          false,
           {
             options: [
               {

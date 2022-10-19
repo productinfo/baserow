@@ -27,10 +27,17 @@
         </div>
       </template>
     </CrudTable>
-    <MembersInviteModal
+    <GroupMemberInviteModal
       ref="inviteModal"
       :group="group"
-      @invite-submitted="navigateToInvites"
+      @invite-submitted="
+        $router.push({
+          name: 'settings-invites',
+          params: {
+            groupId: group.id,
+          },
+        })
+      "
     />
   </div>
 </template>
@@ -43,12 +50,12 @@ import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
 import { notifyIf } from '@baserow/modules/core/utils/error'
-import MembersInviteModal from '@baserow/modules/core/components/settings/members/MembersInviteModal'
+import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
 import ActionsField from '@baserow/modules/core/components/crudTable/fields/ActionsField'
 
 export default {
   name: 'MembersTable',
-  components: { CrudTable, MembersInviteModal },
+  components: { CrudTable, GroupMemberInviteModal },
   props: {
     group: {
       type: Object,
@@ -87,7 +94,7 @@ export default {
           'permissions',
           this.$t('membersSettings.membersTable.columns.role'),
           DropdownField,
-          true,
+          false,
           false,
           false,
           {
@@ -168,14 +175,6 @@ export default {
       } catch (error) {
         notifyIf(error, 'group')
       }
-    },
-    navigateToInvites() {
-      this.$router.push({
-        name: 'settings-invites',
-        params: {
-          groupId: this.group.id,
-        },
-      })
     },
   },
 }
