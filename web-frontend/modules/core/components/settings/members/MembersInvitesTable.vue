@@ -31,7 +31,7 @@
     <MembersInviteModal
       ref="inviteModal"
       :group="group"
-      @invite-submitted="$emit('invite-submitted', $event)"
+      @invite-submitted="$refs.crudTable.fetch()"
     />
   </div>
 </template>
@@ -165,9 +165,6 @@ export default {
       } catch (error) {
         notifyIf(error, 'group')
       }
-    },
-    refresh() {
-      this.$refs.crudTable.fetch()
     },
   },
 }

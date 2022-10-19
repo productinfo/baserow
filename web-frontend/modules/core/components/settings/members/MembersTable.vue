@@ -30,7 +30,7 @@
     <MembersInviteModal
       ref="inviteModal"
       :group="group"
-      @invite-submitted="$emit('invite-submitted', $event)"
+      @invite-submitted="navigateToInvites"
     />
   </div>
 </template>
@@ -168,6 +168,14 @@ export default {
       } catch (error) {
         notifyIf(error, 'group')
       }
+    },
+    navigateToInvites() {
+      this.$router.push({
+        name: 'settings-invites',
+        params: {
+          groupId: this.group.id,
+        },
+      })
     },
   },
 }
