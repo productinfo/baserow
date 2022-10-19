@@ -178,6 +178,15 @@
       color: $color-neutral-500;
     }
   }
+
+  &.checkbox--small::before {
+    @include absolute(6px, auto, 0, 0);
+
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    font-size: 12px;
+  }
 }
 
 .radio {
