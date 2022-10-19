@@ -1,7 +1,6 @@
 <template>
   <CrudTable
-    :left-columns="leftColumns"
-    :right-columns="rightColumns"
+    :columns="columns"
     :service="service"
     row-id-key="id"
     @edit-group="displayEditGroupContext"
@@ -30,14 +29,15 @@
 
 <script>
 import GroupsAdminService from '@baserow_premium/services/admin/groups'
-import CrudTable from '@baserow/modules/core/components/crud_table/CrudTable'
-import SimpleField from '@baserow/modules/core/components/crud_table/fields/SimpleField'
-import LocalDateField from '@baserow/modules/core/components/crud_table/fields/LocalDateField'
+import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
+import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
+import LocalDateField from '@baserow/modules/core/components/crudTable/fields/LocalDateField'
 import GroupUsersField from '@baserow_premium/components/admin/groups/fields/GroupUsersField'
 import GroupNameField from '@baserow_premium/components/admin/groups/fields/GroupNameField'
+import GroupMoreField from '@baserow_premium/components/admin/groups/fields/GroupMoreField'
 import EditGroupContext from '@baserow_premium/components/admin/groups/contexts/EditGroupContext'
 import HiddenUsersContext from '@baserow_premium/components/admin/groups/contexts/HiddenUsersContext'
-import CrudTableColumn from '@baserow/modules/core/crud_table/crudTableColumn'
+import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 
 export default {
   name: 'GroupsAdminTable',
@@ -47,48 +47,32 @@ export default {
     EditGroupContext,
   },
   data() {
-    this.leftColumns = [
-      new CrudTableColumn(
-        'id',
-        () => this.$t('groupsAdminTable.id'),
-        SimpleField,
-        'min-content',
-        'max-content',
-        true
-      ),
+    this.columns = [
       new CrudTableColumn(
         'name',
         () => this.$t('groupsAdminTable.name'),
         GroupNameField,
-        '200px',
-        'max-content',
+        true,
         true
       ),
-    ]
-    this.rightColumns = [
       new CrudTableColumn(
         'users',
         () => this.$t('groupsAdminTable.members'),
-        GroupUsersField,
-        '100px',
-        '500px'
+        GroupUsersField
       ),
       new CrudTableColumn(
         'application_count',
         () => this.$t('groupsAdminTable.applications'),
         SimpleField,
-        'min-content',
-        'max-content',
         true
       ),
       new CrudTableColumn(
         'created_on',
         () => this.$t('groupsAdminTable.created'),
         LocalDateField,
-        'min-content',
-        '200px',
         true
       ),
+      new CrudTableColumn('more', '', GroupMoreField, false, false, true),
     ]
     this.service = GroupsAdminService(this.$client)
     return {

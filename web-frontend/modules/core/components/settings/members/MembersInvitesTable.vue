@@ -3,8 +3,7 @@
     <CrudTable
       ref="crudTable"
       :service="service"
-      :left-columns="leftColumns"
-      :right-columns="rightColumns"
+      :columns="columns"
       row-id-key="id"
       @rows-update="invitesAmount = $event.length"
       @remove="remove"
@@ -21,7 +20,10 @@
         </div>
       </template>
       <template #header-right-side>
-        <div class="button margin-left-1" @click="$refs.inviteModal.show()">
+        <div
+          class="button button--large margin-left-2"
+          @click="$refs.inviteModal.show()"
+        >
           {{ $t('membersSettings.membersTable.inviteMember') }}
         </div>
       </template>
@@ -35,14 +37,14 @@
 </template>
 
 <script>
-import CrudTable from '@baserow/modules/core/components/crud_table/CrudTable'
+import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import { mapGetters } from 'vuex'
 import GroupService from '@baserow/modules/core/services/group'
-import CrudTableColumn from '@baserow/modules/core/crud_table/crudTableColumn'
-import SimpleField from '@baserow/modules/core/components/crud_table/fields/SimpleField'
-import DropdownField from '@baserow/modules/core/components/crud_table/fields/DropdownField'
+import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
+import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
+import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
 import { notifyIf } from '@baserow/modules/core/utils/error'
-import ActionsField from '@baserow/modules/core/components/crud_table/fields/ActionsField'
+import ActionsField from '@baserow/modules/core/components/crudTable/fields/ActionsField'
 import MembersInviteModal from '@baserow/modules/core/components/settings/members/MembersInviteModal'
 
 export default {
@@ -76,34 +78,25 @@ export default {
         options,
       }
     },
-    leftColumns() {
+    columns() {
       return [
         new CrudTableColumn(
           'email',
           this.$t('membersSettings.invitesTable.columns.email'),
           SimpleField,
-          'min-content',
-          '2fr',
+          true,
           true
         ),
-      ]
-    },
-    rightColumns() {
-      return [
         new CrudTableColumn(
           'message',
           this.$t('membersSettings.invitesTable.columns.message'),
           SimpleField,
-          'min-content',
-          '3fr',
           true
         ),
         new CrudTableColumn(
           'permissions',
           this.$t('membersSettings.invitesTable.columns.role'),
           DropdownField,
-          'min-content',
-          '3fr',
           true,
           {
             options: [
@@ -126,30 +119,20 @@ export default {
             },
           }
         ),
-        new CrudTableColumn(
-          null,
-          null,
-          ActionsField,
-          'min-content',
-          'min-content',
-          false,
-          {
-            actions: [
-              {
-                label: this.$t(
-                  'membersSettings.invitesTable.actions.copyEmail'
-                ),
-                onClickEventName: 'copy-email',
-              },
-              {
-                label: this.$t('membersSettings.invitesTable.actions.remove'),
-                onClickEventName: 'remove',
-                disabled: (row) => row.user_id === this.userId,
-                colorClass: 'color--deep-dark-red',
-              },
-            ],
-          }
-        ),
+        new CrudTableColumn(null, null, ActionsField, false, false, true, {
+          actions: [
+            {
+              label: this.$t('membersSettings.invitesTable.actions.copyEmail'),
+              onClickEventName: 'copy-email',
+            },
+            {
+              label: this.$t('membersSettings.invitesTable.actions.remove'),
+              onClickEventName: 'remove',
+              disabled: (row) => row.user_id === this.userId,
+              colorClass: 'color--deep-dark-red',
+            },
+          ],
+        }),
       ]
     },
   },

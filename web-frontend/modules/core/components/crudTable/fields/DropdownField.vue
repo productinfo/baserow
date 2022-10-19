@@ -1,28 +1,26 @@
 <template>
-  <div class="crudtable__dropdown-field">
-    <Dropdown
-      :disabled="disabled"
-      :value="value"
-      :show-search="false"
-      @input="onInput"
+  <Dropdown
+    :disabled="disabled"
+    :value="value"
+    :show-search="false"
+    @input="onInput"
+  >
+    <DropdownItem
+      v-for="option in options"
+      :key="option.value"
+      :name="option.name"
+      :value="option.value"
+      :description="option.description"
+    ></DropdownItem>
+    <DropdownAction
+      v-if="action"
+      class="margin-top-1"
+      :label="action.label"
+      :color-class="action.colorClass"
+      @click="$emit(action.onClickEventName, row)"
     >
-      <DropdownItem
-        v-for="option in options"
-        :key="option.value"
-        :name="option.name"
-        :value="option.value"
-        :description="option.description"
-      ></DropdownItem>
-      <DropdownAction
-        v-if="action"
-        class="margin-top-1"
-        :label="action.label"
-        :color-class="action.colorClass"
-        @click="$emit(action.onClickEventName, row)"
-      >
-      </DropdownAction>
-    </Dropdown>
-  </div>
+    </DropdownAction>
+  </Dropdown>
 </template>
 
 <script>

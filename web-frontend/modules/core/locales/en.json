@@ -405,7 +405,7 @@
         "monthsAgo": "0 months ago | 1 month ago | {n} months ago",
         "yearsAgo": "0 years ago | 1 year ago | {n} years ago"
     },
-    "crudTableSearchContext": {
+    "crudTableSearch": {
         "search": "Search"
     },
     "membersSettings": {

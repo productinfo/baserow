@@ -112,9 +112,11 @@
                 "
               >
                 <div class="data-table__table-cell-content">
-                  <a href="#" class="data-table__more">
-                    <i class="fas fa-ellipsis-h"></i>
-                  </a>
+                  <div class="data-table__more-wrapper">
+                    <a href="#" class="data-table__more">
+                      <i class="fas fa-ellipsis-h"></i>
+                    </a>
+                  </div>
                 </div>
               </td>
             </tr>

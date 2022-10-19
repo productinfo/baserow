@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <a ref="contextLink" class="crudtable__actions-field__link" @click="show">
+  <div class="data-table__more-wrapper">
+    <a ref="contextLink" class="data-table__more" @click="show">
       <i class="fas fa-ellipsis-h"></i>
     </a>
     <Context ref="context">

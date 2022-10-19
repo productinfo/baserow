@@ -1,7 +1,6 @@
 <template>
   <CrudTable
-    :left-columns="leftColumns"
-    :right-columns="rightColumns"
+    :columns="columns"
     :service="service"
     row-id-key="id"
     @edit-user="displayEditUserContext"
@@ -32,14 +31,15 @@
 <script>
 import UserAdminService from '@baserow_premium/services/admin/users'
 import UsernameField from '@baserow_premium/components/admin/users/fields/UsernameField'
+import MoreField from '@baserow_premium/components/admin/users/fields/MoreField'
 import UserGroupsField from '@baserow_premium/components/admin/users/fields/UserGroupsField'
-import CrudTable from '@baserow/modules/core/components/crud_table/CrudTable'
-import SimpleField from '@baserow/modules/core/components/crud_table/fields/SimpleField'
-import LocalDateField from '@baserow/modules/core/components/crud_table/fields/LocalDateField'
+import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
+import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
+import LocalDateField from '@baserow/modules/core/components/crudTable/fields/LocalDateField'
 import ActiveField from '@baserow_premium/components/admin/users/fields/ActiveField'
 import EditUserContext from '@baserow_premium/components/admin/users/contexts/EditUserContext'
 import HiddenGroupsContext from '@baserow_premium/components/admin/users/contexts/HiddenGroupsContext'
-import CrudTableColumn from '@baserow/modules/core/crud_table/crudTableColumn'
+import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 
 export default {
   name: 'UsersAdminTable',
@@ -49,64 +49,44 @@ export default {
     EditUserContext,
   },
   data() {
-    this.leftColumns = [
-      new CrudTableColumn(
-        'id',
-        () => this.$t('usersAdminTable.id'),
-        SimpleField,
-        'min-content',
-        'max-content',
-        true
-      ),
+    this.columns = [
       new CrudTableColumn(
         'username',
         () => this.$t('usersAdminTable.username'),
         UsernameField,
-        '200px',
-        'max-content',
+        true,
         true
       ),
-    ]
-    this.rightColumns = [
       new CrudTableColumn(
         'name',
         () => this.$t('usersAdminTable.name'),
         SimpleField,
-        '100px',
-        '200px',
         true
       ),
       new CrudTableColumn(
         'groups',
         () => this.$t('usersAdminTable.groups'),
-        UserGroupsField,
-        '100px',
-        '500px'
+        UserGroupsField
       ),
       new CrudTableColumn(
         'last_login',
         () => this.$t('usersAdminTable.lastLogin'),
         LocalDateField,
-        'min-content',
-        '200px',
         true
       ),
       new CrudTableColumn(
         'date_joined',
         () => this.$t('usersAdminTable.dateJoined'),
         LocalDateField,
-        'min-content',
-        '200px',
         true
       ),
       new CrudTableColumn(
         'is_active',
         () => this.$t('premium.user.active'),
         ActiveField,
-        'min-content',
-        '200px',
         true
       ),
+      new CrudTableColumn('more', '', MoreField, false, false, true),
     ]
     this.service = UserAdminService(this.$client)
     return {
