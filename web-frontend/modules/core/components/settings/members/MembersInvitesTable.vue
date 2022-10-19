@@ -6,8 +6,7 @@
       :columns="columns"
       row-id-key="id"
       @rows-update="invitesAmount = $event.length"
-      @remove="remove"
-      @copy-email="copyEmail"
+      @row-context="onRowContext"
     >
       <template #header-left-side>
         <div class="crudtable__header-title">
@@ -27,6 +26,13 @@
           {{ $t('membersSettings.membersTable.inviteMember') }}
         </div>
       </template>
+      <template #menus>
+        <EditInviteContext
+          ref="editInviteContext"
+          :invitation="editInvitation"
+          @refresh="$refs.crudTable.fetch()"
+        ></EditInviteContext>
+      </template>
     </CrudTable>
     <GroupMemberInviteModal
       ref="inviteModal"
@@ -37,19 +43,19 @@
 </template>
 
 <script>
+import { notifyIf } from '@baserow/modules/core/utils/error'
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
-import { mapGetters } from 'vuex'
 import GroupService from '@baserow/modules/core/services/group'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
-import { notifyIf } from '@baserow/modules/core/utils/error'
-import ActionsField from '@baserow/modules/core/components/crudTable/fields/ActionsField'
+import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
 import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
+import EditInviteContext from '@baserow/modules/core/components/settings/members/EditInviteContext'
 
 export default {
   name: 'MembersInvitesTable',
-  components: { CrudTable, GroupMemberInviteModal },
+  components: { EditInviteContext, CrudTable, GroupMemberInviteModal },
   props: {
     group: {
       type: Object,
@@ -58,11 +64,11 @@ export default {
   },
   data() {
     return {
+      editInvitation: {},
       invitesAmount: 0,
     }
   },
   computed: {
-    ...mapGetters({ userId: 'auth/getUserId' }),
     service() {
       const service = GroupService(this.$client)
 
@@ -121,24 +127,23 @@ export default {
             },
           }
         ),
-        new CrudTableColumn(null, null, ActionsField, false, false, true, {
-          actions: [
-            {
-              label: this.$t('membersSettings.invitesTable.actions.copyEmail'),
-              onClickEventName: 'copy-email',
-            },
-            {
-              label: this.$t('membersSettings.invitesTable.actions.remove'),
-              onClickEventName: 'remove',
-              disabled: (row) => row.user_id === this.userId,
-              colorClass: 'color--deep-dark-red',
-            },
-          ],
-        }),
+        new CrudTableColumn(null, null, MoreField, false, false, true),
       ]
     },
   },
   methods: {
+    onRowContext({ row, event, target }) {
+      if (target === undefined) {
+        target = {
+          left: event.clientX,
+          top: event.clientY,
+        }
+      }
+
+      const action = row.id === this.editInvitation.id ? 'toggle' : 'show'
+      this.editInvitation = row
+      this.$refs.editInviteContext[action](target, 'bottom', 'left', 4)
+    },
     async roleUpdate(permissionsNew, { permissions, id }) {
       if (permissionsNew === permissions) {
         return
@@ -148,22 +153,6 @@ export default {
         await GroupService(this.$client).updateInvitation(id, {
           permissions: permissionsNew,
         })
-      } catch (error) {
-        notifyIf(error, 'group')
-      }
-    },
-    async copyEmail({ email }) {
-      await navigator.clipboard.writeText(email)
-      await this.$store.dispatch('notification/add', {
-        type: 'success',
-        title: this.$t('membersSettings.membersTable.copiedEmail.title'),
-        message: this.$t('membersSettings.membersTable.copiedEmail.message'),
-      })
-    },
-    async remove(invitation) {
-      try {
-        await GroupService(this.$client).deleteInvitation(invitation.id)
-        await this.refresh()
       } catch (error) {
         notifyIf(error, 'group')
       }

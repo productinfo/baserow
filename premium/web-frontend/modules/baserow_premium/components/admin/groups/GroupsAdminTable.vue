@@ -3,7 +3,6 @@
     :columns="columns"
     :service="service"
     row-id-key="id"
-    @edit-group="displayEditGroupContext"
     @show-hidden-groups="displayHiddenUsers"
     @row-context="onRowContext"
   >
@@ -32,9 +31,9 @@ import GroupsAdminService from '@baserow_premium/services/admin/groups'
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import LocalDateField from '@baserow/modules/core/components/crudTable/fields/LocalDateField'
+import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
 import GroupUsersField from '@baserow_premium/components/admin/groups/fields/GroupUsersField'
 import GroupNameField from '@baserow_premium/components/admin/groups/fields/GroupNameField'
-import GroupMoreField from '@baserow_premium/components/admin/groups/fields/GroupMoreField'
 import EditGroupContext from '@baserow_premium/components/admin/groups/contexts/EditGroupContext'
 import HiddenUsersContext from '@baserow_premium/components/admin/groups/contexts/HiddenUsersContext'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
@@ -72,7 +71,7 @@ export default {
         LocalDateField,
         true
       ),
-      new CrudTableColumn('more', '', GroupMoreField, false, false, true),
+      new CrudTableColumn('more', '', MoreField, false, false, true),
     ]
     this.service = GroupsAdminService(this.$client)
     return {
@@ -81,19 +80,17 @@ export default {
     }
   },
   methods: {
-    displayEditGroupContext(event) {
-      const action = event.group.id === this.editGroup.id ? 'toggle' : 'show'
-      this.editGroup = event.group
-      this.$refs.editGroupContext[action](event.target, 'bottom', 'left', 4)
-    },
-    onRowContext({ row, event }) {
-      this.displayEditGroupContext({
-        group: row,
-        target: {
+    onRowContext({ row, event, target }) {
+      if (target === undefined) {
+        target = {
           left: event.clientX,
           top: event.clientY,
-        },
-      })
+        }
+      }
+
+      const action = row.id === this.editGroup.id ? 'toggle' : 'show'
+      this.editGroup = row
+      this.$refs.editGroupContext[action](target, 'bottom', 'left', 4)
     },
     displayHiddenUsers(event) {
       const action = this.hiddenUsers === event.hiddenValues ? 'toggle' : 'show'

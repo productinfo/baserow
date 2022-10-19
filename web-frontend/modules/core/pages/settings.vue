@@ -50,12 +50,14 @@
 export default {
   name: 'Settings',
   layout: 'app',
-  computed: {
-    group() {
-      return this.$store.getters['group/get'](
-        parseInt(this.$route.params.groupId, 10)
-      )
-    },
+  asyncData({ store, params, error }) {
+    const group = store.getters['group/get'](parseInt(params.groupId, 10))
+
+    if (group === undefined) {
+      return error({ statusCode: 404, message: 'Group not found.' })
+    }
+
+    return { group }
   },
 }
 </script>

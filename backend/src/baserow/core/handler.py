@@ -31,6 +31,7 @@ from .exceptions import (
     GroupUserAlreadyExists,
     GroupUserDoesNotExist,
     GroupUserIsLastAdmin,
+    CannotDeleteYourselfFromGroup,
     PermissionDenied,
     PermissionException,
     TemplateDoesNotExist,
@@ -603,6 +604,7 @@ class CoreHandler:
         :type user: User
         :param group_user: The group user that must be deleted.
         :type group_user: GroupUser
+        :raises
         """
 
         if not isinstance(group_user, GroupUser):
@@ -614,6 +616,9 @@ class CoreHandler:
             group=group_user.group,
             context=group_user,
         )
+
+        if user.id == group_user.user_id:
+            raise CannotDeleteYourselfFromGroup("Cannot delete yourself from group.")
 
         before_group_user_deleted.send(
             self, user=group_user.user, group=group_user.group, group_user=group_user

@@ -3,9 +3,10 @@
     <a
       class="data-table__more"
       @click.prevent="
-        listeners['edit-user'] &&
-          listeners['edit-user']({
-            user: props.row,
+        listeners['row-context'] &&
+          listeners['row-context']({
+            row: props.row,
+            event: $event,
             target: $event.currentTarget,
             time: Date.now(),
           })

@@ -3,7 +3,6 @@
     :columns="columns"
     :service="service"
     row-id-key="id"
-    @edit-user="displayEditUserContext"
     @show-hidden-groups="displayHiddenGroups"
     @row-context="onRowContext"
   >
@@ -31,12 +30,12 @@
 <script>
 import UserAdminService from '@baserow_premium/services/admin/users'
 import UsernameField from '@baserow_premium/components/admin/users/fields/UsernameField'
-import MoreField from '@baserow_premium/components/admin/users/fields/MoreField'
 import UserGroupsField from '@baserow_premium/components/admin/users/fields/UserGroupsField'
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import LocalDateField from '@baserow/modules/core/components/crudTable/fields/LocalDateField'
 import ActiveField from '@baserow_premium/components/admin/users/fields/ActiveField'
+import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
 import EditUserContext from '@baserow_premium/components/admin/users/contexts/EditUserContext'
 import HiddenGroupsContext from '@baserow_premium/components/admin/users/contexts/HiddenGroupsContext'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
@@ -95,19 +94,17 @@ export default {
     }
   },
   methods: {
-    displayEditUserContext(event) {
-      const action = event.user.id === this.editUser.id ? 'toggle' : 'show'
-      this.editUser = event.user
-      this.$refs.editUserContext[action](event.target, 'bottom', 'left', 4)
-    },
-    onRowContext({ row, event }) {
-      this.displayEditUserContext({
-        user: row,
-        target: {
+    onRowContext({ row, event, target }) {
+      if (target === undefined) {
+        target = {
           left: event.clientX,
           top: event.clientY,
-        },
-      })
+        }
+      }
+
+      const action = row.id === this.editUser.id ? 'toggle' : 'show'
+      this.editUser = row
+      this.$refs.editUserContext[action](target, 'bottom', 'left', 4)
     },
     displayHiddenGroups(event) {
       const action =

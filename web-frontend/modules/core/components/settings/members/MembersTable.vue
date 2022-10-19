@@ -5,8 +5,7 @@
       :service="service"
       :columns="columns"
       row-id-key="id"
-      @remove="remove"
-      @copy-email="copyEmail"
+      @row-context="onRowContext"
     >
       <template #header-left-side>
         <div class="crudtable__header-title">
@@ -25,6 +24,14 @@
         >
           {{ $t('membersSettings.membersTable.inviteMember') }}
         </div>
+      </template>
+      <template #menus>
+        <EditMemberContext
+          ref="editMemberContext"
+          :group="group"
+          :member="editMember"
+          @refresh="refresh"
+        ></EditMemberContext>
       </template>
     </CrudTable>
     <GroupMemberInviteModal
@@ -49,18 +56,24 @@ import { mapGetters } from 'vuex'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
+import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
-import ActionsField from '@baserow/modules/core/components/crudTable/fields/ActionsField'
+import EditMemberContext from '@baserow/modules/core/components/settings/members/EditMemberContext'
 
 export default {
   name: 'MembersTable',
-  components: { CrudTable, GroupMemberInviteModal },
+  components: { EditMemberContext, CrudTable, GroupMemberInviteModal },
   props: {
     group: {
       type: Object,
       required: true,
     },
+  },
+  data() {
+    return {
+      editMember: {},
+    }
   },
   computed: {
     ...mapGetters({ userId: 'auth/getUserId' }),
@@ -119,24 +132,26 @@ export default {
             },
           }
         ),
-        new CrudTableColumn(null, null, ActionsField, false, false, true, {
-          actions: [
-            {
-              label: this.$t('membersSettings.membersTable.actions.copyEmail'),
-              onClickEventName: 'copy-email',
-            },
-            {
-              label: this.$t('membersSettings.membersTable.actions.remove'),
-              onClickEventName: 'remove',
-              disabled: (row) => row.user_id === this.userId,
-              colorClass: 'color--deep-dark-red',
-            },
-          ],
-        }),
+        new CrudTableColumn(null, null, MoreField, false, false, true),
       ]
     },
   },
   methods: {
+    onRowContext({ row, event, target }) {
+      if (target === undefined) {
+        target = {
+          left: event.clientX,
+          top: event.clientY,
+        }
+      }
+
+      const action = row.id === this.editMember.id ? 'toggle' : 'show'
+      this.editMember = row
+      this.$refs.editMemberContext[action](target, 'bottom', 'left', 4)
+    },
+    async refresh() {
+      await this.$refs.crudTable.fetch()
+    },
     async roleUpdate(permissionsNew, { permissions, id }) {
       if (permissions === permissionsNew) {
         return
@@ -151,27 +166,6 @@ export default {
           id,
           values: { permissions: permissionsNew },
         })
-      } catch (error) {
-        notifyIf(error, 'group')
-      }
-    },
-    async copyEmail({ email }) {
-      await navigator.clipboard.writeText(email)
-      await this.$store.dispatch('notification/add', {
-        type: 'success',
-        title: this.$t('membersSettings.membersTable.copiedEmail.title'),
-        message: this.$t('membersSettings.membersTable.copiedEmail.message'),
-      })
-    },
-    async remove(user) {
-      try {
-        await GroupService(this.$client).deleteUser(user.id)
-        await this.$store.dispatch('group/forceDeleteGroupUser', {
-          groupId: this.group.id,
-          id: user.id,
-          values: { user_id: this.userId },
-        })
-        await this.$refs.crudTable.fetch()
       } catch (error) {
         notifyIf(error, 'group')
       }

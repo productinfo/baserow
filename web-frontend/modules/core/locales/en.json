@@ -423,10 +423,6 @@
             "actions": {
                 "copyEmail": "Copy email",
                 "remove": "Remove from group"
-            },
-            "copiedEmail": {
-                "title": "Copied email",
-                "message": "The email address of the user has been copied to your clipboard."
             }
         },
         "invitesTable": {
@@ -439,10 +435,6 @@
             "actions": {
                 "copyEmail": "Copy email",
                 "remove": "Cancel invite"
-            },
-            "copiedEmail": {
-                "title": "Copied email",
-                "message": "The email address of the user has been copied to your clipboard."
             }
         },
         "membersInviteModal": {
