@@ -498,7 +498,10 @@
           <a class="button button--loading">Loading</a>
           <a class="button button--ghost button--loading">Loading</a>
         </div>
-        <div class="margin-bottom-3">
+        <div
+          class="margin-bottom-3"
+          style="background-color: #ffffff; padding: 20px"
+        >
           <Tabs>
             <Tab :selected="true" :title="'Tab 1'">
               <p>
@@ -554,6 +557,38 @@
                   Delete table
                 </a>
               </li>
+              <li>
+                <a href="#" class="context__menu-item--loading">
+                  <i class="context__menu-icon fas fa-fw fa-trash"></i>
+                  Loading
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="context" style="max-width: 264px">
+            <div class="context__menu-title">Workspace permissions</div>
+            <ul class="context__menu context__menu--can-be-active">
+              <li>
+                <a href="#" class="active">
+                  Admin
+                  <div class="context__menu-item-description">
+                    Description of what an admin can or can’t do on the
+                    workspace.
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="#" class="context__menu-item--loading">
+                  Builder
+                  <div class="context__menu-item-description">
+                    Description of what a builder can or can’t do on the
+                    workspace.
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="color-error" href="#"> Remove from workspace </a>
+              </li>
             </ul>
           </div>
           <div class="select">
@@ -606,6 +641,8 @@
               </a>
             </div>
           </div>
+        </div>
+        <div class="margin-bottom-3 style-guide__contexts">
           <div class="select">
             <div class="select__search">
               <i class="select__search-icon fas fa-search"></i>
@@ -674,11 +711,19 @@
               </li>
             </ul>
             <div class="select__footer">
-              <div class="select__footer-multiple">
-                <div class="select__footer-multiple-label">Add a view:</div>
-                <a href="#" class="select__footer-multiple-item">
-                  <i class="select__footer-multiple-icon fas fa-th"></i>
-                  Grid
+              <div class="select__footer-create">
+                <a class="select__footer-create-link"
+                  ><i class="select__footer-create-icon fas fa-bars"></i>
+                  Grid </a
+                ><a class="select__footer-create-link"
+                  ><i class="select__footer-create-icon fas fa-th-large"></i>
+                  Gallery </a
+                ><a class="select__footer-create-link"
+                  ><i class="select__footer-create-icon fas fa-edit"></i>
+                  Form </a
+                ><a class="select__footer-create-link"
+                  ><i class="select__footer-create-icon fas fa-trello fab"></i>
+                  Kanban
                 </a>
               </div>
             </div>
@@ -1053,34 +1098,40 @@
             <a class="modal__close">
               <i class="fas fa-times"></i>
             </a>
-            <div class="modal__box-sidebar">
+            <div
+              class="
+                modal__box-sidebar
+                modal__box-sidebar--left
+                modal__box-sidebar--scrollable
+              "
+            >
               <div class="modal-sidebar__head">
                 <div class="modal-sidebar__head-initials-icon">B</div>
                 <div class="modal-sidebar__head-name">Settings</div>
               </div>
               <ul class="modal-sidebar__nav">
                 <li>
-                  <a href="#" class="modal-sidebar__nav-link">
-                    <i class="fas fa-user-circle modal-sidebar__nav-icon"></i>
-                    Profile
-                  </a>
-                </li>
-                <li>
-                  <a href="#" class="modal-sidebar__nav-link">
-                    <i class="fas fa-user modal-sidebar__nav-icon"></i>
+                  <a class="modal-sidebar__nav-link active"
+                    ><i class="fas modal-sidebar__nav-icon fa-user"></i>
                     Account
                   </a>
                 </li>
                 <li>
-                  <a href="#" class="modal-sidebar__nav-link active">
-                    <i class="fas fa-lock modal-sidebar__nav-icon"></i>
+                  <a class="modal-sidebar__nav-link"
+                    ><i class="fas modal-sidebar__nav-icon fa-lock"></i>
                     Password
                   </a>
                 </li>
                 <li>
-                  <a href="#" class="modal-sidebar__nav-link">
-                    <i class="fas fa-envelope modal-sidebar__nav-icon"></i>
-                    Email
+                  <a class="modal-sidebar__nav-link"
+                    ><i class="fas modal-sidebar__nav-icon fa-key"></i>
+                    API Tokens
+                  </a>
+                </li>
+                <li>
+                  <a class="modal-sidebar__nav-link"
+                    ><i class="fas modal-sidebar__nav-icon fa-user-slash"></i>
+                    Delete account
                   </a>
                 </li>
               </ul>
