@@ -2,7 +2,7 @@
   <div class="data-table" :class="{ 'data-table--loading': loading }">
     <header class="data-table__header">
       <h1 class="data-table__title">
-        <slot name="header-left-side"></slot>
+        <slot name="title"></slot>
       </h1>
       <div class="data-table__actions">
         <CrudTableSearch :loading="loading" @search-changed="doSearch" />

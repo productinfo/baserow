@@ -7,15 +7,13 @@
       row-id-key="id"
       @row-context="onRowContext"
     >
-      <template #header-left-side>
-        <div class="crudtable__header-title">
-          {{
-            $t('membersSettings.membersTable.title', {
-              userAmount: group.users.length || 0,
-              groupName: group.name,
-            })
-          }}
-        </div>
+      <template #title>
+        {{
+          $t('membersSettings.membersTable.title', {
+            userAmount: group.users.length || 0,
+            groupName: group.name,
+          })
+        }}
       </template>
       <template #header-right-side>
         <div

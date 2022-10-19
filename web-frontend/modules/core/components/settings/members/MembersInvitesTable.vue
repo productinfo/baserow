@@ -8,15 +8,13 @@
       @rows-update="invitesAmount = $event.length"
       @row-context="onRowContext"
     >
-      <template #header-left-side>
-        <div class="crudtable__header-title">
-          {{
-            $t('membersSettings.invitesTable.title', {
-              invitesAmount,
-              groupName: group.name,
-            })
-          }}
-        </div>
+      <template #title>
+        {{
+          $t('membersSettings.invitesTable.title', {
+            invitesAmount,
+            groupName: group.name,
+          })
+        }}
       </template>
       <template #header-right-side>
         <div

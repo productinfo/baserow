@@ -6,10 +6,8 @@
     @show-hidden-groups="displayHiddenGroups"
     @row-context="onRowContext"
   >
-    <template #header-left-side>
-      <div class="crudtable__header-title">
-        {{ $t('usersAdminTable.allUsers') }}
-      </div>
+    <template #title>
+      {{ $t('usersAdminTable.allUsers') }}
     </template>
     <template #menus="slotProps">
       <EditUserContext
