@@ -72,7 +72,10 @@
               v-for="(i, i2) in new Array(10)"
               :key="i2"
               class="data-table__table-row"
-              :class="{ 'data-table__table-row--selected': i2 === 4 }"
+              :class="{
+                'data-table__table-row--selected': i2 === 2,
+                'data-table__table-row--hover': i2 === 4,
+              }"
             >
               <td
                 class="
@@ -109,7 +112,7 @@
                 "
               >
                 <div class="data-table__table-cell-content">
-                  <a href="#">
+                  <a href="#" class="data-table__more">
                     <i class="fas fa-ellipsis-h"></i>
                   </a>
                 </div>
@@ -118,11 +121,23 @@
           </tbody>
         </table>
       </div>
-      <!--
       <div class="data-table__footer">
-        footer
+        <div class="paginator">
+          <div class="paginator__name">page</div>
+          <div class="paginator__group">
+            <a class="paginator__button paginator__button--disabled"
+              ><i class="fas fa-caret-left"></i
+            ></a>
+            <input
+              type="number"
+              class="input paginator__page-input"
+              value="1"
+            />
+            <div class="paginator__count">of 233</div>
+            <a class="paginator__button"><i class="fas fa-caret-right"></i></a>
+          </div>
+        </div>
       </div>
-      -->
     </div>
   </div>
 </template>
