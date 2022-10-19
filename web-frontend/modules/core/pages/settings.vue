@@ -1,40 +1,48 @@
 <template>
   <div>
-    <ul class="tabs">
-      <li
-        class="tabs__item-selector"
-        :class="{ 'tabs__item-selector--active': true }"
-      >
+    <div class="layout__col-2-1">
+      <ul class="page-tabs">
         <nuxt-link
+          v-slot="{ href, navigate, isExactActive }"
           :to="{
             name: 'settings-members',
             params: {
               groupId: group.id,
             },
           }"
-          class="tabs__link"
         >
-          {{ $t('membersSettings.membersTabTitle') }}
+          <li
+            class="page-tabs__item"
+            :class="{ 'page-tabs__item--active': isExactActive }"
+          >
+            <a :href="href" class="page-tabs__link" @click="navigate">
+              {{ $t('membersSettings.membersTabTitle') }}
+            </a>
+          </li>
         </nuxt-link>
-      </li>
-      <li
-        class="tabs__item-selector"
-        :class="{ 'tabs__item-selector--active': false }"
-      >
         <nuxt-link
+          v-slot="{ href, navigate, isExactActive }"
           :to="{
             name: 'settings-invites',
             params: {
               groupId: group.id,
             },
           }"
-          class="tabs__link"
         >
-          {{ $t('membersSettings.invitesTabTitle') }}
+          <li
+            class="page-tabs__item"
+            :class="{ 'page-tabs__item--active': isExactActive }"
+          >
+            <a :href="href" class="page-tabs__link" @click="navigate">
+              {{ $t('membersSettings.invitesTabTitle') }}
+            </a>
+          </li>
         </nuxt-link>
-      </li>
-    </ul>
-    <NuxtChild :group="group" />
+      </ul>
+    </div>
+    <div class="layout__col-2-2">
+      <NuxtChild :group="group" />
+    </div>
   </div>
 </template>
 
