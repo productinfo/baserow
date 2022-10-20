@@ -6,12 +6,12 @@ export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
     return 'enterprise_members_columns'
   }
 
-  mutateMembersTableColumns(rightColumns) {
-    return this._replaceRoleColumn(rightColumns)
+  mutateMembersTableColumns(columns) {
+    return this._replaceRoleColumn(columns)
   }
 
-  mutateMembersInvitesTableColumns(rightColumns) {
-    return this._replaceRoleColumn(rightColumns)
+  mutateMembersInvitesTableColumns(columns) {
+    return this._replaceRoleColumn(columns)
   }
 
   isDeactivated() {
