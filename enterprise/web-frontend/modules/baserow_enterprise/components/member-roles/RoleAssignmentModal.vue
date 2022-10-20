@@ -2,21 +2,16 @@
   <Modal>
     <Tabs>
       <Tab :title="$t('RoleAssignmentModal.membersTab')">
-        <SubjectSelectList
+        <SelectMembersList
           class="margin-top-2"
-          :subjects="users"
-          :subject-type-name="$t('RoleAssignmentModal.subjectTypeNameMembers')"
-          primary-attribute="name"
-          :remaining-attributes="['email']"
+          :users="users"
           show-role-selector
         />
       </Tab>
       <Tab :title="$t('RoleAssignmentModal.teamsTab')">
-        <SubjectSelectList
+        <SelectTeamsList
           class="margin-top-2"
-          primary-attribute="name"
-          :subjects="teams"
-          :subject-type-name="$t('RoleAssignmentModal.subjectTypeNameTeams')"
+          :users="teams"
           show-role-selector
         />
       </Tab>
@@ -26,31 +21,31 @@
 
 <script>
 import Modal from '@baserow/modules/core/mixins/modal'
-import List from '@baserow/modules/core/components/List'
-import SubjectSelectList from '@baserow_enterprise/components/rbac/SubjectSelectList'
+import SelectMembersList from '@baserow_enterprise/components/rbac/SelectMembersList'
+import SelectTeamsList from '@baserow_enterprise/components/rbac/SelectTeamsList'
 
 export default {
   name: 'RoleAssignmentModal',
-  components: { SubjectSelectList, List },
+  components: { SelectTeamsList, SelectMembersList },
   mixins: [Modal],
   props: {
     users: {
       type: Array,
       required: false,
       default: () => [
-        { name: 'alex', email: 'test@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
-        { name: 'john', email: 'test2@test.com' },
+        { id: 0, name: 'alex', email: 'test@test.com' },
+        { id: 1, name: 'john', email: 'test2@test.com' },
+        { id: 2, name: 'john', email: 'test2@test.com' },
+        { id: 3, name: 'john', email: 'test2@test.com' },
+        { id: 4, name: 'john', email: 'test2@test.com' },
+        { id: 5, name: 'john', email: 'test2@test.com' },
+        { id: 6, name: 'john', email: 'test2@test.com' },
+        { id: 7, name: 'john', email: 'test2@test.com' },
+        { id: 8, name: 'john', email: 'test2@test.com' },
+        { id: 9, name: 'john', email: 'test2@test.com' },
+        { id: 10, name: 'john', email: 'test2@test.com' },
+        { id: 11, name: 'john', email: 'test2@test.com' },
+        { id: 12, name: 'john', email: 'test2@test.com' },
       ],
     },
     teams: {

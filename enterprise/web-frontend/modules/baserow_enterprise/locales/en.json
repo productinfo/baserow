@@ -25,9 +25,19 @@
         "subjectTypeNameMembers": "members",
         "subjectTypeNameTeams": "teams"
     },
-    "SubjectSelectList": {
-       "searchPlaceholder": "Find {subjectTypeName}...",
-        "invite": "Invite {subjectsSelectedCount} {subjectTypeName}",
-        "selectedAmountLabel": "{subjectsSelectedCount} {subjectTypeName} selected"
+    "SelectMembersList": {
+        "searchPlaceholder": "Find members...",
+        "selectedAmountLabel": "{count} members selected"
+    },
+    "SelectTeamsList": {
+        "searchPlaceholder": "Find teams...",
+        "selectedAmountLabel": "{count} teams selected"
+    },
+    "SelectListFooter": {
+        "invite": "Invite {count} {type}",
+        "types": {
+            "members": "members",
+            "teams": "teams"
+        }
     }
 }
