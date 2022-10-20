@@ -18,7 +18,7 @@
       }}
     </div>
     <List
-      class="margin-top-2"
+      class="margin-top-2 subject-select-list__items"
       :items="subjectsFiltered"
       :attributes="remainingAttributes"
       selectable
@@ -30,17 +30,23 @@
         </span>
       </template>
     </List>
-    <a
-      class="button"
-      :class="{ disabled: !inviteButtonEnabled }"
-      @click="invite"
-      >{{
-        $t('SubjectSelectList.invite', {
-          subjectsSelectedCount,
-          subjectTypeName,
-        })
-      }}</a
+    <div
+      class="subject-select-list__footer"
+      :class="{ 'subject-select-list__footer--single': !showRoleSelector }"
     >
+      <div v-if="showRoleSelector">ROLE SELECTOR PLACEHOLDER</div>
+      <a
+        class="button"
+        :class="{ disabled: !inviteButtonEnabled }"
+        @click="invite"
+        >{{
+          $t('SubjectSelectList.invite', {
+            subjectsSelectedCount,
+            subjectTypeName,
+          })
+        }}
+      </a>
+    </div>
   </div>
 </template>
 
@@ -65,6 +71,10 @@ export default {
       type: Array,
       required: false,
       default: () => null,
+    },
+    showRoleSelector: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

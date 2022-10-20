@@ -8,6 +8,7 @@
           :subject-type-name="$t('RoleAssignmentModal.subjectTypeNameMembers')"
           primary-attribute="name"
           :remaining-attributes="['email']"
+          show-role-selector
         />
       </Tab>
       <Tab :title="$t('RoleAssignmentModal.teamsTab')">
@@ -16,6 +17,7 @@
           primary-attribute="name"
           :subjects="teams"
           :subject-type-name="$t('RoleAssignmentModal.subjectTypeNameTeams')"
+          show-role-selector
         />
       </Tab>
     </Tabs>
@@ -37,6 +39,17 @@ export default {
       required: false,
       default: () => [
         { name: 'alex', email: 'test@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
+        { name: 'john', email: 'test2@test.com' },
         { name: 'john', email: 'test2@test.com' },
       ],
     },
