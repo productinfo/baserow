@@ -16,6 +16,7 @@ from django.db.models import Count, Prefetch, Q, QuerySet
 from django.utils import translation
 
 from itsdangerous import URLSafeSerializer
+from rest_framework.exceptions import NotAuthenticated
 from tqdm import tqdm
 
 from baserow.core.user.utils import normalize_email_address
@@ -32,6 +33,7 @@ from .exceptions import (
     GroupUserDoesNotExist,
     GroupUserIsLastAdmin,
     CannotDeleteYourselfFromGroup,
+    InvalidPermissionContext,
     PermissionDenied,
     PermissionException,
     TemplateDoesNotExist,
@@ -59,13 +61,19 @@ from .operations import (
     DeleteGroupUserOperationType,
     DuplicateApplicationOperationType,
     OrderApplicationsOperationType,
+    ReadApplicationOperationType,
     UpdateApplicationOperationType,
     UpdateGroupInvitationType,
     UpdateGroupOperationType,
     UpdateGroupUserOperationType,
     UpdateSettingsOperationType,
 )
-from .registries import application_type_registry, permission_manager_type_registry
+from .registries import (
+    application_type_registry,
+    object_scope_type_registry,
+    operation_type_registry,
+    permission_manager_type_registry,
+)
 from .signals import (
     application_created,
     application_deleted,
@@ -191,6 +199,9 @@ class CoreHandler:
             disallowed AND raise_error is `False`.
         """
 
+        if settings.DEBUG or settings.TESTS:
+            self._ensure_context_matches_operation(context, operation_name)
+
         if allow_if_template and group and group.has_template():
             return True
 
@@ -206,7 +217,7 @@ class CoreHandler:
                     context=context,
                     include_trash=include_trash,
                 )
-            except PermissionException:
+            except (PermissionException, NotAuthenticated):
                 if raise_error:
                     raise
                 else:
@@ -221,6 +232,22 @@ class CoreHandler:
             raise PermissionDenied(actor=actor)
         else:
             return False
+
+    def _ensure_context_matches_operation(self, context, operation_name):
+        context_types = {
+            t.type
+            for t in object_scope_type_registry.get_all_by_model_isinstance(context)
+        }
+        expected_operation_context_type = operation_type_registry.get(
+            operation_name
+        ).context_scope_name
+        if expected_operation_context_type not in context_types:
+            raise InvalidPermissionContext(
+                f"Incorrect context object matching {context_types} provided to "
+                f" check_permissions call. Was expected instead one of type "
+                f"{expected_operation_context_type} based on the operation type of "
+                f"{operation_name}."
+            )
 
     def get_permissions(
         self, actor: AbstractUser, group: Optional[Group] = None
@@ -944,7 +971,10 @@ class CoreHandler:
         application = self.get_application(application_id, base_queryset=base_queryset)
 
         CoreHandler().check_permissions(
-            user, "application.read", group=application.group, context=application
+            user,
+            ReadApplicationOperationType.type,
+            group=application.group,
+            context=application,
         )
 
         return application

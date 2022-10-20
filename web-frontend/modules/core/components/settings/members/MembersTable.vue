@@ -113,15 +113,26 @@ export default {
         options,
       }
     },
+    membersPagePlugins() {
+      return Object.values(this.$registry.getAll('membersPagePlugins'))
+    },
     columns() {
-      return [
+      let leftColumns = [
         new CrudTableColumn(
           'name',
           this.$t('membersSettings.membersTable.columns.name'),
           SimpleField,
           true,
           true
-        ),
+        )
+      ]
+      // for (const plugin of this.membersPagePlugins) {
+      //   if (!plugin.isDeactivated()) {
+      //     leftColumns = plugin.mutateMembersTableLeftColumns(leftColumns)
+      //   }
+      // }
+
+      let rightColumns = [
         new CrudTableColumn(
           'email',
           this.$t('membersSettings.membersTable.columns.email'),
@@ -142,6 +153,13 @@ export default {
         ),
         new CrudTableColumn(null, null, MoreField, false, false, true),
       ]
+      // for (const plugin of this.membersPagePlugins) {
+      //   if (!plugin.isDeactivated()) {
+      //     rightColumns = plugin.mutateMembersTableRightColumns(rightColumns)
+      //   }
+      // }
+
+      return leftColumns.concat(rightColumns)
     },
   },
   methods: {
