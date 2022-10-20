@@ -30,7 +30,7 @@ export default {
   methods: {
     roleName(roles, row) {
       const role = roles.find((r) => r.value === row.permissions)
-      return role.name
+      return role?.name || ''
     },
   },
 }

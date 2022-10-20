@@ -7,6 +7,7 @@
       row-id-key="id"
       @rows-update="invitesAmount = $event.length"
       @row-context="onRowContext"
+      @edit-role-context="onEditRoleContext"
     >
       <template #title>
         {{
@@ -30,6 +31,13 @@
           :invitation="editInvitation"
           @refresh="$refs.crudTable.fetch()"
         ></EditInviteContext>
+        <EditRoleContext
+          ref="editRoleContext"
+          :group="group"
+          :row="editRoleInvitation"
+          :roles="roles"
+          @update-role="roleUpdate($event)"
+        ></EditRoleContext>
       </template>
     </CrudTable>
     <GroupMemberInviteModal
@@ -46,14 +54,21 @@ import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import GroupService from '@baserow/modules/core/services/group'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
-import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
 import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
 import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
 import EditInviteContext from '@baserow/modules/core/components/settings/members/EditInviteContext'
+import MemberRoleField from '@baserow/modules/core/components/settings/members/MemberRoleField'
+import EditRoleContext from '@baserow/modules/core/components/settings/members/EditRoleContext'
+import { clone } from '@baserow/modules/core/utils/object'
 
 export default {
   name: 'MembersInvitesTable',
-  components: { EditInviteContext, CrudTable, GroupMemberInviteModal },
+  components: {
+    EditInviteContext,
+    EditRoleContext,
+    CrudTable,
+    GroupMemberInviteModal,
+  },
   props: {
     group: {
       type: Object,
@@ -62,7 +77,20 @@ export default {
   },
   data() {
     return {
+      roles: [
+        {
+          value: 'ADMIN',
+          name: this.$t('permission.admin'),
+          description: this.$t('permission.adminDescription'),
+        },
+        {
+          value: 'MEMBER',
+          name: this.$t('permission.member'),
+          description: this.$t('permission.memberDescription'),
+        },
+      ],
       editInvitation: {},
+      editRoleInvitation: {},
       invitesAmount: 0,
     }
   },
@@ -86,7 +114,7 @@ export default {
       return Object.values(this.$registry.getAll('membersPagePlugins'))
     },
     columns() {
-      let leftColumns = [
+      let columns = [
         new CrudTableColumn(
           'email',
           this.$t('membersSettings.invitesTable.columns.email'),
@@ -94,14 +122,6 @@ export default {
           true,
           true
         ),
-      ]
-      for (const plugin of this.membersPagePlugins) {
-        if (!plugin.isDeactivated()) {
-          leftColumns = plugin.mutateMembersInvitesTableLeftColumns(leftColumns)
-        }
-      }
-
-      let rightColumns = [
         new CrudTableColumn(
           'message',
           this.$t('membersSettings.invitesTable.columns.message'),
@@ -111,41 +131,24 @@ export default {
         new CrudTableColumn(
           'permissions',
           this.$t('membersSettings.invitesTable.columns.role'),
-          DropdownField,
+          MemberRoleField,
           false,
           false,
           false,
           {
-            options: [
-              {
-                value: 'ADMIN',
-                name: this.$t('permission.admin'),
-                description: this.$t('permission.adminDescription'),
-              },
-              {
-                value: 'MEMBER',
-                name: this.$t('permission.member'),
-                description: this.$t('permission.memberDescription'),
-              },
-            ],
-            inputCallback: this.roleUpdate,
-            action: {
-              label: this.$t('membersSettings.invitesTable.actions.remove'),
-              colorClass: 'color--deep-dark-red',
-              onClickEventName: 'remove',
-            },
+            roles: this.roles,
+            userId: 0,
           }
         ),
         new CrudTableColumn(null, null, MoreField, false, false, true),
       ]
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated()) {
-          rightColumns =
-            plugin.mutateMembersInvitesTableRightColumns(rightColumns)
+          columns = plugin.mutateMembersInvitesTableColumns(columns)
         }
       }
 
-      return leftColumns.concat(rightColumns)
+      return columns
     },
   },
   methods: {
@@ -161,16 +164,23 @@ export default {
       this.editInvitation = row
       this.$refs.editInviteContext[action](target, 'bottom', 'left', 4)
     },
-    async roleUpdate(permissionsNew, { permissions, id }) {
-      if (permissionsNew === permissions) {
-        return
-      }
+    onEditRoleContext({ row, target }) {
+      const action = row.id === this.editRoleInvitation.id ? 'toggle' : 'show'
+      this.editRoleInvitation = row
+      this.$refs.editRoleContext[action](target, 'bottom', 'left', 4)
+    },
+    async roleUpdate({ value: permissionsNew, row: invitation }) {
+      const oldInvitation = clone(invitation)
+      const newInvitation = clone(invitation)
+      newInvitation.permissions = permissionsNew
+      this.$refs.crudTable.updateRow(newInvitation)
 
       try {
-        await GroupService(this.$client).updateInvitation(id, {
+        await GroupService(this.$client).updateInvitation(invitation.id, {
           permissions: permissionsNew,
         })
       } catch (error) {
+        this.$refs.crudTable.updateRow(oldInvitation)
         notifyIf(error, 'group')
       }
     },

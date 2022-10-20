@@ -34,10 +34,9 @@
         <EditRoleContext
           ref="editRoleContext"
           :group="group"
-          :member="editRoleMember"
+          :row="editRoleMember"
           :roles="roles"
-          @refresh="refresh"
-          @update-member="$refs.crudTable.updateRow($event)"
+          @update-role="roleUpdate($event)"
         ></EditRoleContext>
       </template>
     </CrudTable>
@@ -67,6 +66,8 @@ import MemberRoleField from '@baserow/modules/core/components/settings/members/M
 import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
 import EditMemberContext from '@baserow/modules/core/components/settings/members/EditMemberContext'
 import EditRoleContext from '@baserow/modules/core/components/settings/members/EditRoleContext'
+import { clone } from '@baserow/modules/core/utils/object'
+import { notifyIf } from '@baserow/modules/core/utils/error'
 
 export default {
   name: 'MembersTable',
@@ -117,7 +118,7 @@ export default {
       return Object.values(this.$registry.getAll('membersPagePlugins'))
     },
     columns() {
-      const leftColumns = [
+      let columns = [
         new CrudTableColumn(
           'name',
           this.$t('membersSettings.membersTable.columns.name'),
@@ -125,14 +126,6 @@ export default {
           true,
           true
         ),
-      ]
-      for (const plugin of this.membersPagePlugins) {
-        if (!plugin.isDeactivated()) {
-          leftColumns = plugin.mutateMembersTableLeftColumns(leftColumns)
-        }
-      }
-
-      const rightColumns = [
         new CrudTableColumn(
           'email',
           this.$t('membersSettings.membersTable.columns.email'),
@@ -155,11 +148,10 @@ export default {
       ]
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated()) {
-          rightColumns = plugin.mutateMembersTableRightColumns(rightColumns)
+          columns = plugin.mutateMembersTableColumns(columns)
         }
       }
-
-      return leftColumns.concat(rightColumns)
+      return columns
     },
   },
   methods: {
@@ -182,6 +174,26 @@ export default {
     },
     async refresh() {
       await this.$refs.crudTable.fetch()
+    },
+    async roleUpdate({ value: permissionsNew, row: member }) {
+      const oldMember = clone(member)
+      const newMember = clone(member)
+      newMember.permissions = permissionsNew
+      this.$refs.crudTable.updateRow(newMember)
+
+      try {
+        await GroupService(this.$client).updateUser(oldMember.id, {
+          permissions: newMember.permissions,
+        })
+        await this.$store.dispatch('group/forceUpdateGroupUser', {
+          groupId: this.group.id,
+          id: oldMember.id,
+          values: { permissions: newMember.permissions },
+        })
+      } catch (error) {
+        this.$refs.crudTable.updateRow(oldMember)
+        notifyIf(error, 'group')
+      }
     },
   },
 }

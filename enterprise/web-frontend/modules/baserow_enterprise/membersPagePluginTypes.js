@@ -1,6 +1,4 @@
-import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
-import DropdownField from '@baserow/modules/core/components/crudTable/fields/DropdownField'
-import { roles } from '@baserow_enterprise/enums/roles'
+// import { roles } from '@baserow_enterprise/enums/roles'
 import { MembersPagePluginType } from '@baserow/modules/database/membersPagePluginTypes'
 
 export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
@@ -8,11 +6,11 @@ export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
     return 'enterprise_members_columns'
   }
 
-  mutateMembersTableRightColumns(rightColumns) {
+  mutateMembersTableColumns(rightColumns) {
     return this._replaceRoleColumn(rightColumns)
   }
 
-  mutateMembersInvitesTableRightColumns(rightColumns) {
+  mutateMembersInvitesTableColumns(rightColumns) {
     return this._replaceRoleColumn(rightColumns)
   }
 
@@ -25,22 +23,13 @@ export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
       (column) => column.key === 'permissions'
     )
     if (existingRoleColumnIndex !== -1) {
-      columns[existingRoleColumnIndex] = new CrudTableColumn(
-        'permissions', // TODO use the key that holds the RBAC role data in the response
-        this.app.i18n.t('membersSettings.membersTable.columns.role'),
-        DropdownField,
-        'min-content',
-        '3fr',
-        true,
-        {
-          options: roles.map(({ name, uid }) => ({
-            value: uid,
-            name,
-          })),
-          // disabled: (row) => row.user_id === this.userId,
-          inputCallback: () => console.log('implement me'), // TODO update role
-        }
-      )
+      // columns[existingRoleColumnIndex].additionalProps.roles = roles.map(({ name, uid }) => {
+      //   return {
+      //     value: uid,
+      //     name: name,
+      //     description: ''
+      //   }
+      // })
     }
     return columns
   }
