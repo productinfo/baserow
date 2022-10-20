@@ -325,7 +325,7 @@ class PermissionManagerType(Instance):
     ) -> Optional[Boolean]:
         """
         This method is called each time a permission on an operation is checked by the
-        `CoreHandler().check_permission()` method if the current permission manager is
+        `CoreHandler().check_permissions()` method if the current permission manager is
         listed in the `settings.PERMISSION_MANAGERS` list.
 
         It should:
@@ -457,7 +457,9 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
         :return: An iterable containing the context objects for the given scope.
         """
 
-        raise NotImplementedError("Must be implemented by the specific type")
+        raise NotImplementedError(
+            f"Must be implemented by the specific type <{self.type}>"
+        )
 
 
 class ObjectScopeTypeRegistry(Registry[ObjectScopeType], ModelRegistryMixin):
