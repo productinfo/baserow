@@ -73,11 +73,6 @@ export const routes = [
       },
     ],
   },
-  {
-    name: 'table',
-    path: '/data-table',
-    component: path.resolve(__dirname, 'pages/dataTable.vue'),
-  },
 ]
 
 if (process.env.NODE_ENV !== 'production') {

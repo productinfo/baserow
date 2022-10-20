@@ -1,7 +1,9 @@
 <template>
   <Context>
     <template v-if="Object.keys(row).length > 0">
-      <div class="context__menu-title">Workspace permissions</div>
+      <div class="context__menu-title">
+        {{ $t('membersSettings.membersTable.columns.role') }}
+      </div>
       <ul class="context__menu context__menu--can-be-active">
         <li v-for="role in roles" :key="role.value">
           <a
