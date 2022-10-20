@@ -131,7 +131,6 @@ default_roles = {
         DeleteDatabaseRowOperationType,
         ReadInvitationGroupOperationType,
         AssignRoleGroupOperationType,
-        ListGroupUsersGroupOperationType,
         DeleteGroupUserOperationType,
         DeleteGroupInvitationOperationType,
         UpdateGroupUserOperationType,
@@ -210,6 +209,7 @@ default_roles = {
         ExportTableOperationType,
         MoveRowDatabaseRowOperationType,
         ImportRowsDatabaseTableOperationType,
+        ListGroupUsersGroupOperationType,
     ],
     "commenter": [
         ReadGroupOperationType,
