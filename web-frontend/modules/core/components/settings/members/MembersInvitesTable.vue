@@ -140,7 +140,8 @@ export default {
       ]
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated()) {
-          rightColumns = plugin.mutateMembersInvitesTableRightColumns(rightColumns)
+          rightColumns =
+            plugin.mutateMembersInvitesTableRightColumns(rightColumns)
         }
       }
 

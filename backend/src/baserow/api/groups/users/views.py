@@ -23,18 +23,18 @@ from baserow.api.exceptions import (
     InvalidSortDirectionException,
 )
 from baserow.api.groups.users.errors import (
-    ERROR_GROUP_USER_DOES_NOT_EXIST,
     ERROR_CANNOT_DELETE_YOURSELF_FROM_GROUP,
+    ERROR_GROUP_USER_DOES_NOT_EXIST,
 )
 from baserow.api.mixins import SearchableViewMixin, SortableViewMixin
 from baserow.api.schemas import get_error_schema
 from baserow.api.user.registries import member_data_registry
 from baserow.core.exceptions import (
+    CannotDeleteYourselfFromGroup,
     GroupDoesNotExist,
     GroupUserDoesNotExist,
     UserInvalidGroupPermissionsError,
     UserNotInGroup,
-    CannotDeleteYourselfFromGroup,
 )
 from baserow.core.handler import CoreHandler
 from baserow.core.models import GroupUser
