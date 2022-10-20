@@ -214,11 +214,11 @@ export default class UserAdminUserHelpers {
   }
 
   clickUsernameHeader() {
-    return this.clickHeaderAt(1)
+    return this.clickHeaderAt(0)
   }
 
   clickFullnameHeader() {
-    return this.clickHeaderAt(2)
+    return this.clickHeaderAt(1)
   }
 
   clickHeaderAt(index) {
