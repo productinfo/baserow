@@ -264,7 +264,7 @@ export default {
       const i = this.rows.findIndex(
         (u) => u[this.rowIdKey] === updatedRow[this.rowIdKey]
       )
-      this.rows.splice(i, 1, updatedRow)
+      Object.assign(this.rows[i], updatedRow)
     },
     deleteRow(rowId) {
       const i = this.rows.findIndex((u) => u[this.rowIdKey] === rowId)

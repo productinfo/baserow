@@ -13,7 +13,7 @@
             :class="{
               'context__menu-item--loading': removeLoading,
             }"
-            class="color--deep-dark-red"
+            class="color-error"
             @click.prevent="remove(member)"
           >
             <i class="context__menu-icon fas fa-fw fa-trash"></i>
