@@ -1,4 +1,5 @@
 import { registerRealtimeEvents } from '@baserow_enterprise/realtime'
+import { RolePermissionManagerType } from '@baserow_enterprise/permissionManagerTypes'
 
 import { EnterpriseMembersPagePluginType } from '@baserow_enterprise/membersPagePluginTypes'
 import en from '@baserow_enterprise/locales/en.json'
@@ -22,6 +23,11 @@ export default (context) => {
     i18n.mergeLocaleMessage('es', es)
     i18n.mergeLocaleMessage('it', it)
   }
+
+  app.$registry.register(
+    'permissionManager',
+    new RolePermissionManagerType(context)
+  )
 
   registerRealtimeEvents(app.$realtime)
 
