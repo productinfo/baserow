@@ -35,7 +35,7 @@ export default {
       default: () => [
         { id: 0, name: 'alex', email: 'test@test.com' },
         { id: 1, name: 'john', email: 'test2@test.com' },
-        { id: 2, name: 'john', email: 'test2@test.com' },
+        { id: 2, name: 'john johnson', email: 'test2@test.com' },
         { id: 3, name: 'john', email: 'test2@test.com' },
         { id: 4, name: 'john', email: 'test2@test.com' },
         { id: 5, name: 'john', email: 'test2@test.com' },

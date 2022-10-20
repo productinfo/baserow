@@ -22,6 +22,9 @@
       @selected="userSelected"
     >
       <template #left-side="{ item }">
+        <div class="select-members-list__user-initials margin-left-1">
+          {{ item.name | nameAbbreviation }}
+        </div>
         <span class="margin-left-1">
           {{ item.name }}
         </span>
