@@ -7,7 +7,7 @@ export class TeamsGroupSettingsPageType extends GroupSettingsPageType {
 
   getName() {
     const { i18n } = this.app
-    return i18n.t('membersSettings.teamsTabTitle')
+    return i18n.t('teamsSettings.teamsTabTitle')
   }
 
   getRoute(group) {
