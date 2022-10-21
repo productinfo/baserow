@@ -1,5 +1,8 @@
 {
     "enterprise": {
         "licence": "Enterprise"
+    },
+    "membersSettings": {
+        "teamsTabTitle": "Teams"
     }
 }
