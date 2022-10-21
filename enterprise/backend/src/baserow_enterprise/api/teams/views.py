@@ -6,6 +6,7 @@ from baserow_enterprise.api.errors import (
     ERROR_USER_NOT_IN_TEAM,
 )
 from baserow_enterprise.api.serializers import (
+    GetTeamsViewParamsSerializer,
     TeamResponseSerializer,
     TeamSerializer,
     TeamSubjectResponseSerializer,
@@ -38,16 +39,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from baserow.api.decorators import map_exceptions, validate_body
+from baserow.api.decorators import (
+    map_exceptions,
+    validate_body,
+    validate_query_parameters,
+)
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP
+from baserow.api.mixins import SearchableViewMixin, SortableViewMixin
 from baserow.api.schemas import CLIENT_SESSION_ID_SCHEMA_PARAMETER, get_error_schema
 from baserow.core.action.registries import action_type_registry
 from baserow.core.exceptions import UserNotInGroup
 from baserow.core.handler import CoreHandler
 
 
-class TeamsView(APIView):
+class TeamsView(APIView, SearchableViewMixin, SortableViewMixin):
     permission_classes = (IsAuthenticated,)
+
+    search_fields = ["name"]
+    sort_field_mapping = {"name": "name", "subject_count": "subject_count"}
 
     @extend_schema(
         parameters=[
@@ -63,8 +72,12 @@ class TeamsView(APIView):
         description=("Lists all teams in a given group."),
         responses={200: TeamResponseSerializer(many=True)},
     )
-    def get(self, request, group_id: int):
+    @validate_query_parameters(GetTeamsViewParamsSerializer)
+    def get(self, request, group_id: int, query_params):
         """Responds with a list of teams in a specific group."""
+
+        search = query_params.get("search")
+        sorts = query_params.get("sorts")
 
         group = CoreHandler().get_group(group_id)
         CoreHandler().check_permissions(
@@ -75,6 +88,9 @@ class TeamsView(APIView):
         )
 
         teams = TeamHandler().list_teams_in_group(group_id)
+        teams = self.apply_search(search, teams)
+        teams = self.apply_sorts_or_default_sort(sorts, teams)
+
         serializer = TeamResponseSerializer(teams, many=True)
         return Response(serializer.data)
 
