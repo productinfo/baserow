@@ -17,43 +17,45 @@
     </CreateTeamForm>
   </Modal>
 </template>
-  
-  <script>
-  import modal from '@baserow/modules/core/mixins/modal'
-  import error from '@baserow/modules/core/mixins/error'
-  import CreateTeamForm from '@baserow_enterprise/components/teams/CreateTeamForm'
-  
-  export default {
-    name: 'CreateTeamModal',
-    mixins: [modal, error],
-    components: { CreateTeamForm },
-    props: {
-      group: {
-        type: Object,
-        required: true,
-      },
+
+<script>
+import modal from '@baserow/modules/core/mixins/modal'
+import error from '@baserow/modules/core/mixins/error'
+import CreateTeamForm from '@baserow_enterprise/components/teams/CreateTeamForm'
+
+export default {
+  name: 'CreateTeamModal',
+  components: { CreateTeamForm },
+  mixins: [modal, error],
+  props: {
+    group: {
+      type: Object,
+      required: true,
     },
-    data() {
-      return {
-        loading: false,
+  },
+  data() {
+    return {
+      loading: false,
+    }
+  },
+  methods: {
+    async teamSubmitted(values) {
+      this.createLoading = true
+      this.hideError()
+
+      try {
+        const { team } = await this.$store.dispatch('team/create', {
+          groupId: this.group.id,
+          values,
+        })
+        this.loading = false
+        this.$emit('created', team)
+        this.hide()
+      } catch (error) {
+        this.loading = false
+        this.handleError(error, 'team')
       }
     },
-    methods: {
-      async teamSubmitted(values) {
-        this.createLoading = true
-        this.hideError()
-  
-        try {
-          const { team } = await this.$store.dispatch('team/create', { groupId: this.group.id, values: values })
-          this.loading = false
-          this.$emit('created', team)
-          this.hide()
-        } catch (error) {
-          this.loading = false
-          this.handleError(error, 'team')
-        }
-      },
-    },
-  }
-  </script>
-  
+  },
+}
+</script>

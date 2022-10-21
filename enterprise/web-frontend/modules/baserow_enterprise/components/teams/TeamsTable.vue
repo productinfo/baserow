@@ -85,7 +85,7 @@ export default {
       }
     },
     columns() {
-      let columns = [
+      const columns = [
         new CrudTableColumn(
           'name',
           this.$t('teamsSettings.teamsTable.columns.name'),

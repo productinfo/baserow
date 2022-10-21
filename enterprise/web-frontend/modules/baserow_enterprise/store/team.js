@@ -1,6 +1,4 @@
-import { StoreItemLookupError } from '@baserow/modules/core/errors'
 import TeamService from '@baserow_enterprise/services/team'
-import { CORE_ACTION_SCOPES } from '@baserow/modules/core/utils/undoRedoConstants'
 
 function populateteam(team) {
   team._ = { loading: false, selected: false }

@@ -2,11 +2,7 @@ import baseService from '@baserow/modules/core/crudTable/baseService'
 
 export default (client) => {
   return Object.assign(
-    baseService(
-      client,
-      ({ groupId }) => `/teams/group/${groupId}/`,
-      false
-    ),
+    baseService(client, ({ groupId }) => `/teams/group/${groupId}/`, false),
     {
       fetchAll(groupId) {
         return client.get(`/teams/group/${groupId}/`)
