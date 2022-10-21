@@ -11,8 +11,10 @@ import de from '@baserow_enterprise/locales/de.json'
 import es from '@baserow_enterprise/locales/es.json'
 import it from '@baserow_enterprise/locales/it.json'
 
+import teamStore from '@baserow_enterprise/store/team'
+
 export default (context) => {
-  const { app, isDev } = context
+  const { store, isDev, app } = context
 
   // Allow locale file hot reloading
   if (isDev && app.i18n) {
@@ -41,4 +43,6 @@ export default (context) => {
     'groupSettingsPage',
     new TeamsGroupSettingsPageType(context)
   )
+
+  store.registerModule('team', teamStore)
 }
