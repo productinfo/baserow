@@ -2,7 +2,24 @@
     "enterprise": {
         "licence": "Enterprise"
     },
+    "createTeamModal": {
+        "createNew": "Create new team",
+        "add": "Add team"
+    },
     "membersSettings": {
-        "teamsTabTitle": "Teams"
+        "teamsTabTitle": "Teams",
+        "teamsTable": {
+            "title": "{userAmount} teams in {groupName}",
+            "inviteSubject": "Invite member",
+            "columns": {
+                "name": "Name",
+                "created_on": "Created on",
+                "subjects": "Members"
+            },
+            "actions": {
+                "copyEmail": "Copy email",
+                "remove": "Remove from group"
+            }
+        }
     }
 }
