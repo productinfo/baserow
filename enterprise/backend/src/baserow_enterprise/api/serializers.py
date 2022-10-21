@@ -41,6 +41,11 @@ class TeamResponseSerializer(serializers.ModelSerializer):
         return obj.subject_sample if hasattr(obj, "subject_sample") else []
 
 
+class GetTeamsViewParamsSerializer(serializers.Serializer):
+    search = serializers.CharField(required=False, allow_null=True, default=None)
+    sorts = serializers.CharField(required=False, allow_null=True, default=None)
+
+
 class TeamSubjectSerializer(serializers.ModelSerializer):
     subject_type = serializers.CharField()
     subject_id = serializers.IntegerField(required=False, default=None)
