@@ -6,11 +6,11 @@
         "createNew": "Create new team",
         "add": "Add team"
     },
-    "membersSettings": {
+    "teamsSettings": {
         "teamsTabTitle": "Teams",
         "teamsTable": {
-            "title": "{userAmount} teams in {groupName}",
-            "inviteSubject": "Invite member",
+            "title": "{teamCount} teams in {groupName}",
+            "createNew": "Create team",
             "columns": {
                 "name": "Name",
                 "created_on": "Created on",
@@ -18,8 +18,16 @@
             },
             "actions": {
                 "copyEmail": "Copy email",
-                "remove": "Remove from group"
+                "remove": "Delete team"
             }
+        },
+        "createTeamModal": {
+            "title": "Create new team",
+            "submit": "Create"
+        },
+        "createTeamForm": {
+            "title": "Name",
+            "errorInvalidName": "Invalid team name"
         }
     }
 }
