@@ -74,6 +74,7 @@ export default (context, inject) => {
   registry.registerNamespace('userFileUpload')
   registry.registerNamespace('membersPagePlugins')
   registry.registerNamespace('groupSettingsPage')
+  registry.registerNamespace('teamsPagePlugins')
   registry.register('settings', new AccountSettingsType(context))
   registry.register('settings', new PasswordSettingsType(context))
   registry.register('settings', new DeleteAccountSettingsType(context))
