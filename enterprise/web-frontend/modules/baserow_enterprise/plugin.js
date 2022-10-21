@@ -2,6 +2,8 @@ import { registerRealtimeEvents } from '@baserow_enterprise/realtime'
 import { RolePermissionManagerType } from '@baserow_enterprise/permissionManagerTypes'
 
 import { EnterpriseMembersPagePluginType } from '@baserow_enterprise/membersPagePluginTypes'
+import { TeamsGroupSettingsPageType } from '@baserow_enterprise/groupSettingsPageTypes'
+
 import en from '@baserow_enterprise/locales/en.json'
 import fr from '@baserow_enterprise/locales/fr.json'
 import nl from '@baserow_enterprise/locales/nl.json'
@@ -33,5 +35,10 @@ export default (context) => {
   app.$registry.register(
     'membersPagePlugins',
     new EnterpriseMembersPagePluginType(context)
+  )
+
+  app.$registry.register(
+    'groupSettingsPage',
+    new TeamsGroupSettingsPageType(context)
   )
 }

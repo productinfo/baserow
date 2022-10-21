@@ -24,6 +24,11 @@ import {
   GroupMemberPermissionManagerType,
 } from '@baserow/modules/core/permissionManagerTypes'
 
+import {
+  MembersGroupSettingsPageType,
+  InvitesGroupSettingsPageType,
+} from '@baserow/modules/core/groupSettingsPageTypes'
+
 import settingsStore from '@baserow/modules/core/store/settings'
 import permissionsStore from '@baserow/modules/core/store/permissions'
 import applicationStore from '@baserow/modules/core/store/application'
@@ -68,6 +73,7 @@ export default (context, inject) => {
   registry.registerNamespace('settings')
   registry.registerNamespace('userFileUpload')
   registry.registerNamespace('membersPagePlugins')
+  registry.registerNamespace('groupSettingsPage')
   registry.register('settings', new AccountSettingsType(context))
   registry.register('settings', new PasswordSettingsType(context))
   registry.register('settings', new DeleteAccountSettingsType(context))
@@ -104,4 +110,13 @@ export default (context, inject) => {
 
   registry.register('job', new DuplicateApplicationJobType(context))
   registry.register('job', new InstallTemplateJobType(context))
+
+  registry.register(
+    'groupSettingsPage',
+    new MembersGroupSettingsPageType(context)
+  )
+  registry.register(
+    'groupSettingsPage',
+    new InvitesGroupSettingsPageType(context)
+  )
 }
