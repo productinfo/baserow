@@ -1,8 +1,6 @@
 import { registerRealtimeEvents } from '@baserow_enterprise/realtime'
 import { AuthProvidersType } from '@baserow_enterprise/adminTypes'
-import { SamlAuthProviderType } from '@baserow_enterprise/authProviderTypes'
 import authProviderAdminStore from '@baserow_enterprise/store/authProviderAdmin'
-import { SingleSignOnType } from '@baserow_enterprise/adminTypes'
 import {
   SamlAuthProviderType,
   GitHubAuthProviderType,

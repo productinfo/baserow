@@ -2,16 +2,16 @@ import urllib
 from typing import Any, Dict, Optional
 from django.urls import reverse
 from baserow.core.auth_provider.auth_provider_types import (
-    AuthenticationProviderType,
+    AuthProviderType,
 )
-from baserow.core.auth_provider.models import AuthenticationProviderModel
+from baserow.core.auth_provider.models import AuthProviderModel
 from django.conf import settings
 from .models import (
-    GoogleAuthenticationProviderModel,
-    FacebookAuthenticationProviderModel,
-    GitHubAuthenticationProviderModel,
-    GitLabAuthenticationProviderModel,
-    OpenIdConnectAuthenticationProviderModel,
+    GoogleAuthProviderModel,
+    FacebookAuthProviderModel,
+    GitHubAuthProviderModel,
+    GitLabAuthProviderModel,
+    OpenIdConnectAuthProviderModel,
 )
 import requests
 from requests_oauthlib import OAuth2Session
@@ -52,7 +52,7 @@ class OAuth2AuthProviderMixin:
         }
 
     def get_authorization_url(
-        self, instance: AuthenticationProviderModel, base_url: Optional[str]
+        self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
         """
         Expects self.SCOPE and self.AUTHORIZATION_URL to be set. Alternatively,
@@ -73,16 +73,14 @@ class OAuth2AuthProviderMixin:
         return authorization_url
 
 
-class GoogleAuthenticationProviderType(
-    OAuth2AuthProviderMixin, AuthenticationProviderType
-):
+class GoogleAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     """
     The Google authentication provider type allows users to
     login using OAuth2 through Google.
     """
 
     type = "google"
-    model_class = GoogleAuthenticationProviderModel
+    model_class = GoogleAuthProviderModel
     allowed_fields = ["name", "client_id", "secret"]
     serializer_field_names = ["name", "client_id", "secret"]
 
@@ -95,16 +93,14 @@ class GoogleAuthenticationProviderType(
     ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 
 
-class GitHubAuthenticationProviderType(
-    OAuth2AuthProviderMixin, AuthenticationProviderType
-):
+class GitHubAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     """
     The Github authentication provider type allows users to
     login using OAuth2 through Github.
     """
 
     type = "github"
-    model_class = GitHubAuthenticationProviderModel
+    model_class = GitHubAuthProviderModel
     allowed_fields = ["name", "client_id", "secret"]
     serializer_field_names = ["name", "client_id", "secret"]
 
@@ -112,9 +108,7 @@ class GitHubAuthenticationProviderType(
     SCOPE = "read:user,user:email"
     GITHUB_API_URL = "https://api.github.com"
 
-    def get_user_info(
-        self, instance: GitHubAuthenticationProviderModel, code: str
-    ) -> UserInfo:
+    def get_user_info(self, instance: GitHubAuthProviderModel, code: str) -> UserInfo:
         profile_url = "{0}/user".format(self.GITHUB_API_URL)
         emails_url = "{0}/user/emails".format(self.GITHUB_API_URL)
         access_token_url = "https://github.com/login/oauth/access_token"
@@ -155,16 +149,14 @@ class GitHubAuthenticationProviderType(
         return email
 
 
-class GitLabAuthenticationProviderType(
-    OAuth2AuthProviderMixin, AuthenticationProviderType
-):
+class GitLabAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     """
     The GitLab authentication provider type allows users to
     login using OAuth2 through GitLab.
     """
 
     type = "gitlab"
-    model_class = GitLabAuthenticationProviderModel
+    model_class = GitLabAuthProviderModel
     allowed_fields = ["name", "url", "client_id", "secret"]
     serializer_field_names = ["name", "url", "client_id", "secret"]
 
@@ -172,13 +164,11 @@ class GitLabAuthenticationProviderType(
     SCOPE = ["read_user"]
 
     def get_authorization_url(
-        self, instance: AuthenticationProviderModel, base_url: Optional[str]
+        self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
         super().get_authorization_url(instance, instance.url)
 
-    def get_user_info(
-        self, instance: GitHubAuthenticationProviderModel, code: str
-    ) -> UserInfo:
+    def get_user_info(self, instance: GitHubAuthProviderModel, code: str) -> UserInfo:
         access_token_url = "https://gitlab.com/oauth/token"
         redirect_uri = urllib.parse.urljoin(
             OAUTH_BACKEND_URL,
@@ -198,16 +188,14 @@ class GitLabAuthenticationProviderType(
         return UserInfo(name=name, email=email)
 
 
-class FacebookAuthenticationProviderType(
-    OAuth2AuthProviderMixin, AuthenticationProviderType
-):
+class FacebookAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     """
     The Facebook authentication provider type allows users to
     login using OAuth2 through Facebook.
     """
 
     type = "facebook"
-    model_class = FacebookAuthenticationProviderModel
+    model_class = FacebookAuthProviderModel
     allowed_fields = ["name", "url", "client_id", "secret"]
     serializer_field_names = ["name", "url", "client_id", "secret"]
 
@@ -215,7 +203,7 @@ class FacebookAuthenticationProviderType(
     SCOPE = ["email"]
 
     def get_authorization_url(
-        self, instance: AuthenticationProviderModel, base_url: Optional[str]
+        self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
         provider_id = instance.id
         redirect_uri = urllib.parse.urljoin(
@@ -230,22 +218,20 @@ class FacebookAuthenticationProviderType(
         return authorization_url
 
 
-class OpenIdConnectAuthenticationProviderType(
-    OAuth2AuthProviderMixin, AuthenticationProviderType
-):
+class OpenIdConnectAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     """
     The OpenId authentication provider type allows users to
     login using OAuth2 through OpenId Connect compatible provider.
     """
 
     type = "openid_connect"
-    model_class = OpenIdConnectAuthenticationProviderModel
+    model_class = OpenIdConnectAuthProviderModel
     allowed_fields = ["name", "url", "client_id", "secret"]
     serializer_field_names = ["name", "url", "client_id", "secret"]
 
     SCOPE = ["openid", "email", "profile"]
 
     def get_authorization_url(
-        self, instance: AuthenticationProviderModel, base_url: Optional[str]
+        self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
         super().get_authorization_url(instance, instance.url)

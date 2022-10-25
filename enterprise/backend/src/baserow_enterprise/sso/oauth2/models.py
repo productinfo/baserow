@@ -1,30 +1,11 @@
 from django.db import models
 
-from baserow.core.auth_provider.models import AuthenticationProviderModel
+from baserow.core.auth_provider.models import AuthProviderModel
 
 from django.db import models
 
 
-class OAuth2AuthenticationProviderMixin:
-    ...
-    # name = models.CharField(
-    #     blank=True,
-    #     max_length=191,
-    # )
-    # client_id = models.CharField(
-    #     max_length=191,
-    #     help_text="App ID, or consumer key",
-    # )
-    # secret = models.CharField(
-    #     max_length=191,
-    #     blank=True,
-    #     help_text="API secret, client secret, or consumer secret",
-    # )
-
-
-class GoogleAuthenticationProviderModel(
-    AuthenticationProviderModel, OAuth2AuthenticationProviderMixin
-):
+class GoogleAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
         max_length=191,
@@ -39,9 +20,7 @@ class GoogleAuthenticationProviderModel(
     )
 
 
-class FacebookAuthenticationProviderModel(
-    AuthenticationProviderModel, OAuth2AuthenticationProviderMixin
-):
+class FacebookAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
         max_length=191,
@@ -56,9 +35,7 @@ class FacebookAuthenticationProviderModel(
     )
 
 
-class GitHubAuthenticationProviderModel(
-    AuthenticationProviderModel, OAuth2AuthenticationProviderMixin
-):
+class GitHubAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
         max_length=191,
@@ -73,9 +50,7 @@ class GitHubAuthenticationProviderModel(
     )
 
 
-class GitLabAuthenticationProviderModel(
-    AuthenticationProviderModel, OAuth2AuthenticationProviderMixin
-):
+class GitLabAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
         max_length=191,
@@ -91,9 +66,7 @@ class GitLabAuthenticationProviderModel(
     )
 
 
-class OpenIdConnectAuthenticationProviderModel(
-    AuthenticationProviderModel, OAuth2AuthenticationProviderMixin
-):
+class OpenIdConnectAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
         max_length=191,

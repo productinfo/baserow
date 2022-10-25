@@ -8,7 +8,6 @@ import GitLabSettingsForm from '@baserow_enterprise/components/sso/forms/GitLabS
 import OpenIdConnectSettingsForm from '@baserow_enterprise/components/sso/forms/OpenIdConnectSettingsForm.vue'
 import OAuth2LoginButton from '@baserow_enterprise/components/sso/oauth2/loginButton'
 
-
 export class SamlAuthProviderType extends AuthProviderType {
   getType() {
     return 'saml'

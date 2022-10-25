@@ -19,8 +19,7 @@ export default {
   layout: 'login',
   asyncData({ route, i18n }) {
     return {
-      errorMessage:
-        route.query.message || i18n.t('loginError.defaultMessage'),
+      errorMessage: route.query.message || i18n.t('loginError.defaultMessage'),
     }
   },
   head() {
