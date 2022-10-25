@@ -11,6 +11,7 @@
       <component
         :is="getProviderAdminSettingsFormComponent()"
         ref="providerSettingsForm"
+        :auth-provider-type="authProviderType"
         :server-errors="serverErrors"
         @submit="create($event)"
         @input="updateServerErrors($event)"

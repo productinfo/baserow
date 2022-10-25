@@ -122,7 +122,7 @@ export class FacebookAuthProviderType extends AuthProviderType {
   }
 
   getProviderName(provider) {
-    return provider.name ? provider.name : `Facebook`
+    return provider.name ? provider.name : this.getName()
   }
 
   getLoginButtonComponent() {
@@ -170,7 +170,7 @@ export class GitHubAuthProviderType extends AuthProviderType {
   }
 
   getProviderName(provider) {
-    return provider.name ? provider.name : `GitHub`
+    return provider.name ? provider.name : this.getName()
   }
 
   getLoginButtonComponent() {
@@ -218,7 +218,7 @@ export class GitLabAuthProviderType extends AuthProviderType {
   }
 
   getProviderName(provider) {
-    return provider.name ? provider.name : `GitLab`
+    return provider.name ? provider.name : this.getName()
   }
 
   getLoginButtonComponent() {
@@ -266,7 +266,7 @@ export class OpenIdConnectAuthProviderType extends AuthProviderType {
   }
 
   getProviderName(provider) {
-    return provider.name ? provider.name : `OpenId Connect`
+    return provider.name ? provider.name : this.getName()
   }
 
   getLoginButtonComponent() {

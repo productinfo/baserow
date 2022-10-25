@@ -6,7 +6,7 @@
         <input
           ref="name"
           v-model="values.name"
-          :class="{ 'input--error': fieldHasErrors('name') || serverErrors.name}"
+          :class="{ 'input--error': fieldHasErrors('name')}"
           type="text"
           class="input"
           :placeholder="$t('oauthSettingsForm.providerNamePlaceholder')"
@@ -89,15 +89,10 @@ import { required, url } from 'vuelidate/lib/validators'
 import form from '@baserow/modules/core/mixins/form'
 
 export default {
-  name: 'SAMLProviderSettingsForm',
+  name: 'GitLabSettingsForm',
   mixins: [form],
   props: {
-    provider: {
-      type: Object,
-      required: false,
-      default: () => ({}),
-    },
-    serverErrors: {
+    authProvider: {
       type: Object,
       required: false,
       default: () => ({}),
@@ -105,7 +100,7 @@ export default {
   },
   data() {
     return {
-      allowedValues: ['name', 'client_id', 'secret'],
+      allowedValues: ['name', 'url', 'client_id', 'secret'],
       values: {
         name: '',
         url: '',
@@ -117,10 +112,10 @@ export default {
   methods: {
     getDefaultValues() {
       return {
-        name: this.provider.name || '',
-        url: this.provider.url || '',
-        client_id: this.provider.client_id || '',
-        secret: this.provider.secret || '',
+        name: this.providerName,
+        url: this.authProvider.url || '',
+        client_id: this.authProvider.client_id || '',
+        secret: this.authProvider.secret || '',
       }
     },
     submit() {
@@ -131,10 +126,17 @@ export default {
       this.$emit('submit', this.values)
     },
   },
+  computed: {
+    providerName() {
+      return this.$registry
+          .get('authProvider', 'gitlab')
+          .getProviderName(this.authProvider)
+    }
+  },
   validations() {
     return {
       values: {
-        name: {},
+        name: { required },
         url: { url },
         client_id: { required },
         secret: { required },

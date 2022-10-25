@@ -89,10 +89,10 @@ import { required, url } from 'vuelidate/lib/validators'
 import form from '@baserow/modules/core/mixins/form'
 
 export default {
-  name: 'SAMLProviderSettingsForm',
+  name: 'OpenIdConnectSettingsForm',
   mixins: [form],
   props: {
-    provider: {
+    authProvider: {
       type: Object,
       required: false,
       default: () => ({}),
@@ -100,7 +100,7 @@ export default {
   },
   data() {
     return {
-      allowedValues: ['name', 'client_id', 'secret'],
+      allowedValues: ['name', 'url', 'client_id', 'secret'],
       values: {
         name: '',
         url: '',
@@ -112,10 +112,10 @@ export default {
   methods: {
     getDefaultValues() {
       return {
-        name: this.provider.name || '',
-        url: this.provider.url || '',
-        client_id: this.provider.client_id || '',
-        secret: this.provider.secret || '',
+        name: this.authProvider.name || '',
+        url: this.authProvider.url || '',
+        client_id: this.authProvider.client_id || '',
+        secret: this.authProvider.secret || '',
       }
     },
     submit() {
@@ -129,7 +129,7 @@ export default {
   validations() {
     return {
       values: {
-        name: {},
+        name: { required },
         url: { required, url },
         client_id: { required },
         secret: { required },

@@ -8,7 +8,7 @@ from django.db import models
 class GoogleAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
-        max_length=191,
+        max_length=255,
     )
     client_id = models.CharField(
         max_length=191,
@@ -23,7 +23,7 @@ class GoogleAuthProviderModel(AuthProviderModel):
 class FacebookAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
-        max_length=191,
+        max_length=255,
     )
     client_id = models.CharField(
         max_length=191,
@@ -38,7 +38,7 @@ class FacebookAuthProviderModel(AuthProviderModel):
 class GitHubAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
-        max_length=191,
+        max_length=255,
     )
     client_id = models.CharField(
         max_length=191,
@@ -53,7 +53,7 @@ class GitHubAuthProviderModel(AuthProviderModel):
 class GitLabAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
-        max_length=191,
+        max_length=255,
     )
     url = models.URLField(help_text="Base URL of the authorization server")
     client_id = models.CharField(
@@ -69,7 +69,7 @@ class GitLabAuthProviderModel(AuthProviderModel):
 class OpenIdConnectAuthProviderModel(AuthProviderModel):
     name = models.CharField(
         blank=True,
-        max_length=191,
+        max_length=255,
     )
     url = models.URLField(help_text="Base URL of the authorization server")
     client_id = models.CharField(

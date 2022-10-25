@@ -69,14 +69,18 @@ import { required } from 'vuelidate/lib/validators'
 import form from '@baserow/modules/core/mixins/form'
 
 export default {
-  name: 'SAMLProviderSettingsForm',
+  name: 'OAuth2SettingsForm',
   mixins: [form],
   props: {
-    provider: {
+    authProvider: {
       type: Object,
       required: false,
       default: () => ({}),
     },
+    authProviderType: {
+      type: String,
+      required: false,
+    }
   },
   data() {
     return {
@@ -91,9 +95,9 @@ export default {
   methods: {
     getDefaultValues() {
       return {
-        name: this.provider.name || '',
-        client_id: this.provider.client_id || '',
-        secret: this.provider.secret || '',
+        name: this.providerName,
+        client_id: this.authProvider.client_id || '',
+        secret: this.authProvider.secret || '',
       }
     },
     submit() {
@@ -104,10 +108,18 @@ export default {
       this.$emit('submit', this.values)
     },
   },
+  computed: {
+    providerName() {
+      const type = this.authProviderType ? this.authProviderType : this.authProvider.type
+      return this.$registry
+          .get('authProvider', type)
+          .getProviderName(this.authProvider)
+    }
+  },
   validations() {
     return {
       values: {
-        name: {},
+        name: { required },
         client_id: { required },
         secret: { required },
       },

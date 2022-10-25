@@ -16,8 +16,9 @@ from .models import (
 import requests
 from requests_oauthlib import OAuth2Session
 from requests_oauthlib.compliance_fixes import facebook_compliance_fix
-import json
 from dataclasses import dataclass
+from rest_framework import serializers
+
 
 OAUTH_BACKEND_URL = settings.PUBLIC_BACKEND_URL
 
