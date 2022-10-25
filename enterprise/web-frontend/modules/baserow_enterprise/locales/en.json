@@ -43,9 +43,14 @@
         "title": "Ouch! Something went wrong...",
         "defaultMessage": "An error occurred while trying to log in."
     },
-	"sso": {
-	    "providerName": "Name",
-	    "clientId": "Client ID",
-	    "secret": "secret"
-	}
+    "oauthSettingsForm": {
+        "providerName": "Name",
+        "providerNamePlaceholder": "Custom provider name",
+        "clientId": "Client ID",
+        "clientIdPlaceholder": "Provider's client ID",
+        "secret": "Secret",
+        "secretPlaceholder": "Provider's secret",
+        "url": "URL",
+        "urlPlaceholder": "Provider's base URL"
+    }
 }

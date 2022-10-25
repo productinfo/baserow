@@ -1,7 +1,7 @@
 <template>
   <form class="context__form" @submit.prevent="submit">
     <FormElement :error="fieldHasErrors('name')" class="control">
-      <label class="control__label">{{ $t('enterprise.sso.providerName') }}</label>
+      <label class="control__label">{{ $t('oauthSettingsForm.providerName') }}</label>
       <div class="control__elements">
         <input
           ref="name"
@@ -9,7 +9,7 @@
           :class="{ 'input--error': fieldHasErrors('name') }"
           type="text"
           class="input"
-          :placeholder="$t('fieldForm.providerName')"
+          :placeholder="$t('oauthSettingsForm.providerNamePlaceholder')"
           @blur="$v.values.name.$touch()"
         />
         <div
@@ -21,14 +21,15 @@
       </div>
     </FormElement>
     <FormElement :error="fieldHasErrors('client_id')" class="control">
-      <label class="control__label">{{ $t('enterprise.sso.clientId') }}</label>
+      <label class="control__label">{{ $t('oauthSettingsForm.clientId') }}</label>
       <div class="control__elements">
         <input
           ref="client_id"
           v-model="values.client_id"
           :class="{ 'input--error': fieldHasErrors('client_id') }"
           type="text"
-          :placeholder="$t('fieldForm.clientId')"
+          class="input"
+          :placeholder="$t('oauthSettingsForm.clientIdPlaceholder')"
           @blur="$v.values.client_id.$touch()"
         ></input>
         <div
@@ -40,14 +41,15 @@
       </div>
     </FormElement>
     <FormElement :error="fieldHasErrors('secret')" class="control">
-      <label class="control__label">{{ $t('enterprise.sso.secret') }}</label>
+      <label class="control__label">{{ $t('oauthSettingsForm.secret') }}</label>
       <div class="control__elements">
         <input
           ref="secret"
           v-model="values.secret"
           :class="{ 'input--error': fieldHasErrors('secret') }"
           type="text"
-          :placeholder="$t('fieldForm.secret')"
+          class="input"
+          :placeholder="$t('oauthSettingsForm.secretPlaceholder')"
           @blur="$v.values.secret.$touch()"
         ></input>
         <div

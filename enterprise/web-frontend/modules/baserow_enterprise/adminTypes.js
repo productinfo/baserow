@@ -7,9 +7,10 @@ class EnterpriseAdminType extends AdminType {
   }
 
   isDeactivated() {
-    return !this.app.$registry
-      .get('plugin', PremiumPlugin.getType())
-      .activeLicenseHasPremiumFeatures()
+    return false
+    // return !this.app.$registry
+    //   .get('plugin', PremiumPlugin.getType())
+    //   .activeLicenseHasPremiumFeatures()
   }
 }
 

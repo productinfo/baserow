@@ -3,10 +3,10 @@ import { AuthProviderType } from '@baserow/modules/core/authProviderTypes'
 import SamlLoginAction from '@baserow_enterprise/components/admin/login/SamlLoginAction'
 import ProviderItem from '@baserow_enterprise/components/admin/AuthProviderItem'
 import SamlSettingsForm from '@baserow_enterprise/components/admin/forms/SamlSettingsForm'
-import OAuth2SettingsForm from '@baserow_enterprise/components/sso/forms/OAuth2SettingsForm.vue'
-import GitLabSettingsForm from '@baserow_enterprise/components/sso/forms/GitLabSettingsForm.vue'
-import OpenIdConnectSettingsForm from '@baserow_enterprise/components/sso/forms/OpenIdConnectSettingsForm.vue'
-import OAuth2LoginButton from '@baserow_enterprise/components/sso/oauth2/loginButton'
+import OAuth2SettingsForm from '@baserow_enterprise/components/admin/forms/OAuth2SettingsForm.vue'
+import GitLabSettingsForm from '@baserow_enterprise/components/admin/forms/GitLabSettingsForm.vue'
+import OpenIdConnectSettingsForm from '@baserow_enterprise/components/admin/forms/OpenIdConnectSettingsForm.vue'
+import LoginButton from '@baserow_enterprise/components/admin/login/LoginButton.vue'
 
 export class SamlAuthProviderType extends AuthProviderType {
   getType() {
@@ -78,7 +78,7 @@ export class GoogleAuthProviderType extends AuthProviderType {
   }
 
   getLoginButtonComponent() {
-    return OAuth2LoginButton
+    return LoginButton
   }
 
   getAdminListComponent() {
@@ -126,7 +126,7 @@ export class FacebookAuthProviderType extends AuthProviderType {
   }
 
   getLoginButtonComponent() {
-    return OAuth2LoginButton
+    return LoginButton
   }
 
   getAdminListComponent() {
@@ -174,7 +174,7 @@ export class GitHubAuthProviderType extends AuthProviderType {
   }
 
   getLoginButtonComponent() {
-    return OAuth2LoginButton
+    return LoginButton
   }
 
   getAdminListComponent() {
@@ -222,7 +222,7 @@ export class GitLabAuthProviderType extends AuthProviderType {
   }
 
   getLoginButtonComponent() {
-    return OAuth2LoginButton
+    return LoginButton
   }
 
   getAdminListComponent() {
@@ -270,7 +270,7 @@ export class OpenIdConnectAuthProviderType extends AuthProviderType {
   }
 
   getLoginButtonComponent() {
-    return OAuth2LoginButton
+    return LoginButton
   }
 
   getAdminListComponent() {
