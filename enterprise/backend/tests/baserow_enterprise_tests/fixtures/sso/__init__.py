@@ -1,1 +1,1 @@
-from .saml import SamlFixture
+from .saml import SamlFixture  # noqa: F401

@@ -1,9 +1,11 @@
 import base64
 import binascii
+import logging
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode, urlparse
 
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
@@ -13,9 +15,10 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from baserow_enterprise.api.sso.saml.errors import ERROR_SAML_INVALID_LOGIN_REQUEST
+from baserow_enterprise.license.handler import has_active_enterprise_license
 from baserow_enterprise.sso.saml.models import SamlAuthProviderModel
-from baserow_premium.license.handler import check_active_premium_license
 from defusedxml import ElementTree
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -23,7 +26,7 @@ from rest_framework.views import APIView
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, entity
 from saml2.client import Saml2Client
 from saml2.config import Config as Saml2Config
-from saml2.config import ConfigurationError
+from saml2.response import AuthnResponse
 
 from baserow.api.decorators import map_exceptions, validate_query_parameters
 from baserow.api.schemas import get_error_schema
@@ -37,25 +40,44 @@ from .exceptions import (
 )
 from .serializers import SamlLoginRequestSerializer
 
-check_active_enterprise_license = check_active_premium_license
 
 ENTITY_ID_SAML_RESPONSE_TAG = "{urn:oasis:names:tc:SAML:2.0:assertion}Issuer"
 REDIRECT_URL_ON_ERROR = settings.PUBLIC_WEB_FRONTEND_URL + "/login/error"
 
 
-def redirect_to_error_page_with_message(message: str) -> HttpResponse:
-    return redirect(f"{REDIRECT_URL_ON_ERROR}?message={message}")
+logger = logging.getLogger(__name__)
+
+
+def redirect_to_frontend_error_page(message: Optional[str] = None) -> HttpResponse:
+    """
+    Redirects the user to the error page in the frontend providing a message
+    as query parameter if provided.
+    """
+
+    frontend_error_page_url = REDIRECT_URL_ON_ERROR
+    if message:
+        frontend_error_page_url += "?" + urlencode({"message": message})
+    return redirect(frontend_error_page_url)
 
 
 def get_saml_client_for(
-    identity_provider: SamlAuthProviderModel, acs_url: str
+    saml_auth_provider: SamlAuthProviderModel, acs_url: str
 ) -> Saml2Client:
+    """
+    Returns a SAML client with the correct configuration for the given authentication
+    provider.
+
+    :param saml_auth_provider: The authentication provider that needs to be used to
+        authenticate the user.
+    :param acs_url: The url that should be used as the assertion consumer service url.
+    :return: The SAML client that can be used to authenticate the user.
+    """
 
     saml_settings: Dict[str, Any] = {
         "entityid": acs_url,
-        "metadata": {"inline": [identity_provider.metadata]},
+        "metadata": {"inline": [saml_auth_provider.metadata]},
         "allow_unknown_attributes": True,
-        # "debug": True,
+        "debug": settings.DEBUG,
         "service": {
             "sp": {
                 "endpoints": {
@@ -77,7 +99,15 @@ def get_saml_client_for(
     return Saml2Client(config=sp_config)
 
 
-def check_authn_response_is_valid_or_raise(authn_response) -> bool:
+def check_authn_response_is_valid_or_raise(authn_response: AuthnResponse):
+    """
+    Checks if the authn response is valid and raises an exception if not.
+
+    :param authn_response: The authn response that should be checked.
+    :raises InvalidSamlResponse: When the authn response is not valid.
+    :return: True if the authn response is valid.
+    """
+
     if not authn_response:
         raise InvalidSamlResponse("There was no response from SAML identity provider.")
 
@@ -90,29 +120,50 @@ def check_authn_response_is_valid_or_raise(authn_response) -> bool:
     if not authn_response.get_identity():
         raise InvalidSamlResponse("No user identity in SAML response.")
 
-    return True
 
-
-def get_identity_provider_from_saml_response(
-    saml_response: str,
+def get_saml_auth_provider_from_saml_response(
+    saml_raw_response: str,
 ) -> SamlAuthProviderModel:
+    """
+    Parses the saml response and returns the authentication provider that needs to
+    be used to authenticate the user.
+
+    :param saml_raw_response: The raw saml response that was received from the
+        identity provider.
+    :raises InvalidSamlConfiguration: When the correct authentication provider is
+        not found in the system based on the information of saml response received.
+    :return: The authentication provider that needs to be used to authenticate the
+        user.
+    """
+
     try:
         decoded_saml_response = ElementTree.fromstring(
-            base64.b64decode(saml_response).decode("utf-8")
+            base64.b64decode(saml_raw_response).decode("utf-8")
         )
         issuer = decoded_saml_response.find(ENTITY_ID_SAML_RESPONSE_TAG).text
     except (binascii.Error, ElementTree.ParseError, AttributeError):
         raise InvalidSamlConfiguration("Impossible decode SAML response.")
 
-    identity_provider = SamlAuthProviderModel.objects.filter(
+    saml_auth_provider = SamlAuthProviderModel.objects.filter(
         enabled=True, metadata__contains=issuer
     ).first()
-    if not identity_provider:
+    if not saml_auth_provider:
         raise InvalidSamlConfiguration("Unknown SAML issuer.")
-    return identity_provider
+    return saml_auth_provider
 
 
-def get_user_identity_from_authn_response(authn_response) -> Dict[str, Any]:
+def get_user_identity_from_authn_response(
+    authn_response: AuthnResponse,
+) -> Dict[str, Any]:
+    """
+    Extracts the user identity from the authn response and return a dict that
+    can be sent to the UserHandler to create or update the user.
+
+    :param authn_response: The authn response that contains the user identity.
+    :return: A dictionary containing the user info that can be sent to the
+        UserHandler.create_user() method.
+    """
+
     user_identity = authn_response.get_identity()
     email = user_identity["user.email"][0]
     first_name = user_identity["user.first_name"][0]
@@ -122,78 +173,128 @@ def get_user_identity_from_authn_response(authn_response) -> Dict[str, Any]:
     }
 
 
-def urlencode_token(requested_redirect_url: str, token: str) -> str:
+def get_valid_frontend_url(requested_original_url: str) -> str:
     """
-    Checks if the requested redirect url is a valid url and if so, adds the token
-    as a query parameter to the url.
+    Returns a valid frontend url based on the original url requested before the
+    redirection to the login. If the original url is relative, it will be
+    prefixed with the frontend hostname to make the IdP redirection work. If the
+    original url is external to Baserow, the default public frontend url will be
+    returned instead.
+
+    :param requested_original_url: The url to which the user should be
+        redirected after a successful login.
+    :return: The url with the token as a query parameter.
     """
 
-    parsed_url = urlparse(requested_redirect_url)
+    parsed_url = urlparse(requested_original_url)
     frontend_url = urlparse(settings.PUBLIC_WEB_FRONTEND_URL)
+
     if parsed_url.hostname is None:
-        # add the hostname for a relative url
         parsed_url = frontend_url._replace(path=parsed_url.path)
     if parsed_url.hostname != frontend_url.hostname:
-        # redirect to the homepage if an invalid hostname is provided
         parsed_url = frontend_url
+
+    return parsed_url.geturl()
+
+
+def urlencode_token_as_query_params_for_user_session(url: str, token: str) -> str:
+    """
+    Adds the token as a query parameter to the url.
+
+    :param url: The url to which the user should be redirected
+        after a successful login.
+    :param token: The token that should be added to the url.
+    :return: The url with the token as a query parameter.
+    """
+
+    parsed_url = urlparse(url)
     return parsed_url._replace(query=f"token={token}").geturl()
+
+
+def get_or_create_user_and_sign_in_via_saml_identity(
+    user_info: Dict[str, Any], saml_auth_provider: SamlAuthProviderModel
+) -> AbstractUser:
+    """
+    Gets from the database if present or creates a user if not, based on the
+    user info that was received from the identity provider.
+
+    :param user_info: A dictionary containing the user info that can be sent to
+        the UserHandler.create_user() method.
+    :param saml_auth_provider: The authentication provider that was used to
+        authenticate the user.
+    :return: The user that was created or updated.
+    """
+
+    user_handler = UserHandler()
+    try:
+        user = user_handler.get_active_user(email=user_info["email"])
+        user_handler.user_signed_in_via_provider(user, saml_auth_provider)
+    except UserNotFound:
+        with transaction.atomic():
+            # TODO: what about language, group invitation token and template?
+            user = user_handler.create_user(
+                **user_info,
+                password=None,
+                authentication_provider=saml_auth_provider,
+            )
+    return user
 
 
 @method_decorator(csrf_exempt, name="dispatch")
 class AssertionConsumerServiceView(View):
     def post(self, request: HttpRequest) -> HttpResponse:
+        """
+        This is the endpoint the SAML identity provider will call after the user
+        has been authenticated there. If valid, the SAML response will contain
+        the user's information needed to retrieve or create the user in the
+        database. Once we have a valid user, a frontend url will be returned
+        with the user's token as a query parameter so that the frontend can
+        authenticate and start a new session for the user.
+        """
 
-        # TODO: check user license here or disable all the providers if the
-        # license expires? TODO: should I check that the email address of the
-        # user belongs to the configured domain?
+        if not has_active_enterprise_license():
+            return redirect_to_frontend_error_page(
+                "SAML login is not available without a valid enterprise license."
+            )
 
         saml_response = request.POST.get("SAMLResponse")
         if saml_response is None:
-            return redirect_to_error_page_with_message(
-                "No SAMLResponse found in POST data."
+            return redirect_to_frontend_error_page(
+                "SAML response is missing. Verify the SAML provider configuration."
             )
 
         try:
-            identity_provider = get_identity_provider_from_saml_response(saml_response)
-        except KeyError as exc:
-            return redirect_to_error_page_with_message(str(exc))
-
-        acs_url = request.build_absolute_uri(reverse("api:enterprise:sso:saml:acs"))
-        try:
-            saml_client = get_saml_client_for(identity_provider, acs_url)
-        except ConfigurationError as exc:
-            return redirect_to_error_page_with_message(str(exc))
-
-        authn_response = saml_client.parse_authn_request_response(
-            saml_response, entity.BINDING_HTTP_POST
-        )
-        try:
+            saml_auth_provider = get_saml_auth_provider_from_saml_response(
+                saml_response
+            )
+            acs_url = request.build_absolute_uri(reverse("api:enterprise:sso:saml:acs"))
+            saml_client = get_saml_client_for(saml_auth_provider, acs_url)
+            authn_response = saml_client.parse_authn_request_response(
+                saml_response, entity.BINDING_HTTP_POST
+            )
             check_authn_response_is_valid_or_raise(authn_response)
-        except InvalidSamlResponse as exc:
-            return redirect_to_error_page_with_message(str(exc))
+            user_info = get_user_identity_from_authn_response(authn_response)
+        except Exception as exc:
+            logger.exception(exc)
+            return redirect_to_frontend_error_page(
+                "An error occurred parsing the Identity Provider SAML response."
+            )
 
-        user_info = get_user_identity_from_authn_response(authn_response)
-        user_handler = UserHandler()
-        try:
-            user = user_handler.get_active_user(email=user_info["email"])
-            user_handler.user_signed_in_via_provider(user, identity_provider)
-        except UserNotFound:
-            with transaction.atomic():
-                # TODO: what about language, group invitation token and template?
-                user = user_handler.create_user(
-                    **user_info,
-                    password=None,
-                    authentication_provider=identity_provider,
-                )
-        tokens = user_handler.get_session_tokens_for_user(user)
+        user = get_or_create_user_and_sign_in_via_saml_identity(
+            user_info, saml_auth_provider
+        )
+        user_session_tokens = UserHandler().get_session_tokens_for_user(user)
 
         # since we correctly sign in a user, we can set this IdP as verified
-        # This means it can be used as unique authentication provider
-        if not identity_provider.is_verified:
-            identity_provider.is_verified = True
-            identity_provider.save()
+        # This means it can be used as unique authentication provider form now on
+        if not saml_auth_provider.is_verified:
+            saml_auth_provider.is_verified = True
+            saml_auth_provider.save()
 
-        redirect_url = urlencode_token(request.POST["RelayState"], tokens["refresh"])
+        valid_frontend_url = get_valid_frontend_url(request.POST["RelayState"])
+        redirect_url = urlencode_token_as_query_params_for_user_session(
+            valid_frontend_url, user_session_tokens["refresh"]
+        )
         return redirect(redirect_url)
 
 
@@ -228,20 +329,29 @@ def get_auth_provider(email: Optional[str] = None) -> SamlAuthProviderModel:
 
 @method_decorator(csrf_exempt, name="dispatch")
 class BaserowInitiatedSingleSignOn(View):
-    def _get_redirect_url_to_identity_provider(
+    def _get_redirect_url_to_saml_identity_provider(
         self,
-        identity_provider: SamlAuthProviderModel,
+        saml_auth_provider: SamlAuthProviderModel,
         acs_url: str,
         original_url: str,
     ) -> str:
         """
         Returns the redirect url to the identity provider. This url is used to
         initiate the SAML authentication flow from the service provider.
+
+        :param saml_auth_provider: The identity provider to which the user
+            should be redirected.
+        :param acs_url: The assertion consumer service endpoint where the
+            identity provider will send the SAML response.
+        :param original_url: The url to which the user should be redirected
+            after a successful login.
+        :raises InvalidSamlConfiguration: If the SAML configuration is invalid.
+        :return: The redirect url to the identity provider.
         """
 
-        saml_client = get_saml_client_for(identity_provider, acs_url)
+        saml_client = get_saml_client_for(saml_auth_provider, acs_url)
         _, info = saml_client.prepare_for_authenticate(relay_state=original_url)
-        # Select the identity_provider URL to send the AuthN request to
+
         for key, value in info["headers"]:
             if key == "Location":
                 return value
@@ -249,25 +359,34 @@ class BaserowInitiatedSingleSignOn(View):
             raise InvalidSamlConfiguration("No Location header found in SAML response.")
 
     def get(self, request: HttpRequest) -> HttpResponse:
+        """
+        This is the endpoint that is called when the user wants to initiate the
+        SSO SAML login from Baserow (the service provider). The user will be
+        redirected to the SAML identity provider (IdP) where the user can
+        authenticate. After the authentication the user will be redirected back
+        to the assertion consumer service endpoint (ACS) where the SAML response
+        will be validated and the user will be signed in.
+        """
 
-        # TODO: check enterprise license
+        if not has_active_enterprise_license():
+            return redirect_to_frontend_error_page(
+                "SAML login is not available without an enterprise license."
+            )
 
         email = request.GET.get("email")
-
-        try:
-            identity_provider = get_auth_provider(email)
-        except InvalidSamlRequest as exc:
-            return redirect_to_error_page_with_message(str(exc))
-
-        original_url = request.GET.get("original", "")
+        original_request_url = request.GET.get("original", "")
         acs_url = request.build_absolute_uri(reverse("api:enterprise:sso:saml:acs"))
 
         try:
-            redirect_url = self._get_redirect_url_to_identity_provider(
-                identity_provider, acs_url, original_url
+            saml_auth_provider = get_auth_provider(email)
+            redirect_url = self._get_redirect_url_to_saml_identity_provider(
+                saml_auth_provider, acs_url, original_request_url
             )
-        except InvalidSamlConfiguration as exc:
-            return redirect_to_error_page_with_message(str(exc))
+        except (InvalidSamlRequest, InvalidSamlConfiguration) as exc:
+            logger.exception(exc)
+            return redirect_to_frontend_error_page(
+                "An error occurred before the redirection to the SAML identity provider."
+            )
 
         return redirect(redirect_url)
 
@@ -276,12 +395,34 @@ class AdminAuthProvidersLoginUrlView(APIView):
     permission_classes = (AllowAny,)
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="email",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.STR,
+                description="The email address of the user that want to sign in using SAML.",
+            ),
+            OpenApiParameter(
+                name="original",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.STR,
+                description=(
+                    "The url to which the user should be redirected after a successful login."
+                ),
+            ),
+        ],
         tags=["Auth"],
         request=SamlLoginRequestSerializer,
-        operation_id="login_auth_provider",
-        description=("Return the correct redirect_url to initiate the SAML login."),
+        operation_id="auth_provider_login_url",
+        description=(
+            "Return the correct redirect_url to initiate the SSO SAML login. "
+            "It needs an email address if multiple SAML providers are configured, "
+            "Otherwise it will return the redirect_url for the only configured "
+            "SAML provider."
+        ),
         responses={
             200: Dict[str, str],
+            400: get_error_schema(["ERROR_SAML_INVALID_LOGIN_REQUEST"]),
         },
         auth=[],
     )
@@ -297,11 +438,16 @@ class AdminAuthProvidersLoginUrlView(APIView):
 
         # check_active_enterprise_license(?)
 
-        # check if the email address is valid, otherwise raise an error
+        # check there is a valid SAML provider configured for the email provided
         get_auth_provider(query_params.get("email"))
 
         relative_url = reverse("api:enterprise:sso:saml:login")
         if query_params:
+            # ensure the original requested url is relative
+            original = urlparse(query_params.pop("original", ""))
+            if original.hostname is None:
+                query_params["original"] = original.geturl()
+
             relative_url = f"{relative_url}?{urlencode(query_params)}"
 
         return Response({"redirect_url": request.build_absolute_uri(relative_url)})

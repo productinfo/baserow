@@ -1,6 +1,6 @@
 <template>
   <nuxt-link :to="{ name: 'login-saml', query: $route.query }">
-    {{ $t('enterprise.saml.signInWithSAML') }}
+    {{ $t('loginWithSaml.signInWithSaml') }}
   </nuxt-link>
 </template>
 

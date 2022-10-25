@@ -7,7 +7,7 @@
     </div>
     <div class="login-box__head">
       <h1 class="box__head-title">
-        {{ $t('enterprise.loginError.title') }}
+        {{ $t('loginError.title') }}
       </h1>
     </div>
     {{ errorMessage }}
@@ -20,12 +20,12 @@ export default {
   asyncData({ route, i18n }) {
     return {
       errorMessage:
-        route.query.message || i18n.t('enterprise.loginError.defaultMessage'),
+        route.query.message || i18n.t('loginError.defaultMessage'),
     }
   },
   head() {
     return {
-      title: this.$t('enterprise.loginError.title'),
+      title: this.$t('loginError.title'),
     }
   },
 }

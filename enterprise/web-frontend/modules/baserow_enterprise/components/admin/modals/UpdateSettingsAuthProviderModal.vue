@@ -1,11 +1,15 @@
 <template>
   <Modal>
     <h2 class="box__title">
-      {{ $t('enterprise.updateSettingsAuthProviderModal.title') }}
+      {{
+        $t('updateSettingsAuthProviderModal.title', {
+          type: getProviderTypeName(),
+        })
+      }}
     </h2>
     <div>
       <component
-        :is="getProviderAdminSettingsFormComponent(authProvider)"
+        :is="getProviderAdminSettingsFormComponent()"
         ref="providerSettingsForm"
         :auth-provider="authProvider"
         :server-errors="serverErrors"
@@ -34,7 +38,7 @@ import modal from '@baserow/modules/core/mixins/modal'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 
 export default {
-  name: 'EditAuthProviderModal',
+  name: 'UpdateSettingsAuthProviderModal',
   mixins: [modal],
   props: {
     authProvider: {
@@ -49,10 +53,15 @@ export default {
     }
   },
   methods: {
-    getProviderAdminSettingsFormComponent(provider) {
+    getProviderAdminSettingsFormComponent() {
       return this.$registry
-        .get('authProvider', provider.type)
+        .get('authProvider', this.authProvider.type)
         .getAdminSettingsFormComponent()
+    },
+    getProviderTypeName() {
+      return this.$registry
+        .get('authProvider', this.authProvider.type)
+        .getName()
     },
     async onSettingsUpdated(values) {
       this.loading = true

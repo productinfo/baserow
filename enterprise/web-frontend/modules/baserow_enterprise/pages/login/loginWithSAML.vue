@@ -7,7 +7,7 @@
     </div>
     <div class="login-box__head">
       <h1 class="box__head-title">
-        {{ $t('enterprise.saml.signInWithSAML') }}
+        {{ $t('loginWithSaml.signInWithSaml') }}
       </h1>
     </div>
     <form @submit.prevent="login">
@@ -35,7 +35,7 @@
             </div>
             <div v-else-if="loginRequestError">
               <i class="fas fa-fw fa-exclamation-triangle"></i>
-              {{ $t('enterprise.loginWithSAML.requestError') }}
+              {{ $t('loginWithSaml.requestError') }}
             </div>
           </div>
         </div>
@@ -44,11 +44,11 @@
     <div class="login-actions">
       <button
         :class="{ 'button--loading': loading }"
-        class="button button--full-width"
+        class="button login-button--full-width"
         :disabled="loading"
         @click="login"
       >
-        {{ $t('enterprise.saml.continueWithSaml') }}
+        {{ $t('loginWithSaml.continueWithSaml') }}
       </button>
     </div>
     <div class="actions">
@@ -74,8 +74,6 @@ export default {
   mixins: [form, error],
   layout: 'login',
   async asyncData({ app, redirect, store, route }) {
-    // check for license ?
-
     if (store.getters['settings/get'].show_admin_signup_page === true) {
       redirect('signup')
     }

@@ -13,11 +13,11 @@ class AuthProvidersLoginOptionsView(APIView):
     permission_classes = (AllowAny,)
 
     @extend_schema(
-        tags=["Auth providers login options"],
+        tags=["Auth"],
         operation_id="list_auth_providers_login_options",
         description=(
-            "Lists all the available login options for the available authentication"
-            "providers."
+            "Lists the available login options for the configured "
+            "authentication providers."
         ),
         responses={
             200: Dict[str, Any],
@@ -25,7 +25,7 @@ class AuthProvidersLoginOptionsView(APIView):
     )
     def get(self, request: Request) -> Response:
         """
-        Lists all the available login options for the available authentication
+        Lists the available login options for the configured authentication
         providers.
         """
 

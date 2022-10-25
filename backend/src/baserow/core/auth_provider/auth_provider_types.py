@@ -123,9 +123,15 @@ class AuthProviderType(
         Returns the serialized data for this authentication provider type.
         """
 
+        from baserow.api.auth_provider.serializers import AuthProviderSerializer
+
         return {
             "type": self.type,
             "can_create_new": self.can_create_new_providers(),
+            "auth_providers": [
+                self.get_serializer(provider, AuthProviderSerializer).data
+                for provider in self.list_providers()
+            ],
         }
 
 

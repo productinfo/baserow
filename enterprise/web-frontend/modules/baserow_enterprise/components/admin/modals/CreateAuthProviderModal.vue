@@ -1,7 +1,11 @@
 <template>
   <Modal>
     <h2 class="box__title">
-      {{ $t('enterprise.createSettingsAuthProviderModal.title') }}
+      {{
+        $t('createSettingsAuthProviderModal.title', {
+          type: getProviderTypeName(),
+        })
+      }}
     </h2>
     <div v-if="authProviderType">
       <component
@@ -53,6 +57,11 @@ export default {
       return this.$registry
         .get('authProvider', this.authProviderType)
         .getAdminSettingsFormComponent()
+    },
+    getProviderTypeName() {
+      if (!this.authProviderType) return ''
+
+      return this.$registry.get('authProvider', this.authProviderType).getName()
     },
     async create(values) {
       this.loading = true

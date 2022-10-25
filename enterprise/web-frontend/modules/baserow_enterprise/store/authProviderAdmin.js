@@ -61,7 +61,10 @@ export const actions = {
     return item
   },
   async update({ commit }, { authProvider, values }) {
-    const { data: item } = await authProviderAdmin(this.$client).update(authProvider.id, values)
+    const { data: item } = await authProviderAdmin(this.$client).update(
+      authProvider.id,
+      values
+    )
     commit('UPDATE_ITEM', item)
     return item
   },

@@ -13,7 +13,7 @@ export class SamlAuthProviderType extends AuthProviderType {
   }
 
   getName() {
-    return 'SAML SSO Provider'
+    return 'SAML SSO provider'
   }
 
   getProviderName(provider) {

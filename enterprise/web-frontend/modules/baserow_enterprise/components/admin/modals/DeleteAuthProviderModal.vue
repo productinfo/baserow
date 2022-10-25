@@ -1,8 +1,11 @@
 <template>
   <Modal>
     <h2 class="box__title">
-      {{ $t('enterprise.confirmDeleteAuthProviderModal.title') }}
+      {{ $t('deleteAuthProviderModal.title', { type: getProviderTypeName() }) }}
     </h2>
+    <p>
+      {{ $t('deleteAuthProviderModal.comment') }}
+    </p>
     <div class="context__form-actions context__form-actions--multiple-actions">
       <a @click="$emit('cancel')">{{ $t('action.cancel') }}</a>
       <button
@@ -36,6 +39,11 @@ export default {
     }
   },
   methods: {
+    getProviderTypeName() {
+      return this.$registry
+        .get('authProvider', this.authProvider.type)
+        .getName()
+    },
     async deleteProvider() {
       this.loading = true
       try {

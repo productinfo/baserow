@@ -1,7 +1,7 @@
 <template>
   <form class="context__form" @submit.prevent="submit">
     <FormElement :error="fieldHasErrors('domain')" class="control">
-      <label class="control__label">{{ $t('enterprise.saml.domain') }}</label>
+      <label class="control__label">{{ $t('samlSettingsForm.domain') }}</label>
       <div class="control__elements">
         <input
           ref="domain"
@@ -11,7 +11,7 @@
           }"
           type="text"
           class="input"
-          :placeholder="$t('enterprise.samlSettingsForm.domain')"
+          :placeholder="$t('samlSettingsForm.domainPlaceholder')"
           @input="$emit('input', 'domain')"
           @blur="$v.values.domain.$touch()"
         />
@@ -27,15 +27,17 @@
           "
           class="error"
         >
-          {{ $t('enterprise.samlSettingsForm.domainAlreadyExists') }}
+          {{ $t('samlSettingsForm.domainAlreadyExists') }}
         </div>
         <div v-else-if="serverErrors.domain" class="error">
-          {{ $t('enterprise.samlSettingsForm.invalidDomain') }}
+          {{ $t('samlSettingsForm.invalidDomain') }}
         </div>
       </div>
     </FormElement>
     <FormElement :error="fieldHasErrors('metadata')" class="control">
-      <label class="control__label">{{ $t('enterprise.saml.metadata') }}</label>
+      <label class="control__label">{{
+        $t('samlSettingsForm.metadata')
+      }}</label>
       <div class="control__elements">
         <textarea
           ref="metadata"
@@ -46,7 +48,7 @@
           }"
           type="textarea"
           class="input saml-settings__metadata"
-          :placeholder="$t('enterprise.samlSettingsForm.metadata')"
+          :placeholder="$t('samlSettingsForm.metadataPlaceholder')"
           @input="$emit('input', 'metadata')"
           @blur="$v.values.metadata.$touch()"
         ></textarea>
@@ -57,7 +59,7 @@
           {{ $t('error.requiredField') }}
         </div>
         <div v-else-if="serverErrors.metadata" class="error">
-          {{ $t('enterprise.samlSettingsForm.invalidMetadata') }}
+          {{ $t('samlSettingsForm.invalidMetadata') }}
         </div>
       </div>
     </FormElement>

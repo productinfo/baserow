@@ -25,7 +25,7 @@ export class AuthProvidersType extends EnterpriseAdminType {
 
   getName() {
     const { i18n } = this.app
-    return i18n.t('enterprise.adminType.Authentication')
+    return i18n.t('adminType.Authentication')
   }
 
   getRouteName() {

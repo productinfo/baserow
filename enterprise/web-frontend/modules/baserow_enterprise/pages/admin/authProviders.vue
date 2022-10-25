@@ -2,10 +2,10 @@
   <div class="auth-provider-admin">
     <div class="auth-provider-admin__header">
       <h2 class="auth-provider-admin__title">
-        {{ $t('enterprise.authProviders.title') }}
+        {{ $t('authProviders.title') }}
       </h2>
       <a ref="createContextLink" class="button" @click="showCreateContext()">
-        {{ $t('enterprise.authProviders.addProvider') }}
+        {{ $t('authProviders.addProvider') }}
         <CreateAuthProviderContext
           ref="createContext"
           :auth-provider-types="authProviderTypesCanBeCreated"
@@ -15,6 +15,7 @@
           ref="createModal"
           :auth-provider-type="authProviderTypeToCreate"
           @created="$refs.createModal.hide()"
+          @cancel="$refs.createModal.hide()"
         />
       </a>
     </div>
@@ -28,7 +29,7 @@
       </component>
     </div>
     <div v-else>
-      <p>{{ $t('enterprise.authProviders.noProviders') }}</p>
+      <p>{{ $t('authProviders.noProviders') }}</p>
     </div>
     <div v-for="authProvider in authProviders" :key="authProvider.id"></div>
   </div>

@@ -75,7 +75,7 @@
         <slot></slot>
         <button
           :class="{ 'button--loading': loading }"
-          class="button button--full-width"
+          class="button login-button--full-width"
           :disabled="loading"
         >
           {{ $t('action.signIn') }}
