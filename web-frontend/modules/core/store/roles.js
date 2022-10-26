@@ -1,18 +1,6 @@
-// TODO remove once endpoint is implemented
-const defaultRoles = [
-  {
-    uid: 'ADMIN',
-    name: 'permission.admin',
-    description: 'permission.adminDescription',
-  },
-  {
-    uid: 'MEMBER',
-    name: 'permission.member',
-    description: 'permission.memberDescription',
-  },
-]
+import RolesService from '@baserow/modules/core/services/roles'
 
-function appendRoleTranslations(roles, registry, i18n) {
+const appendRoleTranslations = (roles, registry) => {
   const translationMap = Object.values(
     registry.getAll('permissionManager')
   ).reduce(
@@ -22,37 +10,37 @@ function appendRoleTranslations(roles, registry, i18n) {
     }),
     {}
   )
-
   return roles.map((role) => {
-    const translations = Object.keys(translationMap[role.uid]).reduce(
-      (translations, key) => ({
-        ...translations,
-        [key]: i18n.t(translationMap[role.uid][key]),
-      }),
-      {}
-    )
-    return {
-      ...role,
-      ...translations,
+    if (translationMap[role.uid]) {
+      return {
+        uid: role.uid,
+        description: translationMap[role.uid].description,
+        name: translationMap[role.uid].name,
+      }
     }
+    return role
   })
 }
 
-export default ({ registry, i18n }) => {
+export default () => {
   const state = () => ({
-    roles: appendRoleTranslations(defaultRoles, registry, i18n), // TODO set to [] when endpoint is implemented
+    roles: [],
   })
 
   const mutations = {
     SET_ROLES(state, roles) {
-      state.roles = appendRoleTranslations(roles, registry, i18n)
+      state.roles = roles
     },
   }
 
   const actions = {
-    fetchRoles() {
-      // TODO implement once endpoint exists
-      return null
+    async fetchRoles({ commit }, group) {
+      const { data } = await RolesService(
+        this.$client,
+        this.app.$featureFlags
+      ).get(group)
+      const translatedRoles = appendRoleTranslations(data, this.app.$registry)
+      commit('SET_ROLES', translatedRoles)
     },
   }
 

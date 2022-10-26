@@ -6,26 +6,28 @@ export class RolePermissionManagerType extends PermissionManagerType {
   }
 
   getRolesTranslations() {
+    const { i18n } = this.app
+
     return {
       ADMIN: {
-        name: 'roles.admin.name',
-        description: 'roles.admin.description',
+        name: i18n.t('roles.admin.name'),
+        description: i18n.t('roles.admin.description'),
       },
       BUILDER: {
-        name: 'roles.builder.name',
-        description: 'roles.builder.description',
+        name: i18n.t('roles.builder.name'),
+        description: i18n.t('roles.builder.description'),
       },
       EDITOR: {
-        name: 'roles.editor.name',
-        description: 'roles.editor.description',
+        name: i18n.t('roles.editor.name'),
+        description: i18n.t('roles.editor.description'),
       },
       COMMENTER: {
-        name: 'roles.commenter.name',
-        description: 'roles.commenter.description',
+        name: i18n.t('roles.commenter.name'),
+        description: i18n.t('roles.commenter.description'),
       },
       VIEWER: {
-        name: 'roles.viewer.name',
-        description: 'roles.viewer.description',
+        name: i18n.t('roles.viewer.name'),
+        description: i18n.t('roles.viewer.description'),
       },
     }
   }

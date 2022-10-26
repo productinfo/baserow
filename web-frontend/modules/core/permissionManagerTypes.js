@@ -61,14 +61,16 @@ export class BasicPermissionManagerType extends PermissionManagerType {
   }
 
   getRolesTranslations() {
+    const { i18n } = this.app
+
     return {
       ADMIN: {
-        name: 'permission.admin',
-        description: 'permission.adminDescription',
+        name: i18n.t('permission.admin'),
+        description: i18n.t('permission.adminDescription'),
       },
       MEMBER: {
-        name: 'permission.member',
-        description: 'permission.memberDescription',
+        name: i18n.t('permission.member'),
+        description: i18n.t('permission.memberDescription'),
       },
     }
   }
