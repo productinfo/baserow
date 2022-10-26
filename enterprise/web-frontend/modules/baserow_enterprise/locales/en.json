@@ -53,5 +53,8 @@
         "url": "URL",
         "urlPlaceholder": "Provider's base URL",
         "invalidUrl": "The entered URL is not a valid provider URL"
+    },
+    "loginButton": {
+        "continueWith": "Continue with"
     }
 }

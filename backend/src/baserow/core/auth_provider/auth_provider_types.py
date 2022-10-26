@@ -78,10 +78,7 @@ class AuthProviderType(
         :return: The updated authentication provider instance.
         """
 
-        print("update values")
-        print(values)
         set_allowed_attrs(values, self.allowed_fields, provider)
-        print(provider)
         provider.save()
         return provider
 

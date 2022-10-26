@@ -8,6 +8,13 @@ import GitLabSettingsForm from '@baserow_enterprise/components/admin/forms/GitLa
 import OpenIdConnectSettingsForm from '@baserow_enterprise/components/admin/forms/OpenIdConnectSettingsForm.vue'
 import LoginButton from '@baserow_enterprise/components/admin/login/LoginButton.vue'
 
+import SAMLIcon from '@baserow_enterprise/assets/images/providers/LockKey.svg'
+import GoogleIcon from '@baserow_enterprise/assets/images/providers/Google.svg'
+import FacebookIcon from '@baserow_enterprise/assets/images/providers/Facebook.svg'
+import GitHubIcon from '@baserow_enterprise/assets/images/providers/GitHub.svg'
+import GitLabIcon from '@baserow_enterprise/assets/images/providers/GitLab.svg'
+import OpenIdIcon from '@baserow_enterprise/assets/images/providers/OpenID.svg'
+
 export class SamlAuthProviderType extends AuthProviderType {
   getType() {
     return 'saml'
@@ -15,6 +22,10 @@ export class SamlAuthProviderType extends AuthProviderType {
 
   getIconClass() {
     return 'fas fa-key'
+  }
+
+  getIcon() {
+    return SAMLIcon
   }
 
   getName() {
@@ -69,6 +80,10 @@ export class GoogleAuthProviderType extends AuthProviderType {
     return 'fas fa-key'
   }
 
+  getIcon() {
+    return GoogleIcon
+  }
+
   getName() {
     return 'Google'
   }
@@ -115,6 +130,10 @@ export class FacebookAuthProviderType extends AuthProviderType {
 
   getIconClass() {
     return 'fas fa-key'
+  }
+
+  getIcon() {
+    return FacebookIcon
   }
 
   getName() {
@@ -165,6 +184,10 @@ export class GitHubAuthProviderType extends AuthProviderType {
     return 'fas fa-key'
   }
 
+  getIcon() {
+    return GitHubIcon
+  }
+
   getName() {
     return 'GitHub'
   }
@@ -211,6 +234,10 @@ export class GitLabAuthProviderType extends AuthProviderType {
 
   getIconClass() {
     return 'fas fa-key'
+  }
+
+  getIcon() {
+    return GitLabIcon
   }
 
   getName() {
@@ -261,8 +288,12 @@ export class OpenIdConnectAuthProviderType extends AuthProviderType {
     return 'fas fa-key'
   }
 
+  getIcon() {
+    return OpenIdIcon
+  }
+
   getName() {
-    return 'OpenId Connect'
+    return 'OpenID Connect'
   }
 
   getProviderName(provider) {

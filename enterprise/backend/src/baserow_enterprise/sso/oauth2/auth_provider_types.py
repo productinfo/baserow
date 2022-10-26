@@ -47,16 +47,19 @@ class OAuth2AuthProviderMixin:
         instances = self.model_class.objects.all()
         items = []
         for instance in instances:
-            items.append(
-                {
-                    "redirect_url": urllib.parse.urljoin(
-                        OAUTH_BACKEND_URL,
-                        reverse("api:enterprise:sso:oauth2:login", args=(instance.id,)),
-                    ),
-                    "name": instance.name,
-                    "type": self.type,
-                }
-            )
+            if instance.enabled:
+                items.append(
+                    {
+                        "redirect_url": urllib.parse.urljoin(
+                            OAUTH_BACKEND_URL,
+                            reverse(
+                                "api:enterprise:sso:oauth2:login", args=(instance.id,)
+                            ),
+                        ),
+                        "name": instance.name,
+                        "type": self.type,
+                    }
+                )
         return {
             "type": self.type,
             "items": items,
@@ -276,10 +279,10 @@ class OpenIdConnectAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
         return super().create(**values, **asdict(urls))
 
     def update(self, provider, **values):
-        urls = {}
         if values.get("url"):
             urls = self.get_wellknown_urls(values["url"])
-        return super().update(provider, **values, **asdict(urls))
+            return super().update(provider, **values, **asdict(urls))
+        return super().update(provider, **values)
 
     def get_authorization_url(
         self, instance: AuthProviderModel, base_url: Optional[str]

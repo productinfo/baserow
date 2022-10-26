@@ -15,6 +15,7 @@
           :is="getLoginButtonComponent(loginButton)"
           :redirect-url="loginButton.redirect_url"
           :name="loginButton.name"
+          :icon="getLoginButtonIcon(loginButton)"
         >
         </component>
       </div>
@@ -91,10 +92,15 @@ export default {
         .get('authProvider', loginAction.type)
         .getLoginActionComponent()
     },
-    getLoginButtonComponent(loginAction) {
+    getLoginButtonComponent(loginButton) {
       return this.$registry
-        .get('authProvider', loginAction.type)
+        .get('authProvider', loginButton.type)
         .getLoginButtonComponent()
+    },
+    getLoginButtonIcon(loginButton) {
+      return this.$registry
+        .get('authProvider', loginButton.type)
+        .getIcon()
     },
     success() {
       const { original } = this.$route.query

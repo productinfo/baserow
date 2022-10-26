@@ -16,6 +16,13 @@ export class AuthProviderType extends Registerable {
   }
 
   /**
+   * The icon for the provider
+   */
+  getIcon() {
+    return null
+  }
+
+  /**
    * A human readable name of the application type.
    */
   getName() {
@@ -122,6 +129,11 @@ export class PasswordAuthProviderType extends AuthProviderType {
 
   getIconClass() {
     return 'key'
+  }
+
+  getIcon() {
+    // TODO: return 'Key'
+    return null
   }
 
   getName() {
