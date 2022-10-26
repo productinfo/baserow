@@ -51,6 +51,7 @@
         "secret": "Secret",
         "secretPlaceholder": "Provider's secret",
         "url": "URL",
-        "urlPlaceholder": "Provider's base URL"
+        "urlPlaceholder": "Provider's base URL",
+        "invalidUrl": "The entered URL is not a valid provider URL"
     }
 }

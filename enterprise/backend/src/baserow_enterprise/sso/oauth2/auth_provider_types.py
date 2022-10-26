@@ -16,8 +16,11 @@ from .models import (
 import requests
 from requests_oauthlib import OAuth2Session
 from requests_oauthlib.compliance_fixes import facebook_compliance_fix
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from rest_framework import serializers
+from baserow_enterprise.api.sso.oauth2.exceptions import InvalidProviderUrl
+from baserow_enterprise.api.sso.oauth2.errors import ERROR_INVALID_PROVIDER_URL
+from baserow.api.utils import ExceptionMappingType
 
 
 OAUTH_BACKEND_URL = settings.PUBLIC_BACKEND_URL
@@ -27,6 +30,13 @@ OAUTH_BACKEND_URL = settings.PUBLIC_BACKEND_URL
 class UserInfo:
     name: str
     email: str
+
+
+@dataclass
+class WellKnownUrls:
+    authorization_url: str
+    access_token_url: str
+    user_info_url: str
 
 
 class OAuth2AuthProviderMixin:
@@ -174,8 +184,6 @@ class GitLabAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     login using OAuth2 through GitLab.
     """
 
-    # TODO: solve base URL
-
     type = "gitlab"
     model_class = GitLabAuthProviderModel
     allowed_fields = ["id", "enabled", "name", "url", "client_id", "secret"]
@@ -266,37 +274,67 @@ class OpenIdConnectAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
 
     type = "openid_connect"
     model_class = OpenIdConnectAuthProviderModel
-    allowed_fields = ["id", "enabled", "name", "url", "client_id", "secret"]
+    allowed_fields = [
+        "id",
+        "enabled",
+        "name",
+        "url",
+        "client_id",
+        "secret",
+        "authorization_url",
+        "access_token_url",
+        "user_info_url",
+    ]
     serializer_field_names = ["enabled", "name", "url", "client_id", "secret"]
+    api_exceptions_map: ExceptionMappingType = {
+        InvalidProviderUrl: ERROR_INVALID_PROVIDER_URL
+    }
 
     SCOPE = ["openid", "email", "profile"]
+
+    def create(self, **values):
+        urls = self.get_wellknown_urls(values["url"])
+        return super().create(**values, **asdict(urls))
+
+    def update(self, provider, **values):
+        urls = {}
+        if values.get("url"):
+            urls = self.get_wellknown_urls(values["url"])
+        return super().update(provider, **values, **asdict(urls))
 
     def get_authorization_url(
         self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
-        super().get_authorization_url(instance, instance.url)
+        super().get_authorization_url(instance, instance.authorization_url)
 
-    def get_user_info(self, instance: GitHubAuthProviderModel, code: str) -> UserInfo:
-        wellknown_url = instance.url + "/.well-known/openid-configuration"
-        response = requests.get(wellknown_url)
-        authorize_url = response.json()["authorization_endpoint"]
-        access_token_url = response.json()["token_endpoint"]
-        user_info_url = response.json()["userinfo_endpoint"]
-
+    def get_user_info(
+        self, instance: OpenIdConnectAuthProviderModel, code: str
+    ) -> UserInfo:
         redirect_uri = urllib.parse.urljoin(
             OAUTH_BACKEND_URL,
             reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
         )
-
         oauth = OAuth2Session(
             instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
         )
         token = oauth.fetch_token(
-            access_token_url,
+            instance.access_token_url,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get(user_info_url)
+        r = oauth.get(instance.user_info_url)
         name = r.json().get("name", None)
         email = r.json().get("email", None)
         return UserInfo(name=name, email=email)
+
+    def get_wellknown_urls(self, base_url: str) -> WellKnownUrls:
+        try:
+            wellknown_url = f"{base_url}/.well-known/openid-configuration"
+            response = requests.get(wellknown_url)
+            return WellKnownUrls(
+                authorization_url=response.json()["authorization_endpoint"],
+                access_token_url=response.json()["token_endpoint"],
+                user_info_url=response.json()["userinfo_endpoint"],
+            )
+        except Exception:
+            raise InvalidProviderUrl()

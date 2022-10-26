@@ -79,6 +79,8 @@ export default {
           for (const [key, value] of Object.entries(rspData.detail || {})) {
             this.serverErrors[key] = value
           }
+        } else if (rspData.error === 'ERROR_INVALID_PROVIDER_URL') {
+            this.serverErrors['url'] = rspData.detail
         } else {
           notifyIf(error, 'settings')
         }

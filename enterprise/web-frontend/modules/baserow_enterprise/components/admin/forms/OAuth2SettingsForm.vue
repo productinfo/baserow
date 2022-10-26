@@ -92,6 +92,14 @@ export default {
       },
     }
   },
+  computed: {
+    providerName() {
+      const type = this.authProviderType ? this.authProviderType : this.authProvider.type
+      return this.$registry
+          .get('authProvider', type)
+          .getProviderName(this.authProvider)
+    }
+  },
   methods: {
     getDefaultValues() {
       return {
@@ -107,14 +115,6 @@ export default {
       }
       this.$emit('submit', this.values)
     },
-  },
-  computed: {
-    providerName() {
-      const type = this.authProviderType ? this.authProviderType : this.authProvider.type
-      return this.$registry
-          .get('authProvider', type)
-          .getProviderName(this.authProvider)
-    }
   },
   validations() {
     return {

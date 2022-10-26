@@ -38,6 +38,9 @@
         >
           {{ $t('error.requiredField') }}
         </div>
+        <div v-else-if="serverErrors.url" class="error">
+          {{ $t('oauthSettingsForm.invalidUrl') }}
+        </div>
       </div>
     </FormElement>
     <FormElement :error="fieldHasErrors('client_id')" class="control">
@@ -93,6 +96,11 @@ export default {
   mixins: [form],
   props: {
     authProvider: {
+      type: Object,
+      required: false,
+      default: () => ({}),
+    },
+    serverErrors: {
       type: Object,
       required: false,
       default: () => ({}),

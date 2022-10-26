@@ -80,3 +80,6 @@ class OpenIdConnectAuthProviderModel(AuthProviderModel):
         max_length=191,
         help_text="API secret, client secret, or consumer secret",
     )
+    authorization_url = models.URLField(help_text="URL to initiate auth flow")
+    access_token_url = models.URLField(help_text="URL to obtain access token")
+    user_info_url = models.URLField(help_text="URL to get user info")

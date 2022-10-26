@@ -109,11 +109,18 @@ export default {
       },
     }
   },
+  computed: {
+    providerName() {
+      return this.$registry
+          .get('authProvider', 'gitlab')
+          .getProviderName(this.authProvider)
+    }
+  },
   methods: {
     getDefaultValues() {
       return {
         name: this.providerName,
-        url: this.authProvider.url || '',
+        url: this.authProvider.url || 'https://gitlab.com',
         client_id: this.authProvider.client_id || '',
         secret: this.authProvider.secret || '',
       }
@@ -126,18 +133,11 @@ export default {
       this.$emit('submit', this.values)
     },
   },
-  computed: {
-    providerName() {
-      return this.$registry
-          .get('authProvider', 'gitlab')
-          .getProviderName(this.authProvider)
-    }
-  },
   validations() {
     return {
       values: {
         name: { required },
-        url: { url },
+        url: { url, required },
         client_id: { required },
         secret: { required },
       },
