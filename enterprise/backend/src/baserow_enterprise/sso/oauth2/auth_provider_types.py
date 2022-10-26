@@ -72,16 +72,18 @@ class OAuth2AuthProviderMixin:
 
         if not base_url:
             base_url = self.AUTHORIZATION_URL
-        provider_id = instance.id
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(provider_id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         authorization_url, state = oauth.authorization_url(base_url)
         return authorization_url
+
+    def get_oauth_session(self, instance: AuthProviderModel) -> OAuth2Session:
+        redirect_uri = urllib.parse.urljoin(
+            OAUTH_BACKEND_URL,
+            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
+        )
+        return OAuth2Session(
+            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
+        )
 
 
 class GoogleAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
@@ -101,24 +103,20 @@ class GoogleAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]
+
     ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
+    USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
     def get_user_info(self, instance: GoogleAuthProviderModel, code: str) -> UserInfo:
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         token = oauth.fetch_token(
             self.ACCESS_TOKEN_URL,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get("https://www.googleapis.com/oauth2/v1/userinfo")
-        name = r.json().get("name", None)
-        email = r.json().get("email", None)
+        response = oauth.get(self.USER_INFO_URL)
+        name = response.json().get("name", None)
+        email = response.json().get("email", None)
         return UserInfo(name=name, email=email)
 
 
@@ -135,28 +133,22 @@ class GitHubAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
 
     AUTHORIZATION_URL = "https://github.com/login/oauth/authorize"
     SCOPE = "read:user,user:email"
-    GITHUB_API_URL = "https://api.github.com"
+
+    ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
+    USER_INFO_URL = "https://api.github.com/user"
+    EMAILS_URL = "https://api.github.com/user/emails"
 
     def get_user_info(self, instance: GitHubAuthProviderModel, code: str) -> UserInfo:
-        profile_url = "{0}/user".format(self.GITHUB_API_URL)
-        emails_url = "{0}/user/emails".format(self.GITHUB_API_URL)
-        access_token_url = "https://github.com/login/oauth/access_token"
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         token = oauth.fetch_token(
-            access_token_url,
+            self.ACCESS_TOKEN_URL,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get(profile_url)
-        name = r.json().get("name", None)
+        response = oauth.get(self.USER_INFO_URL)
+        name = response.json().get("name", None)
         email = self.get_email(
-            emails_url,
+            self.EMAILS_URL,
             {"Authorization": "token {}".format(token.get("access_token"))},
         )
         return UserInfo(name=name, email=email)
@@ -192,28 +184,25 @@ class GitLabAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     AUTHORIZATION_URL = "https://gitlab.com/oauth/authorize"
     SCOPE = ["read_user"]
 
+    ACCESS_TOKEN_URL = "https://gitlab.com/oauth/token"
+    USER_INFO_URL = "https://gitlab.com/api/v4/user"
+
     def get_authorization_url(
         self, instance: AuthProviderModel, base_url: Optional[str]
     ) -> str:
+        # TODO: access and user info url based on instance.url or not
         super().get_authorization_url(instance, instance.url)
 
     def get_user_info(self, instance: GitLabAuthProviderModel, code: str) -> UserInfo:
-        access_token_url = "https://gitlab.com/oauth/token"
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         token = oauth.fetch_token(
-            access_token_url,
+            self.ACCESS_TOKEN_URL,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get("https://gitlab.com/api/v4/user")
-        name = r.json().get("name", None)
-        email = r.json().get("email", None)
+        response = oauth.get(self.USER_INFO_URL)
+        name = response.json().get("name", None)
+        email = response.json().get("email", None)
         return UserInfo(name=name, email=email)
 
 
@@ -232,37 +221,27 @@ class FacebookAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     SCOPE = ["email"]
 
     ACCESS_TOKEN_URL = "https://graph.facebook.com/oauth/access_token"
+    USER_INFO_URL = "https://graph.facebook.com/me?fields=id,email,name"
 
     def get_authorization_url(
-        self, instance: AuthProviderModel, base_url: Optional[str]
+        self, instance: FacebookAuthProviderModel, base_url: Optional[str]
     ) -> str:
-        provider_id = instance.id
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(provider_id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         oauth = facebook_compliance_fix(oauth)
         authorization_url, state = oauth.authorization_url(self.AUTHORIZATION_URL)
         return authorization_url
 
     def get_user_info(self, instance: FacebookAuthProviderModel, code: str) -> UserInfo:
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
-        )
-        oauth = OAuth2Session(instance.client_id, redirect_uri=redirect_uri)
+        oauth = self.get_oauth_session(instance)
         oauth = facebook_compliance_fix(oauth)
         token = oauth.fetch_token(
             self.ACCESS_TOKEN_URL,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get("https://graph.facebook.com/me?fields=id,email,name")
-        name = r.json().get("name", None)
-        email = r.json().get("email", None)
+        response = oauth.get(self.USER_INFO_URL)
+        name = response.json().get("name", None)
+        email = response.json().get("email", None)
         return UserInfo(name=name, email=email)
 
 
@@ -310,21 +289,15 @@ class OpenIdConnectAuthProviderType(OAuth2AuthProviderMixin, AuthProviderType):
     def get_user_info(
         self, instance: OpenIdConnectAuthProviderModel, code: str
     ) -> UserInfo:
-        redirect_uri = urllib.parse.urljoin(
-            OAUTH_BACKEND_URL,
-            reverse("api:enterprise:sso:oauth2:callback", args=(instance.id,)),
-        )
-        oauth = OAuth2Session(
-            instance.client_id, redirect_uri=redirect_uri, scope=self.SCOPE
-        )
+        oauth = self.get_oauth_session(instance)
         token = oauth.fetch_token(
             instance.access_token_url,
             code=code,
             client_secret=instance.secret,
         )
-        r = oauth.get(instance.user_info_url)
-        name = r.json().get("name", None)
-        email = r.json().get("email", None)
+        response = oauth.get(instance.user_info_url)
+        name = response.json().get("name", None)
+        email = response.json().get("email", None)
         return UserInfo(name=name, email=email)
 
     def get_wellknown_urls(self, base_url: str) -> WellKnownUrls:
