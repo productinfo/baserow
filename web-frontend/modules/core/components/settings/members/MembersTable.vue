@@ -33,7 +33,6 @@
         ></EditMemberContext>
         <EditRoleContext
           ref="editRoleContext"
-          :group="group"
           :row="editRoleMember"
           :roles="roles"
           @update-role="roleUpdate($event)"
@@ -56,9 +55,12 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+import { clone } from '@baserow/modules/core/utils/object'
+import { notifyIf } from '@baserow/modules/core/utils/error'
+
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import GroupService from '@baserow/modules/core/services/group'
-import { mapGetters } from 'vuex'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import SimpleField from '@baserow/modules/core/components/crudTable/fields/SimpleField'
 import MoreField from '@baserow/modules/core/components/crudTable/fields/MoreField'
@@ -66,8 +68,6 @@ import MemberRoleField from '@baserow/modules/core/components/settings/members/M
 import GroupMemberInviteModal from '@baserow/modules/core/components/group/GroupMemberInviteModal'
 import EditMemberContext from '@baserow/modules/core/components/settings/members/EditMemberContext'
 import EditRoleContext from '@baserow/modules/core/components/settings/members/EditRoleContext'
-import { clone } from '@baserow/modules/core/utils/object'
-import { notifyIf } from '@baserow/modules/core/utils/error'
 
 export default {
   name: 'MembersTable',
@@ -148,7 +148,10 @@ export default {
       ]
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated()) {
-          columns = plugin.mutateMembersTableColumns(columns)
+          columns = plugin.mutateMembersTableColumns(columns, {
+            group: this.group,
+            client: this.$client,
+          })
         }
       }
       return columns

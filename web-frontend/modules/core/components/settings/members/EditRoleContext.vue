@@ -1,15 +1,17 @@
 <template>
   <Context>
     <template v-if="Object.keys(row).length > 0">
-      <div class="context__menu-title">Workspace permissions</div>
+      <div class="context__menu-title">
+        {{ $t('membersSettings.membersTable.columns.role') }}
+      </div>
       <ul class="context__menu context__menu--can-be-active">
         <li v-for="role in roles" :key="role.value">
           <a
-            :class="{ active: row.permissions === role.value }"
+            :class="{ active: row[roleValueColumn] === role.value }"
             @click="roleUpdate(role.value, row)"
           >
             {{ role.name }}
-            <div class="context__menu-item-description">
+            <div v-if="role.description" class="context__menu-item-description">
               {{ role.description }}
             </div>
           </a>
@@ -27,10 +29,6 @@ export default {
   name: 'EditRoleContext',
   mixins: [context],
   props: {
-    group: {
-      required: true,
-      type: Object,
-    },
     row: {
       required: true,
       type: Object,
@@ -38,6 +36,11 @@ export default {
     roles: {
       required: true,
       type: Array,
+    },
+    roleValueColumn: {
+      type: String,
+      required: false,
+      default: 'permissions',
     },
   },
   computed: {
@@ -47,7 +50,7 @@ export default {
   },
   methods: {
     roleUpdate(permissionsNew, row) {
-      if (row.permissions === permissionsNew) {
+      if (row[this.roleValueColumn] === permissionsNew) {
         return
       }
 

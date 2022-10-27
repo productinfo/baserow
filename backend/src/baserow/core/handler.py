@@ -631,7 +631,8 @@ class CoreHandler:
         :type user: User
         :param group_user: The group user that must be deleted.
         :type group_user: GroupUser
-        :raises
+        :raises CannotDeleteYourselfFromGroup; If the user tries to delete himself
+            from the group.
         """
 
         if not isinstance(group_user, GroupUser):
