@@ -51,8 +51,7 @@ export default {
       this.removeLoading = true
 
       try {
-        await TeamService(this.$client).delete(team.id)
-        await this.$store.dispatch('team/forceDelete', {
+        await this.$store.dispatch('team/delete', {
           groupId: this.group.id,
           id: team.id,
           values: { team_id: team.id },
