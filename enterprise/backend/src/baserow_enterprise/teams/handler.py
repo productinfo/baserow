@@ -3,6 +3,7 @@ from typing import Dict, NewType, Optional, Union, cast
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.db import IntegrityError
 from django.db.models import (
     Count,
     F,
@@ -31,6 +32,7 @@ from baserow.core.trash.handler import TrashHandler
 
 from ..exceptions import (
     TeamDoesNotExist,
+    TeamNameNotUnique,
     TeamSubjectBadRequest,
     TeamSubjectDoesNotExist,
     TeamSubjectTypeUnsupported,
@@ -104,8 +106,12 @@ class TeamHandler:
         """
         Creates a new team for an existing group.
         """
-
-        team = Team.objects.create(group=group, name=name)
+        try:
+            team = Team.objects.create(group=group, name=name)
+        except IntegrityError as e:
+            if "unique constraint" in e.args[0]:
+                raise TeamNameNotUnique()
+            raise e
 
         team_created.send(self, team_id=team.id, team=team, user=user)
 

@@ -28,6 +28,8 @@
         "createTeamForm": {
             "title": "Name",
             "errorInvalidName": "Invalid team name"
-        }
+        },
+        "createTeamModalInvalidNameTitle": "Please use a different name",
+        "createTeamModalInvalidNameMessage": "This team name is already in use in the specified group."
     }
 }

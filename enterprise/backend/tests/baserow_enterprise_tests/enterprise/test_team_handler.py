@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 
 import pytest
 from baserow_enterprise.exceptions import (
+    TeamNameNotUnique,
     TeamSubjectBadRequest,
     TeamSubjectDoesNotExist,
     TeamSubjectTypeUnsupported,
@@ -18,6 +19,15 @@ def test_create_team(data_fixture):
     group = data_fixture.create_group(user=user)
     team = TeamHandler().create_team(user, "Engineering", group)
     assert team.name == "Engineering"
+
+
+@pytest.mark.django_db
+def test_create_team_non_unique_name(data_fixture):
+    user = data_fixture.create_user()
+    group = data_fixture.create_group(user=user)
+    TeamHandler().create_team(user, "Engineering", group)
+    with pytest.raises(TeamNameNotUnique):
+        TeamHandler().create_team(user, "Engineering", group)
 
 
 @pytest.mark.django_db

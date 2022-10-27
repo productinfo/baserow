@@ -3,6 +3,7 @@ from django.db import transaction
 from baserow_enterprise.api.errors import (
     ERROR_SUBJECT_DOES_NOT_EXIST,
     ERROR_TEAM_DOES_NOT_EXIST,
+    ERROR_TEAM_NAME_NOT_UNIQUE,
     ERROR_USER_NOT_IN_TEAM,
 )
 from baserow_enterprise.api.serializers import (
@@ -12,7 +13,11 @@ from baserow_enterprise.api.serializers import (
     TeamSubjectResponseSerializer,
     TeamSubjectSerializer,
 )
-from baserow_enterprise.exceptions import TeamDoesNotExist, TeamSubjectDoesNotExist
+from baserow_enterprise.exceptions import (
+    TeamDoesNotExist,
+    TeamNameNotUnique,
+    TeamSubjectDoesNotExist,
+)
 from baserow_enterprise.teams.actions import (
     CreateTeamActionType,
     CreateTeamSubjectActionType,
@@ -106,6 +111,7 @@ class TeamsView(APIView, SearchableViewMixin, SortableViewMixin):
             404: get_error_schema(["ERROR_GROUP_DOES_NOT_EXIST"]),
         },
     )
+    @map_exceptions({TeamNameNotUnique: ERROR_TEAM_NAME_NOT_UNIQUE})
     @transaction.atomic
     @validate_body(TeamSerializer)
     def post(self, request, group_id: int, data):

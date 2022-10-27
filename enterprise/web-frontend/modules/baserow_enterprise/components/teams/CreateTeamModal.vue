@@ -21,6 +21,7 @@
 <script>
 import modal from '@baserow/modules/core/mixins/modal'
 import error from '@baserow/modules/core/mixins/error'
+import { ResponseErrorMessage } from '@baserow/modules/core/plugins/clientHandler'
 import CreateTeamForm from '@baserow_enterprise/components/teams/CreateTeamForm'
 
 export default {
@@ -53,7 +54,12 @@ export default {
         this.hide()
       } catch (error) {
         this.loading = false
-        this.handleError(error, 'team')
+        this.handleError(error, 'team', {
+          ERROR_TEAM_NAME_NOT_UNIQUE: new ResponseErrorMessage(
+            this.$t('teamsSettings.createTeamModalInvalidNameTitle'),
+            this.$t('teamsSettings.createTeamModalInvalidNameMessage')
+          ),
+        })
       }
     },
   },

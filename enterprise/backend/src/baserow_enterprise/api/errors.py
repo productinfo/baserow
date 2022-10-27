@@ -1,4 +1,10 @@
-from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+
+ERROR_TEAM_NAME_NOT_UNIQUE = (
+    "ERROR_TEAM_NAME_NOT_UNIQUE",
+    HTTP_400_BAD_REQUEST,
+    "The specified team name is already in use in this group.",
+)
 
 ERROR_TEAM_DOES_NOT_EXIST = (
     "ERROR_TEAM_DOES_NOT_EXIST",
