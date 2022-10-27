@@ -275,7 +275,7 @@ export default {
       )
     },
     showLogo() {
-      return this.view.show_logo && this.isPublic
+      return this.view?.show_logo && this.isPublic
     },
     ...mapGetters({
       isPublic: 'page/view/public/getIsPublic',

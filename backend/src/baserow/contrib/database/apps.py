@@ -5,6 +5,7 @@ from django.db import ProgrammingError
 from django.db.models.signals import post_migrate, pre_migrate
 
 from baserow.contrib.database.table.cache import clear_generated_model_cache
+from baserow.contrib.database.table.operations import RestoreDatabaseTableOperationType
 from baserow.core.registries import (
     application_type_registry,
     object_scope_type_registry,
@@ -472,6 +473,7 @@ class DatabaseConfig(AppConfig):
             ListFieldsOperationType,
             ReadAggregationDatabaseTableOperationType,
             ReadFieldOperationType,
+            RestoreFieldOperationType,
             UpdateFieldOperationType,
         )
         from .formula import TypeFormulaOperationType
@@ -485,6 +487,7 @@ class DatabaseConfig(AppConfig):
             MoveRowDatabaseRowOperationType,
             ReadAdjacentRowDatabaseRowOperationType,
             ReadDatabaseRowOperationType,
+            RestoreDatabaseRowOperationType,
             UpdateDatabaseRowOperationType,
         )
         from .table.operations import (
@@ -525,6 +528,7 @@ class DatabaseConfig(AppConfig):
             ReadViewOperationType,
             ReadViewsOrderOperationType,
             ReadViewSortOperationType,
+            RestoreViewOperationType,
             UpdateViewDecorationOperationType,
             UpdateViewFilterOperationType,
             UpdateViewOperationType,
@@ -582,6 +586,10 @@ class DatabaseConfig(AppConfig):
         operation_type_registry.register(ListTableWebhooksOperationType())
         operation_type_registry.register(TestTriggerWebhookOperationType())
         operation_type_registry.register(UpdateWebhookOperationType())
+        operation_type_registry.register(RestoreDatabaseTableOperationType())
+        operation_type_registry.register(RestoreDatabaseRowOperationType())
+        operation_type_registry.register(RestoreFieldOperationType())
+        operation_type_registry.register(RestoreViewOperationType())
         operation_type_registry.register(RunAirtableImportJobOperationType())
         operation_type_registry.register(TypeFormulaOperationType())
         operation_type_registry.register(ListRowNamesDatabaseTableOperationType())

@@ -29,6 +29,10 @@ class DeleteFieldOperationType(FieldOperationType):
     type = "database.table.field.delete"
 
 
+class RestoreFieldOperationType(FieldOperationType):
+    type = "database.table.field.restore"
+
+
 class DuplicateFieldOperationType(FieldOperationType):
     type = "database.table.field.duplicate"
 

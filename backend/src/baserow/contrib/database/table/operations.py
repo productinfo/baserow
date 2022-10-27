@@ -27,6 +27,10 @@ class ListenToAllDatabaseTableEventsOperationType(DatabaseTableOperationType):
     type = "database.table.listen_to_all"
 
 
+class RestoreDatabaseTableOperationType(DatabaseTableOperationType):
+    type = "database.table.restore"
+
+
 class ListRowsDatabaseTableOperationType(DatabaseTableOperationType):
     type = "database.table.list_rows"
     object_scope_name = "database_row"

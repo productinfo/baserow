@@ -79,6 +79,10 @@ class DeleteViewOperationType(ViewOperationType):
     type = "database.table.view.delete"
 
 
+class RestoreViewOperationType(ViewOperationType):
+    type = "database.table.view.restore"
+
+
 class DuplicateViewOperationType(ViewOperationType):
     type = "database.table.view.duplicate"
 

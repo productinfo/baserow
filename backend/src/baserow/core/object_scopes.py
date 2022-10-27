@@ -31,6 +31,12 @@ class ApplicationObjectScopeType(ObjectScopeType):
             return [scope]
         return []
 
+    def get_parent_scope(self):
+        return object_scope_type_registry.get("group")
+
+    def get_parent(self, context):
+        return context.group
+
 
 class GroupInvitationObjectScopeType(ObjectScopeType):
     type = "group_invitation"

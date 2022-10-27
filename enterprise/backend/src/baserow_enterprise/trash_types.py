@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 from baserow_enterprise.models import Team
 from baserow_enterprise.signals import team_created
+from baserow_enterprise.teams.operations import RestoreTeamOperationType
 
 from baserow.core.exceptions import TrashItemDoesNotExist
 from baserow.core.models import TrashEntry
@@ -35,3 +36,6 @@ class TeamTrashableItemType(TrashableItemType):
             raise TrashItemDoesNotExist()
 
         trashed_item.delete()
+
+    def get_restore_operation_type(self) -> str:
+        return RestoreTeamOperationType.type

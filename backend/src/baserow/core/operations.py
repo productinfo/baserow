@@ -36,6 +36,10 @@ class DeleteGroupOperationType(GroupCoreOperationType):
     type = "group.delete"
 
 
+class RestoreGroupOperationType(GroupCoreOperationType):
+    type = "group.restore"
+
+
 class ListApplicationsGroupOperationType(GroupCoreOperationType):
     type = "group.list_applications"
     object_scope_name = "application"
@@ -109,3 +113,7 @@ class DuplicateApplicationOperationType(ApplicationOperationType):
 
 class DeleteApplicationOperationType(ApplicationOperationType):
     type = "application.delete"
+
+
+class RestoreApplicationOperationType(ApplicationOperationType):
+    type = "application.restore"

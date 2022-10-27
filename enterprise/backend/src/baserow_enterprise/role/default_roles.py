@@ -8,6 +8,7 @@ from baserow_enterprise.teams.operations import (
     ListTeamSubjectsOperationType,
     ReadTeamOperationType,
     ReadTeamSubjectOperationType,
+    RestoreTeamOperationType,
     UpdateTeamOperationType,
 )
 from baserow_premium.row_comments.operations import (
@@ -26,6 +27,7 @@ from baserow.contrib.database.fields.operations import (
     ListFieldsOperationType,
     ReadAggregationDatabaseTableOperationType,
     ReadFieldOperationType,
+    RestoreFieldOperationType,
     UpdateFieldOperationType,
 )
 from baserow.contrib.database.formula import TypeFormulaOperationType
@@ -39,6 +41,7 @@ from baserow.contrib.database.rows.operations import (
     MoveRowDatabaseRowOperationType,
     ReadAdjacentRowDatabaseRowOperationType,
     ReadDatabaseRowOperationType,
+    RestoreDatabaseRowOperationType,
     UpdateDatabaseRowOperationType,
 )
 from baserow.contrib.database.table.operations import (
@@ -51,6 +54,7 @@ from baserow.contrib.database.table.operations import (
     ListRowNamesDatabaseTableOperationType,
     ListRowsDatabaseTableOperationType,
     ReadDatabaseTableOperationType,
+    RestoreDatabaseTableOperationType,
     UpdateDatabaseTableOperationType,
 )
 from baserow.contrib.database.tokens.operations import (
@@ -79,6 +83,7 @@ from baserow.contrib.database.views.operations import (
     ReadViewOperationType,
     ReadViewsOrderOperationType,
     ReadViewSortOperationType,
+    RestoreViewOperationType,
     UpdateViewDecorationOperationType,
     UpdateViewFieldOptionsOperationType,
     UpdateViewFilterOperationType,
@@ -109,6 +114,8 @@ from baserow.core.operations import (
     ReadApplicationOperationType,
     ReadGroupOperationType,
     ReadInvitationGroupOperationType,
+    RestoreApplicationOperationType,
+    RestoreGroupOperationType,
     UpdateApplicationOperationType,
     UpdateGroupInvitationType,
     UpdateGroupOperationType,
@@ -119,6 +126,12 @@ from baserow.core.snapshots.operations import (
     DeleteApplicationSnapshotOperationType,
     ListSnapshotsApplicationOperationType,
     RestoreApplicationSnapshotOperationType,
+)
+from baserow.core.trash.operations import (
+    EmptyApplicationTrashOperationType,
+    EmptyGroupTrashOperationType,
+    ReadApplicationTrashOperationType,
+    ReadGroupTrashOperationType,
 )
 
 NO_ROLE_OPS = []
@@ -160,11 +173,13 @@ EDITOR_OPS = COMMENTER_OPS + [
     MoveRowDatabaseRowOperationType,
     ImportRowsDatabaseTableOperationType,
     ListGroupUsersGroupOperationType,
+    RestoreDatabaseRowOperationType,
 ]
 BUILDER_OPS = EDITOR_OPS + [
     CreateTableDatabaseTableOperationType,
     UpdateDatabaseTableOperationType,
     DeleteDatabaseTableOperationType,
+    RestoreDatabaseTableOperationType,
     DeleteDatabaseRowOperationType,
     CreateViewOperationType,
     CreateFieldOperationType,
@@ -174,6 +189,7 @@ BUILDER_OPS = EDITOR_OPS + [
     DuplicateFieldOperationType,
     CreateViewDecorationOperationType,
     DeleteFieldOperationType,
+    RestoreFieldOperationType,
     UpdateFieldOperationType,
     TypeFormulaOperationType,
     RunAirtableImportJobOperationType,
@@ -181,6 +197,7 @@ BUILDER_OPS = EDITOR_OPS + [
     OrderApplicationsOperationType,
     UpdateViewOperationType,
     DeleteViewOperationType,
+    RestoreViewOperationType,
     DuplicateViewOperationType,
     UpdateWebhookOperationType,
     CreateViewFilterOperationType,
@@ -200,11 +217,14 @@ BUILDER_OPS = EDITOR_OPS + [
     DeleteApplicationSnapshotOperationType,
     CreateSnapshotApplicationOperationType,
     DeleteApplicationOperationType,
+    RestoreApplicationOperationType,
+    ReadApplicationTrashOperationType,
     DuplicateApplicationOperationType,
     UpdateApplicationOperationType,
     UpdateViewSortOperationType,
     DuplicateDatabaseTableOperationType,
     CreateViewSortOperationType,
+    ReadGroupTrashOperationType,
 ]
 ADMIN_OPS = BUILDER_OPS + [
     UpdateGroupOperationType,
@@ -230,6 +250,10 @@ ADMIN_OPS = BUILDER_OPS + [
     ListTeamSubjectsOperationType,
     ReadTeamOperationType,
     ReadTeamSubjectOperationType,
+    RestoreTeamOperationType,
+    RestoreGroupOperationType,
+    EmptyApplicationTrashOperationType,
+    EmptyGroupTrashOperationType,
 ]
 default_roles = {
     "admin": ADMIN_OPS,

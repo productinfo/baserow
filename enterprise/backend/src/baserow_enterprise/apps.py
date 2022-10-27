@@ -30,6 +30,7 @@ class BaserowEnterpriseConfig(AppConfig):
             ListTeamSubjectsOperationType,
             ReadTeamOperationType,
             ReadTeamSubjectOperationType,
+            RestoreTeamOperationType,
             UpdateTeamOperationType,
         )
         from baserow_enterprise.trash_types import TeamTrashableItemType
@@ -74,6 +75,7 @@ class BaserowEnterpriseConfig(AppConfig):
         operation_type_registry.register(ListTeamSubjectsOperationType())
         operation_type_registry.register(DeleteTeamSubjectOperationType())
         operation_type_registry.register(AssignRoleGroupOperationType())
+        operation_type_registry.register(RestoreTeamOperationType())
 
         from baserow.core.registries import permission_manager_type_registry
 

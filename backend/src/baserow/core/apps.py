@@ -72,6 +72,8 @@ class CoreConfig(AppConfig):
             ReadApplicationOperationType,
             ReadGroupOperationType,
             ReadInvitationGroupOperationType,
+            RestoreApplicationOperationType,
+            RestoreGroupOperationType,
             UpdateApplicationOperationType,
             UpdateGroupInvitationType,
             UpdateGroupOperationType,
@@ -83,6 +85,12 @@ class CoreConfig(AppConfig):
             DeleteApplicationSnapshotOperationType,
             ListSnapshotsApplicationOperationType,
             RestoreApplicationSnapshotOperationType,
+        )
+        from .trash.operations import (
+            EmptyApplicationTrashOperationType,
+            EmptyGroupTrashOperationType,
+            ReadApplicationTrashOperationType,
+            ReadGroupTrashOperationType,
         )
 
         operation_type_registry.register(CreateApplicationsGroupOperationType())
@@ -109,6 +117,12 @@ class CoreConfig(AppConfig):
         operation_type_registry.register(DeleteApplicationSnapshotOperationType())
         operation_type_registry.register(ListSnapshotsApplicationOperationType())
         operation_type_registry.register(RestoreApplicationSnapshotOperationType())
+        operation_type_registry.register(ReadGroupTrashOperationType())
+        operation_type_registry.register(ReadApplicationTrashOperationType())
+        operation_type_registry.register(EmptyApplicationTrashOperationType())
+        operation_type_registry.register(EmptyGroupTrashOperationType())
+        operation_type_registry.register(RestoreApplicationOperationType())
+        operation_type_registry.register(RestoreGroupOperationType())
         operation_type_registry.register(ReadApplicationOperationType())
 
         from baserow.core.actions import (

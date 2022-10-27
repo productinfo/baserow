@@ -7,7 +7,7 @@ class TeamOperationType(OperationType):
 
 
 class CreateTeamOperationType(GroupCoreOperationType):
-    type = "enterprise.teams.team.create"
+    type = "enterprise.teams.create_team"
 
 
 class ReadTeamOperationType(TeamOperationType):
@@ -24,6 +24,10 @@ class UpdateTeamOperationType(TeamOperationType):
 
 class DeleteTeamOperationType(TeamOperationType):
     type = "enterprise.teams.team.delete"
+
+
+class RestoreTeamOperationType(TeamOperationType):
+    type = "enterprise.teams.team.restore"
 
 
 class TeamSubjectOperationType(OperationType):
