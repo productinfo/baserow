@@ -40,6 +40,10 @@ export default {
     }
   },
   methods: {
+    async show(...args) {
+      this.hideError()
+      modal.methods.show.bind(this)(...args)
+    },
     async teamSubmitted(values) {
       this.createLoading = true
       this.hideError()
