@@ -1,0 +1,8 @@
+.select-list-footer {
+  display: flex;
+  justify-content: space-between;
+
+  &--single {
+    justify-content: flex-end;
+  }
+}

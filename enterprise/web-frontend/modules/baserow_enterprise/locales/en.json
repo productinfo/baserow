@@ -31,5 +31,43 @@
         },
         "createTeamModalInvalidNameTitle": "Please use a different name",
         "createTeamModalInvalidNameMessage": "This team name is already in use in the specified group."
+    },
+    "MemberRolesModal": {
+        "MemberRolesDatabaseTabTitle": "Database",
+        "MemberRolesTableTabTitle": "Current Table"
+    },
+    "MemberRolesDatabaseTab": {
+        "title": "{databaseName} database",
+        "selectMembers": "Select members",
+        "everyoneHasAccess": "Everyone at {databaseName} workspace can access this database.",
+        "onlyYouHaveAccess": "Only you can access this database."
+    },
+    "MemberRolesShareToggle": {
+        "label": "Share with everyone at {name}",
+        "subLabel": "{totalUserAmount} workspace members"
+    },
+    "MemberRolesContexItem": {
+        "label": "Manage database members"
+    },
+    "RoleAssignmentModal": {
+        "membersTab": "Members",
+        "teamsTab": "Teams",
+        "subjectTypeNameMembers": "members",
+        "subjectTypeNameTeams": "teams"
+    },
+    "SelectMembersList": {
+        "searchPlaceholder": "Find members...",
+        "selectedAmountLabel": "{count} members selected"
+    },
+    "SelectTeamsList": {
+        "searchPlaceholder": "Find teams...",
+        "selectedAmountLabel": "{count} teams selected"
+    },
+    "SelectListFooter": {
+        "invite": "Invite {count} {type}",
+        "types": {
+            "members": "members",
+            "teams": "teams"
+        }
     }
 }

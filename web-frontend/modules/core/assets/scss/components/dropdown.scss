@@ -57,6 +57,7 @@
   background-color: $white;
   box-shadow: 0 2px 6px 0 rgba($black, 0.16);
   z-index: 1;
+  width: fit-content;
 
   @include absolute(0, 0, auto, 0);
 

@@ -12,6 +12,8 @@ import es from '@baserow_enterprise/locales/es.json'
 import it from '@baserow_enterprise/locales/it.json'
 
 import teamStore from '@baserow_enterprise/store/team'
+import memberStore from '@baserow_enterprise/store/member'
+import { EnterprisePlugin } from '@baserow_enterprise/plugins'
 
 export default (context) => {
   const { store, isDev, app } = context
@@ -27,10 +29,15 @@ export default (context) => {
     i18n.mergeLocaleMessage('it', it)
   }
 
+
   app.$registry.register(
     'permissionManager',
     new RolePermissionManagerType(context)
   )
+
+  store.registerModule('member', memberStore)
+
+  app.$registry.register('plugin', new EnterprisePlugin(context))
 
   registerRealtimeEvents(app.$realtime)
 
