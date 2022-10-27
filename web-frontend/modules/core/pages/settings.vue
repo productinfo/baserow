@@ -3,38 +3,17 @@
     <div class="layout__col-2-1">
       <ul class="page-tabs">
         <nuxt-link
+          v-for="page in pages"
+          :key="page.type"
           v-slot="{ href, navigate, isExactActive }"
-          :to="{
-            name: 'settings-members',
-            params: {
-              groupId: group.id,
-            },
-          }"
+          :to="page.to"
         >
           <li
             class="page-tabs__item"
             :class="{ 'page-tabs__item--active': isExactActive }"
           >
             <a :href="href" class="page-tabs__link" @click="navigate">
-              {{ $t('membersSettings.membersTabTitle') }}
-            </a>
-          </li>
-        </nuxt-link>
-        <nuxt-link
-          v-slot="{ href, navigate, isExactActive }"
-          :to="{
-            name: 'settings-invites',
-            params: {
-              groupId: group.id,
-            },
-          }"
-        >
-          <li
-            class="page-tabs__item"
-            :class="{ 'page-tabs__item--active': isExactActive }"
-          >
-            <a :href="href" class="page-tabs__link" @click="navigate">
-              {{ $t('membersSettings.invitesTabTitle') }}
+              {{ page.name }}
             </a>
           </li>
         </nuxt-link>
@@ -59,5 +38,20 @@ export default {
 
     return { group }
   },
+  computed: {
+    groupSettingsPageTypes() {
+      return this.$registry.getAll('groupSettingsPage')
+    },
+    pages() {
+      return Object.values(this.groupSettingsPageTypes).map((instance) => {
+        return {
+          type: instance.type,
+          name: instance.getName(),
+          to: instance.getRoute(this.group),
+        }
+      })
+    },
+  },
+
 }
 </script>
