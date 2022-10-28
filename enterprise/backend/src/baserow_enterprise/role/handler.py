@@ -1,12 +1,13 @@
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 
 from baserow_enterprise.models import RoleAssignment
+from baserow_enterprise.role.models import Role
 
-from baserow.core.models import Group
+from baserow.core.models import Group, GroupUser
 from baserow.core.registries import object_scope_type_registry
 
 User = get_user_model()
@@ -15,6 +16,28 @@ USER_TYPE = "auth.User"
 
 
 class RoleAssignmentHandler:
+    _role_cache_by_uid: Dict[str, List[str]] = {}
+    role_fallback = "NO_ROLE"
+
+    def get_role(self, role_uid: str = None) -> Role:
+        """
+        Returns the role for the given uid. This method is memoized.
+
+        :param role_uid: The uid we want the role for.
+        :return: A role.
+        """
+
+        if role_uid == "MEMBER":
+            role_uid = "BUILDER"
+
+        if role_uid not in self._role_cache_by_uid:
+            try:
+                self._role_cache_by_uid[role_uid] = Role.objects.get(uid=role_uid)
+            except Role.DoesNotExist:
+                return self.get_role(self.role_fallback)
+
+        return self._role_cache_by_uid[role_uid]
+
     def get_current_role_assignment(
         self,
         subject: AbstractUser,
@@ -35,6 +58,25 @@ class RoleAssignmentHandler:
             scope = group
 
         content_types = ContentType.objects.get_for_models(scope, subject)
+
+        if scope == group:
+            try:
+                group_user = GroupUser.objects.get(user=subject, group=group)
+                role_uid = group_user.permissions
+                role = self.get_role(role_uid)
+                # We need to fake a RoleAssignment instance here to keep the same
+                # return interface
+                return RoleAssignment(
+                    subject=subject,
+                    subject_id=subject.id,
+                    subject_type=content_types[subject],
+                    role=role,
+                    group=group,
+                    scope=scope,
+                    scope_type=content_types[scope],
+                )
+            except GroupUser.DoesNotExist:
+                return None
 
         try:
             role_assignment = RoleAssignment.objects.get(
@@ -79,6 +121,24 @@ class RoleAssignmentHandler:
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 
+        # Group level permissions are not stored as RoleAssignment records
+        if scope == group:
+            group_user = GroupUser.objects.get(group=group, user=subject)
+            group_user.permissions = "MEMBER" if role.uid == "BUILDER" else role.uid
+            group_user.save()
+
+            # We need to fake a RoleAssignment instance here to keep the same
+            # return interface
+            return RoleAssignment(
+                subject=subject,
+                subject_id=subject.id,
+                subject_type=content_types[subject],
+                role=role,
+                group=group,
+                scope=scope,
+                scope_type=content_types[scope],
+            )
+
         role_assignment, _ = RoleAssignment.objects.update_or_create(
             subject_id=subject.id,
             subject_type=content_types[subject],
@@ -90,7 +150,7 @@ class RoleAssignmentHandler:
 
         return role_assignment
 
-    def remove_role(self, subject, group, scope=None):
+    def remove_role(self, subject: AbstractUser, group: Group, scope=None):
         """
         Remove the role of a subject in the context of the given group over a specified
         scope.
@@ -103,6 +163,11 @@ class RoleAssignmentHandler:
 
         if scope is None:
             scope = group
+
+        if scope == group:
+            GroupUser.objects.filter(user=subject, group=group).update(
+                permissions="NO_ROLE"
+            )
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 

@@ -7,10 +7,11 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 
 from baserow_enterprise.features import RBAC
+from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_premium.license.handler import LicenseHandler
 from rest_framework.exceptions import NotAuthenticated
 
-from baserow.core.exceptions import PermissionDenied, UserNotInGroup
+from baserow.core.exceptions import PermissionDenied
 from baserow.core.models import Group, GroupUser, Operation
 from baserow.core.registries import (
     PermissionManagerType,
@@ -85,6 +86,21 @@ class RolePermissionManagerType(PermissionManagerType):
         # in the list.
         result.sort(key=cmp_to_key(compare_scopes))
 
+        # Get the group level role by reading the GroupUser permissions property
+        group_level_role = RoleAssignmentHandler().get_role(
+            GroupUser.objects.get(user__id=actor.id, group=group).permissions
+        )
+
+        if not operation or operation.type in self.get_role_operations(
+            group_level_role.id
+        ):
+            return [
+                (
+                    group_level_role.id,
+                    group,
+                )
+            ] + [(r.role_id, r.scope) for r in result]
+
         return [(r.role_id, r.scope) for r in result]
 
     def get_role_operations(self, role_id: int):
@@ -96,9 +112,9 @@ class RolePermissionManagerType(PermissionManagerType):
         """
 
         if role_id not in self._role_cache:
-            self._role_cache[role_id] = [
-                p.name for p in Operation.objects.filter(roles=role_id)
-            ]
+            self._role_cache[role_id] = Operation.objects.filter(
+                roles=role_id
+            ).values_list("name", flat=True)
 
         return self._role_cache[role_id]
 
@@ -114,10 +130,7 @@ class RolePermissionManagerType(PermissionManagerType):
         Checks the permission given the role assigned to the actor.
         """
 
-        if group is None:
-            return
-
-        if not self.is_enabled(group):
+        if group is None or not self.is_enabled(group):
             return
 
         if hasattr(actor, "is_authenticated"):
@@ -131,14 +144,8 @@ class RolePermissionManagerType(PermissionManagerType):
             else:
                 manager = GroupUser.objects
 
-            try:
-                if (
-                    "ADMIN"
-                    in manager.get(user_id=user.id, group_id=group.id).permissions
-                ):
-                    return True
-            except GroupUser.DoesNotExist:
-                raise UserNotInGroup(user, self)
+            if "ADMIN" in manager.get(user_id=user.id, group_id=group.id).permissions:
+                return True
 
             operation_type = operation_type_registry.get(operation_name)
 
@@ -183,11 +190,8 @@ class RolePermissionManagerType(PermissionManagerType):
         of context IDs that are an exception to the default rule.
         """
 
-        if group is None:
+        if group is None or not self.is_enabled(group):
             return None
-
-        if not self.is_enabled(group):
-            return
 
         # Get all role assignments for this actor into this group
         role_assignments = self.get_user_role_assignments(group, actor)
@@ -247,10 +251,7 @@ class RolePermissionManagerType(PermissionManagerType):
         Filter the given queryset according the role given for the specified operation.
         """
 
-        if group is None:
-            return queryset
-
-        if not self.is_enabled(group):
+        if group is None or not self.is_enabled(group):
             return queryset
 
         # Get all role assignments for this user into this group
