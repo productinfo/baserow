@@ -2,6 +2,7 @@ from django.db import transaction
 
 from baserow_enterprise.api.errors import (
     ERROR_SUBJECT_DOES_NOT_EXIST,
+    ERROR_SUBJECT_TYPE_UNSUPPORTED,
     ERROR_TEAM_DOES_NOT_EXIST,
     ERROR_TEAM_NAME_NOT_UNIQUE,
     ERROR_USER_NOT_IN_TEAM,
@@ -17,6 +18,7 @@ from baserow_enterprise.exceptions import (
     TeamDoesNotExist,
     TeamNameNotUnique,
     TeamSubjectDoesNotExist,
+    TeamSubjectTypeUnsupported,
 )
 from baserow_enterprise.teams.actions import (
     CreateTeamActionType,
@@ -111,7 +113,13 @@ class TeamsView(APIView, SearchableViewMixin, SortableViewMixin):
             404: get_error_schema(["ERROR_GROUP_DOES_NOT_EXIST"]),
         },
     )
-    @map_exceptions({TeamNameNotUnique: ERROR_TEAM_NAME_NOT_UNIQUE})
+    @map_exceptions(
+        {
+            TeamNameNotUnique: ERROR_TEAM_NAME_NOT_UNIQUE,
+            TeamSubjectDoesNotExist: ERROR_SUBJECT_DOES_NOT_EXIST,
+            TeamSubjectTypeUnsupported: ERROR_SUBJECT_TYPE_UNSUPPORTED,
+        }
+    )
     @transaction.atomic
     @validate_body(TeamSerializer)
     def post(self, request, group_id: int, data):
@@ -126,7 +134,7 @@ class TeamsView(APIView, SearchableViewMixin, SortableViewMixin):
         )
 
         team = action_type_registry.get_by_type(CreateTeamActionType).do(
-            request.user, data["name"], group
+            request.user, data["name"], group, data["subjects"]
         )
         return Response(TeamResponseSerializer(team).data)
 
@@ -292,6 +300,12 @@ class TeamSubjectsView(APIView):
         description=("Creates a new team subject."),
         request=TeamSubjectSerializer,
         responses={200: TeamSubjectResponseSerializer},
+    )
+    @map_exceptions(
+        {
+            TeamSubjectDoesNotExist: ERROR_SUBJECT_DOES_NOT_EXIST,
+            TeamSubjectTypeUnsupported: ERROR_SUBJECT_TYPE_UNSUPPORTED,
+        }
     )
     @transaction.atomic
     @validate_body(TeamSubjectSerializer)
