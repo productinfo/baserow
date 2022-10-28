@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Dict, Union
+from typing import Dict, List, Optional, Union
 
 from django.contrib.auth.models import AbstractUser
 
@@ -21,9 +21,16 @@ class CreateTeamActionType(ActionType):
         name: str
         team_id: int
         group_id: int
+        subjects: List[Dict]
 
     @classmethod
-    def do(cls, user: AbstractUser, name: str, group: Group) -> Team:
+    def do(
+        cls,
+        user: AbstractUser,
+        name: str,
+        group: Group,
+        subjects: Optional[List[Dict]] = None,
+    ) -> Team:
         """
         Creates a new team for an existing user. See
         baserow_enterprise.teams.handler.TeamHandler.create_group
@@ -33,13 +40,16 @@ class CreateTeamActionType(ActionType):
         :param user: The user creating the team.
         :param name: The name to give the team.
         :param group: The group to create the team in.
+        :param subjects: An array of subject ID/type objects.
         """
+        if subjects is None:
+            subjects = []
 
-        team = TeamHandler().create_team(user, name, group)
+        team = TeamHandler().create_team(user, name, group, subjects)
 
         cls.register_action(
             user=user,
-            params=cls.Params(team.name, team.id, group.id),
+            params=cls.Params(team.name, team.id, group.id, subjects),
             scope=cls.scope(team.group_id),
         )
         return team
