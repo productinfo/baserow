@@ -142,7 +142,6 @@ VIEWER_OPS = NO_ROLE_OPS + [
     ReadApplicationOperationType,
     ReadDatabaseTableOperationType,
     ListRowsDatabaseTableOperationType,
-    ReadRowCommentsOperationType,
     ReadDatabaseRowOperationType,
     ReadViewOperationType,
     ReadFieldOperationType,
@@ -164,6 +163,7 @@ VIEWER_OPS = NO_ROLE_OPS + [
 ]
 COMMENTER_OPS = VIEWER_OPS + [
     CreateRowCommentsOperationType,
+    ReadRowCommentsOperationType,
 ]
 EDITOR_OPS = COMMENTER_OPS + [
     CreateRowDatabaseTableOperationType,
@@ -174,6 +174,10 @@ EDITOR_OPS = COMMENTER_OPS + [
     ImportRowsDatabaseTableOperationType,
     ListGroupUsersGroupOperationType,
     RestoreDatabaseRowOperationType,
+    ListTeamsOperationType,
+    ListTeamSubjectsOperationType,
+    ReadTeamOperationType,
+    ReadTeamSubjectOperationType,
 ]
 BUILDER_OPS = EDITOR_OPS + [
     CreateTableDatabaseTableOperationType,
@@ -246,10 +250,6 @@ ADMIN_OPS = BUILDER_OPS + [
     DeleteTeamOperationType,
     CreateTeamSubjectOperationType,
     DeleteTeamSubjectOperationType,
-    ListTeamsOperationType,
-    ListTeamSubjectsOperationType,
-    ReadTeamOperationType,
-    ReadTeamSubjectOperationType,
     RestoreTeamOperationType,
     RestoreGroupOperationType,
     EmptyApplicationTrashOperationType,
