@@ -8,12 +8,11 @@ from baserow.core.handler import CoreHandler
 
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
 )
-def test_group_user_added_signal_overlapping_roles(data_fixture):
-    # TODO once we properly implemented RolePermissionManagerType.is_enabled we will
-    # have to make sure that the group in his test is changed to meet the conditions
+def test_group_user_added_signal_overlapping_roles(
+    data_fixture, enable_enterprise, synced_roles
+):
     user_1 = data_fixture.create_user()
     user_2 = data_fixture.create_user()
     group = data_fixture.create_group()
@@ -33,12 +32,11 @@ def test_group_user_added_signal_overlapping_roles(data_fixture):
 
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
 )
-def test_group_user_added_signal_not_overlapping_roles(data_fixture):
-    # TODO once we properly implemented RolePermissionManagerType.is_enabled we will
-    # have to make sure that the group in his test is changed to meet the conditions
+def test_group_user_added_signal_not_overlapping_roles(
+    data_fixture, enterprise_data_fixture, synced_roles, enable_enterprise
+):
     user_1 = data_fixture.create_user()
     user_2 = data_fixture.create_user()
     group = data_fixture.create_group()

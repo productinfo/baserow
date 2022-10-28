@@ -7,12 +7,16 @@ from baserow_enterprise_tests.role.test_role_permission_manager import (
 )
 
 
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
+
+
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "basic", "role"],
 )
-def test_roles_member_data_type(data_fixture, enterprise_data_fixture):
+def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_roles):
     (
         admin,
         builder,

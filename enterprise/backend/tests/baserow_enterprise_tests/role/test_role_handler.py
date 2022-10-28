@@ -5,12 +5,18 @@ from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role, RoleAssignment
 
 
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
+
+
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "basic", "role"],
 )
-def test_create_role_assignment(api_client, data_fixture, enterprise_data_fixture):
+def test_create_role_assignment(
+    api_client, data_fixture, enterprise_data_fixture, synced_roles
+):
     user = data_fixture.create_user()
     user2 = data_fixture.create_user()
     group = data_fixture.create_group(user=user)

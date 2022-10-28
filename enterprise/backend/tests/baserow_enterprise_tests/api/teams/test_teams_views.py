@@ -9,6 +9,11 @@ from rest_framework.status import (
 )
 
 
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
+
+
 @pytest.mark.django_db
 def test_read_team(api_client, data_fixture, enterprise_data_fixture):
     user, token = data_fixture.create_user_and_token(

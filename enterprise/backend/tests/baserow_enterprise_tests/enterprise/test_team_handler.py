@@ -8,8 +8,12 @@ from baserow_enterprise.exceptions import (
     TeamSubjectDoesNotExist,
     TeamSubjectTypeUnsupported,
 )
-from baserow_enterprise.models import Team
 from baserow_enterprise.teams.handler import TeamHandler
+
+
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
 
 
 @pytest.mark.django_db
@@ -27,7 +31,7 @@ def test_list_teams_in_group(data_fixture, enterprise_data_fixture):
     sales = enterprise_data_fixture.create_team(group=group)
     engineering = enterprise_data_fixture.create_team(group=group)
     sales_subj = enterprise_data_fixture.create_subject(team=sales, subject=user)
-    teams_qs = TeamHandler().list_teams_in_group(group.id).order_by("id")
+    teams_qs = TeamHandler().list_teams_in_group(user, group.id).order_by("id")
     assert teams_qs[0].id == sales.id
     assert teams_qs[0].subject_count == 1
     assert teams_qs[0].subject_sample == [
@@ -63,24 +67,29 @@ def test_delete_team(data_fixture, enterprise_data_fixture):
     "baserow_enterprise.teams.handler.TeamHandler.is_supported_subject_type",
     return_value=False,
 )
-def test_create_subject_unsupported_type(is_supported_subject_type):
+def test_create_subject_unsupported_type(
+    is_supported_subject_type, enterprise_data_fixture
+):
+    team = enterprise_data_fixture.create_team()
     with pytest.raises(TeamSubjectTypeUnsupported):
-        TeamHandler().create_subject(User(), {"pk": 123}, "foo_bar", Team())
+        TeamHandler().create_subject(User(), {"pk": 123}, "foo_bar", team)
 
 
 @pytest.mark.django_db
-def test_create_subject_unknown_subject(data_fixture):
+def test_create_subject_unknown_subject(data_fixture, enterprise_data_fixture):
     user = data_fixture.create_user()
+    team = enterprise_data_fixture.create_team()
     assert not User.objects.filter(pk=123).exists()
     with pytest.raises(TeamSubjectDoesNotExist):
-        TeamHandler().create_subject(user, {"pk": 123}, "auth_user", Team())
+        TeamHandler().create_subject(user, {"pk": 123}, "auth_user", team)
 
 
 @pytest.mark.django_db
 def test_create_subject_with_unsupported_lookup(data_fixture, enterprise_data_fixture):
     user = data_fixture.create_user()
+    team = enterprise_data_fixture.create_team()
     with pytest.raises(TeamSubjectBadRequest):
-        TeamHandler().create_subject(user, {"username": "baserow"}, "auth_user", Team())
+        TeamHandler().create_subject(user, {"username": "baserow"}, "auth_user", team)
 
 
 @pytest.mark.django_db

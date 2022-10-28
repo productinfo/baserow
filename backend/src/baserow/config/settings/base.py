@@ -657,10 +657,7 @@ BASEROW_SNAPSHOT_EXPIRATION_TIME_DAYS = int(
 FEATURE_FLAGS = [flag.strip() for flag in os.getenv("FEATURE_FLAGS", "").split(",")]
 
 PERMISSION_MANAGERS = os.getenv(
-    "BASEROW_PERMISSION_MANAGERS",
-    "core,staff,member,role,basic"
-    if "roles" in FEATURE_FLAGS
-    else "core,staff,member,basic",
+    "BASEROW_PERMISSION_MANAGERS", "core,staff,member,role,basic"
 ).split(",")
 
 OLD_ACTION_CLEANUP_INTERVAL_MINUTES = os.getenv(

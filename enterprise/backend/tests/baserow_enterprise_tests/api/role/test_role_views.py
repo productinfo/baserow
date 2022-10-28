@@ -9,7 +9,9 @@ from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT
 
 @pytest.mark.django_db
 @override_settings(DEBUG=True)
-def test_create_role_assignment(api_client, data_fixture, enterprise_data_fixture):
+def test_create_role_assignment(
+    api_client, data_fixture, enterprise_data_fixture, synced_roles
+):
     user, token = data_fixture.create_user_and_token()
     user2 = data_fixture.create_user()
     group = data_fixture.create_group(user=user)

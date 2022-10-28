@@ -112,12 +112,12 @@ class UpdateTeamActionType(ActionType):
 
     @classmethod
     def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
-        team = TeamHandler().get_team(params.team_id)
+        team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().update_team(user, team, params.original_name)
 
     @classmethod
     def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
-        team = TeamHandler().get_team(params.team_id)
+        team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().update_team(user, team, params.new_name)
 
 
@@ -158,7 +158,7 @@ class DeleteTeamActionType(ActionType):
 
     @classmethod
     def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
-        team_for_update = TeamHandler().get_team_for_update(params.team_id)
+        team_for_update = TeamHandler().get_team_for_update(user, params.team_id)
         TeamHandler().delete_team(user, team_for_update)
 
 
@@ -224,7 +224,7 @@ class CreateTeamSubjectActionType(ActionType):
         params: Params,
         action_to_redo: Action,
     ):
-        team = TeamHandler().get_team(params.team_id)
+        team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().create_subject(
             user,
             params.subject_lookup,
@@ -276,7 +276,7 @@ class DeleteTeamSubjectActionType(ActionType):
 
     @classmethod
     def undo(cls, user, params: Params, action_being_undone: Action):
-        team = TeamHandler().get_team(params.team_id)
+        team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().create_subject(
             user,
             {"pk": params.subject_subject_id},

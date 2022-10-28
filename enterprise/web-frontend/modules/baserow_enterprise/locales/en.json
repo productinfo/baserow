@@ -1,7 +1,10 @@
 {
     "enterprise": {
         "license": "Enterprise",
-        "sidebarTooltip": "Your account has access to the enterprise features globally"
+        "sidebarTooltip": "Your account has access to the enterprise features globally",
+        "enterpriseFeatures": "Premium and Enterprise Features",
+        "rbac": "RBAC",
+        "sso": "SSO"
     },
     "roles": {
         "admin": {
