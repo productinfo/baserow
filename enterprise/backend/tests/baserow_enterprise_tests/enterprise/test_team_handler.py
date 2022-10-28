@@ -31,6 +31,20 @@ def test_create_team_non_unique_name(data_fixture):
 
 
 @pytest.mark.django_db
+def test_create_team_with_subjects(data_fixture):
+    user = data_fixture.create_user()
+    group = data_fixture.create_group(user=user)
+    team = TeamHandler().create_team(
+        user,
+        "Engineering",
+        group,
+        [{"subject_id": user.id, "subject_type": "auth_user"}],
+    )
+    subject = team.subjects.all()[0]
+    assert subject.subject_id == user.id
+
+
+@pytest.mark.django_db
 def test_list_teams_in_group(data_fixture, enterprise_data_fixture):
     user = data_fixture.create_user()
     group = data_fixture.create_group(user=user)
