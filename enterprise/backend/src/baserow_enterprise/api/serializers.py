@@ -7,9 +7,19 @@ __all__ = ["TeamSerializer", "TeamSubjectSerializer"]
 
 
 class TeamSerializer(serializers.ModelSerializer):
+    subjects = serializers.ListField(
+        required=False,
+        default=[],
+        child=serializers.DictField(),
+        help_text="An array of subject ID/type objects to be used during team create and update.",
+    )
+
     class Meta:
         model = Team
-        fields = ("name",)
+        fields = (
+            "name",
+            "subjects",
+        )
 
 
 class TeamResponseSerializer(serializers.ModelSerializer):
