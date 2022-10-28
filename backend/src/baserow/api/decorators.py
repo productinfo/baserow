@@ -7,6 +7,8 @@ from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
 from rest_framework.exceptions import APIException
 
+from baserow.core.exceptions import PermissionException
+
 from .exceptions import (
     QueryParameterValidationException,
     RequestBodyValidationException,
@@ -73,6 +75,14 @@ def map_exceptions(exceptions: ExceptionMappingType):
 
       # SomeException will be thrown directly if the provided callable returns None.
     """
+
+    # Add globally permission denied exception mapping if missing
+    if PermissionException not in exceptions:
+        exceptions[PermissionException] = (
+            "PERMISSION_DENIED",
+            401,
+            "You don't have the required permission to execute this operation.",
+        )
 
     def map_exceptions_decorator(func):
         def func_wrapper(*args, **kwargs):
