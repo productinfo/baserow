@@ -19,3 +19,9 @@ ERROR_SUBJECT_DOES_NOT_EXIST = (
     HTTP_404_NOT_FOUND,
     "The requested subject does not exist.",
 )
+
+ERROR_SUBJECT_TYPE_UNSUPPORTED = (
+    "ERROR_SUBJECT_TYPE_UNSUPPORTED",
+    HTTP_400_BAD_REQUEST,
+    "The specified subject type is not supported.",
+)
