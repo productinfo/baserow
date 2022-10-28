@@ -9,6 +9,8 @@ class EnterpriseFixtures:
     def create_team(self, **kwargs):
         if "name" not in kwargs:
             kwargs["name"] = self.fake.name()
+        if "group" not in kwargs:
+            kwargs["group"] = self.create_group()
         team = Team.objects.create(**kwargs)
         return team
 

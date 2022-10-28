@@ -1,6 +1,8 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
+from tqdm import tqdm
+
 
 class BaserowEnterpriseConfig(AppConfig):
     name = "baserow_enterprise"
@@ -102,14 +104,15 @@ def sync_default_roles_after_migrate(sender, **kwargs):
     apps = kwargs.get("apps", None)
 
     if apps is not None:
-
         try:
             Operation = apps.get_model("core", "Operation")
             Role = apps.get_model("baserow_enterprise", "Role")
-        except (LookupError):
+        except LookupError:
             print("Skipping role creation as related models does not exist.")
         else:
-            for role_name, operations in default_roles.items():
+            for role_name, operations in tqdm(
+                default_roles.items(), desc="Syncing default roles"
+            ):
                 role, _ = Role.objects.update_or_create(
                     uid=role_name,
                     defaults={"name": f"role.{role_name}", "default": True},

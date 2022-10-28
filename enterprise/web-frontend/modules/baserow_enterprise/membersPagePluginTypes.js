@@ -2,6 +2,7 @@ import { MembersPagePluginType } from '@baserow/modules/database/membersPagePlug
 import MembersRoleField from '@baserow_enterprise/components/MembersRoleField'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import InvitesRoleField from '@baserow_enterprise/components/InvitesRoleField'
+import EnterpriseFeatures from '@baserow_enterprise/features'
 
 export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
   static getType() {
@@ -26,8 +27,8 @@ export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
     )
   }
 
-  isDeactivated() {
-    return !this.app.$featureFlags.includes('roles') // TODO make this depending on if somebody has RBAC
+  isDeactivated(groupId) {
+    return !this.app.$hasFeature(EnterpriseFeatures.RBAC, groupId)
   }
 
   _replaceRoleColumn(columns, FieldComponent, key, { group }) {

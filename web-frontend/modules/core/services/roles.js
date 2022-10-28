@@ -1,8 +1,8 @@
-export default (client, $featureFlags) => {
+export default (client, $hasFeature) => {
   return {
     // TODO implement once endpoint exists
     get(group) {
-      if ($featureFlags.includes('roles')) {
+      if ($hasFeature('RBAC', group.id)) {
         return {
           data: [
             { uid: 'ADMIN' },

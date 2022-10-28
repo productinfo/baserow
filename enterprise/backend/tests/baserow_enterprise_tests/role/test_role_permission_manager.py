@@ -35,7 +35,13 @@ from baserow.core.operations import (
 from baserow.core.registries import operation_type_registry
 
 
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
+
+
 def _populate_test_data(data_fixture, enterprise_data_fixture):
+    enterprise_data_fixture.enable_enterprise()
     admin = data_fixture.create_user(email="admin@test.net")
     builder = data_fixture.create_user(email="builder@test.net")
     editor = data_fixture.create_user(email="editor@test.net")
@@ -123,10 +129,9 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
 
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
 )
-def test_check_permissions(data_fixture, enterprise_data_fixture):
+def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
 
     (
         admin,
@@ -150,10 +155,6 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
 
     def check_perms(user, test_list):
         for (permission, context, result) in test_list:
-            print("test-> ", user, permission.type, context, result)
-
-            # if isinstance(context, RowPermissionContext):
-            #    group = context.table.database.group
             if isinstance(context, Table):
                 group = context.database.group
             elif isinstance(context, Database):
@@ -587,10 +588,9 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
 
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
 )
-def test_get_permissions_object(data_fixture, enterprise_data_fixture):
+def test_get_permissions_object(data_fixture, enterprise_data_fixture, synced_roles):
     (
         admin,
         builder,
@@ -638,10 +638,9 @@ def test_get_permissions_object(data_fixture, enterprise_data_fixture):
 
 @pytest.mark.django_db
 @override_settings(
-    FEATURE_FLAGS=["roles"],
     PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
 )
-def test_filter_queryset(data_fixture, enterprise_data_fixture):
+def test_filter_queryset(data_fixture, enterprise_data_fixture, synced_roles):
     (
         admin,
         builder,

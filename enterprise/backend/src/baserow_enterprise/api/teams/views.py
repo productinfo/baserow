@@ -74,7 +74,7 @@ class TeamsView(APIView):
             context=group,
         )
 
-        teams = TeamHandler().list_teams_in_group(group_id)
+        teams = TeamHandler().list_teams_in_group(request.user, group)
         serializer = TeamResponseSerializer(teams, many=True)
         return Response(serializer.data)
 
@@ -139,7 +139,7 @@ class TeamView(APIView):
     def get(self, request, team_id: int):
         """Responds with a single team."""
 
-        team = TeamHandler().get_team(team_id)
+        team = TeamHandler().get_team(request.user, team_id)
         CoreHandler().check_permissions(
             request.user,
             ReadTeamOperationType.type,
@@ -173,7 +173,7 @@ class TeamView(APIView):
     def patch(self, request, data, team_id: int):
         """Updates the team if the user belongs to the group."""
 
-        team = TeamHandler().get_team_for_update(team_id)
+        team = TeamHandler().get_team_for_update(request.user, team_id)
         CoreHandler().check_permissions(
             request.user,
             UpdateTeamOperationType.type,
@@ -226,7 +226,7 @@ class TeamView(APIView):
     def delete(self, request, team_id: int):
         """Deletes an existing team if the user belongs to the group."""
 
-        team = TeamHandler().get_team_for_update(team_id)
+        team = TeamHandler().get_team_for_update(request.user, team_id)
         CoreHandler().check_permissions(
             request.user,
             DeleteTeamOperationType.type,
@@ -251,7 +251,7 @@ class TeamSubjectsView(APIView):
     def get(self, request, team_id: int):
         """Responds with a list of team subjects in a specific team."""
 
-        team = TeamHandler().get_team(team_id)
+        team = TeamHandler().get_team(request.user, team_id)
         CoreHandler().check_permissions(
             request.user,
             ListTeamSubjectsOperationType.type,
@@ -275,7 +275,7 @@ class TeamSubjectsView(APIView):
     @validate_body(TeamSubjectSerializer)
     def post(self, request, team_id: int, data):
 
-        team = TeamHandler().get_team(team_id)
+        team = TeamHandler().get_team(request.user, team_id)
         CoreHandler().check_permissions(
             request.user,
             CreateTeamSubjectOperationType.type,
@@ -317,7 +317,7 @@ class TeamSubjectView(APIView):
     def get(self, request, team_id: int, subject_id: int):
         """Responds with a single subject."""
 
-        team = TeamHandler().get_team(team_id)
+        team = TeamHandler().get_team(request.user, team_id)
         subject = TeamHandler().get_subject(subject_id)
         CoreHandler().check_permissions(
             request.user,
@@ -362,7 +362,7 @@ class TeamSubjectView(APIView):
     def delete(self, request, team_id: int, subject_id: int):
         """Deletes an existing team subject if the user belongs to the group."""
 
-        team = TeamHandler().get_team(team_id)
+        team = TeamHandler().get_team(request.user, team_id)
         subject = TeamHandler().get_subject_for_update(subject_id)
         CoreHandler().check_permissions(
             request.user,

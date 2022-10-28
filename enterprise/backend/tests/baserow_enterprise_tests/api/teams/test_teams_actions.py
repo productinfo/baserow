@@ -16,6 +16,11 @@ from baserow.core.action.handler import ActionHandler
 from baserow.core.action.registries import action_type_registry
 
 
+@pytest.fixture(autouse=True)
+def enable_enterprise_for_all_tests_here(enable_enterprise):
+    pass
+
+
 @pytest.mark.django_db
 @pytest.mark.undo_redo
 def test_can_undo_creating_team(data_fixture):

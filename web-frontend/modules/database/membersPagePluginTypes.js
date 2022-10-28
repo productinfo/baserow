@@ -26,7 +26,7 @@ export class MembersPagePluginType extends Registerable {
   /**
    * Set to false in order to enable the plugin
    */
-  isDeactivated() {
-    return !this.app.$featureFlags.includes('roles') // TODO make this depending on if somebody has RBAc
+  isDeactivated(groupId) {
+    return false
   }
 }

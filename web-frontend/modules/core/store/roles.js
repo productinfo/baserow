@@ -34,10 +34,9 @@ const mutations = {
 
 const actions = {
   async fetchRoles({ commit }, group) {
-    const { data } = await RolesService(
-      this.$client,
-      this.app.$featureFlags
-    ).get(group)
+    const { data } = await RolesService(this.$client, this.app.$hasFeature).get(
+      group
+    )
     const translatedRoles = appendRoleTranslations(data, this.app.$registry)
     commit('SET_ROLES', translatedRoles)
   },

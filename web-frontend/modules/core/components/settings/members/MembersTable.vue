@@ -136,7 +136,7 @@ export default {
         new CrudTableColumn(null, null, MoreField, false, false, true),
       ]
       for (const plugin of this.membersPagePlugins) {
-        if (!plugin.isDeactivated()) {
+        if (!plugin.isDeactivated(this.group.id)) {
           columns = plugin.mutateMembersTableColumns(columns, {
             group: this.group,
             client: this.$client,

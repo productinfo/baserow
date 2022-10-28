@@ -2,11 +2,12 @@ from collections import defaultdict
 from functools import cmp_to_key
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 
+from baserow_enterprise.features import RBAC
+from baserow_premium.license.handler import LicenseHandler
 from rest_framework.exceptions import NotAuthenticated
 
 from baserow.core.exceptions import PermissionDenied, UserNotInGroup
@@ -43,14 +44,15 @@ class RolePermissionManagerType(PermissionManagerType):
     type = "role"
     _role_cache: Dict[int, List[str]] = {}
 
-    def is_enabled(self, group):
+    def is_enabled(self, group: Group):
         """
-        Checks wether this permission manager is enabled or not.
+        Checks whether this permission manager should be enabled or not for a
+        particular group.
 
         :param group: The group in which we want to use this permission manager.
         """
 
-        return "roles" in settings.FEATURE_FLAGS
+        return LicenseHandler.group_has_feature(RBAC, group)
 
     def get_user_role_assignments(
         self, group: Group, actor: AbstractUser, operation: Optional[Operation] = None
