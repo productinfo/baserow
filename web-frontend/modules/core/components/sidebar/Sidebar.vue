@@ -176,7 +176,7 @@
               />
             </li>
             <nuxt-link
-              v-if="selectedGroup.permissions === 'ADMIN'"
+              v-if="$hasPermission('group.list_group_users', selectedGroup)"
               v-slot="{ href, navigate, isExactActive }"
               :to="{
                 name: 'settings-members',
@@ -220,7 +220,7 @@
             </ul>
             <li class="sidebar__new-wrapper">
               <a
-                v-if="$hasPermission('application.create', selectedGroup)"
+                v-if="$hasPermission('group.create_application', selectedGroup)"
                 ref="createApplicationContextLink"
                 class="sidebar__new"
                 @click="

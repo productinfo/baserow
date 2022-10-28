@@ -33,7 +33,10 @@ from baserow.contrib.database.fields.exceptions import (
 )
 from baserow.contrib.database.file_import.job_type import FileImportJobType
 from baserow.contrib.database.handler import DatabaseHandler
-from baserow.contrib.database.operations import ListTablesDatabaseTableOperationType
+from baserow.contrib.database.operations import (
+    CreateTableDatabaseTableOperationType,
+    ListTablesDatabaseTableOperationType,
+)
 from baserow.contrib.database.table.actions import (
     CreateTableActionType,
     DeleteTableActionType,
@@ -51,6 +54,10 @@ from baserow.contrib.database.table.exceptions import (
 from baserow.contrib.database.table.handler import TableHandler
 from baserow.contrib.database.table.job_types import DuplicateTableJobType
 from baserow.contrib.database.table.models import Table
+from baserow.contrib.database.table.operations import (
+    ImportRowsDatabaseTableOperationType,
+    ReadDatabaseTableOperationType,
+)
 from baserow.core.action.registries import action_type_registry
 from baserow.core.exceptions import ApplicationDoesNotExist, UserNotInGroup
 from baserow.core.handler import CoreHandler
@@ -125,7 +132,10 @@ class TablesView(APIView):
         database = DatabaseHandler().get_database(database_id)
 
         CoreHandler().check_permissions(
-            request.user, "database.list_tables", group=database.group, context=database
+            request.user,
+            ListTablesDatabaseTableOperationType.type,
+            group=database.group,
+            context=database,
         )
 
         tables = Table.objects.filter(database=database).prefetch_related("import_jobs")
@@ -203,7 +213,10 @@ class TablesView(APIView):
         database = DatabaseHandler().get_database(database_id)
 
         CoreHandler().check_permissions(
-            request.user, "database.list_tables", group=database.group, context=database
+            request.user,
+            CreateTableDatabaseTableOperationType.type,
+            group=database.group,
+            context=database,
         )
 
         limit = settings.BASEROW_INITIAL_CREATE_SYNC_TABLE_DATA_LIMIT
@@ -278,7 +291,7 @@ class AsyncCreateTableView(APIView):
 
         CoreHandler().check_permissions(
             request.user,
-            "database.create_table",
+            CreateTableDatabaseTableOperationType.type,
             group=database.group,
             context=database,
         )
@@ -334,7 +347,7 @@ class TableView(APIView):
 
         CoreHandler().check_permissions(
             request.user,
-            "database.table.read",
+            ReadDatabaseTableOperationType.type,
             group=table.database.group,
             context=table,
         )
@@ -476,7 +489,7 @@ class AsyncTableImportView(APIView):
 
         CoreHandler().check_permissions(
             request.user,
-            "database.table.import_file",
+            ImportRowsDatabaseTableOperationType.type,
             group=table.database.group,
             context=table,
         )

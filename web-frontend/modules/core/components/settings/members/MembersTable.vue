@@ -18,6 +18,7 @@
       </template>
       <template #header-right-side>
         <div
+          v-if="$hasPermission('group.create_invitation', group)"
           class="button margin-left-2 button--large"
           @click="$refs.inviteModal.show()"
         >

@@ -2,13 +2,13 @@
   <Context ref="context">
     <div class="context__menu-title">{{ group.name }} ({{ group.id }})</div>
     <ul class="context__menu">
-      <li v-if="group.permissions === 'ADMIN'">
+      <li v-if="$hasPermission('group.update', group)">
         <a @click="$emit('rename')">
           <i class="context__menu-icon fas fa-fw fa-pen"></i>
           {{ $t('groupContext.renameGroup') }}
         </a>
       </li>
-      <li v-if="group.permissions === 'ADMIN'">
+      <li v-if="$hasPermission('invitation.read', group)">
         <a
           @click="
             $router.push({
@@ -24,7 +24,7 @@
           {{ $t('groupContext.members') }}
         </a>
       </li>
-      <li v-if="group.permissions === 'ADMIN'">
+      <li v-if="$hasPermission('group.read_trash', group)">
         <a @click="showGroupTrashModal">
           <i class="context__menu-icon fas fa-fw fa-recycle"></i>
           {{ $t('groupContext.viewTrash') }}
@@ -36,7 +36,7 @@
           {{ $t('groupContext.leaveGroup') }}
         </a>
       </li>
-      <li v-if="group.permissions === 'ADMIN'">
+      <li v-if="$hasPermission('group.delete', group)">
         <a
           :class="{ 'context__menu-item--loading': loading }"
           @click="deleteGroup"
@@ -47,7 +47,7 @@
       </li>
     </ul>
     <TrashModal
-      v-if="group.permissions === 'ADMIN'"
+      v-if="$hasPermission('group.read_trash', group)"
       ref="groupTrashModal"
       :initial-group="group"
     >

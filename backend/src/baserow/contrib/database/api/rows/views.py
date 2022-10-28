@@ -80,6 +80,11 @@ from baserow.contrib.database.rows.operations import (
 from baserow.contrib.database.table.exceptions import TableDoesNotExist
 from baserow.contrib.database.table.handler import TableHandler
 from baserow.contrib.database.table.models import Table
+from baserow.contrib.database.table.operations import (
+    CreateRowDatabaseTableOperationType,
+    ListRowNamesDatabaseTableOperationType,
+    ListRowsDatabaseTableOperationType,
+)
 from baserow.contrib.database.tokens.exceptions import NoPermissionToTable
 from baserow.contrib.database.tokens.handler import TokenHandler
 from baserow.contrib.database.views.exceptions import (
@@ -94,7 +99,6 @@ from baserow.core.exceptions import UserNotInGroup
 from baserow.core.handler import CoreHandler
 from baserow.core.trash.exceptions import CannotDeleteAlreadyDeletedItem
 
-from ...table.operations import ListRowNamesDatabaseTableOperationType
 from .schemas import row_names_response_schema
 from .serializers import (
     BatchCreateRowsQueryParamsSerializer,
@@ -307,7 +311,7 @@ class RowsView(APIView):
 
         CoreHandler().check_permissions(
             request.user,
-            "database.table.list_rows",
+            ListRowsDatabaseTableOperationType.type,
             group=table.database.group,
             context=table,
         )
@@ -451,7 +455,7 @@ class RowsView(APIView):
 
         CoreHandler().check_permissions(
             request.user,
-            "database.table.create_row",
+            CreateRowDatabaseTableOperationType.type,
             group=table.database.group,
             context=table,
         )

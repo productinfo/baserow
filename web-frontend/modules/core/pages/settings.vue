@@ -21,6 +21,7 @@
           </li>
         </nuxt-link>
         <nuxt-link
+          v-if="$hasPermission('group.list_invitations', group)"
           v-slot="{ href, navigate, isExactActive }"
           :to="{
             name: 'settings-invites',

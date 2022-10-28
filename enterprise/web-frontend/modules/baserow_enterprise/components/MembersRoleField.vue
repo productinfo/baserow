@@ -1,6 +1,8 @@
 <template>
   <div>
-    <span v-if="userId === row.user_id">
+    <span
+      v-if="userId === row.user_id || !$hasPermission('group_user.update', row)"
+    >
       {{ roleName(roles, row) }}
     </span>
     <a

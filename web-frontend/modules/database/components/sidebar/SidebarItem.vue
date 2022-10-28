@@ -15,6 +15,7 @@
     </a>
     <a
       v-show="!database._.loading"
+      v-if="showOptions"
       class="tree__options"
       @click="$refs.context.toggle($event.currentTarget, 'bottom', 'right', 0)"
       @mousedown.stop
@@ -24,7 +25,7 @@
     <Context ref="context">
       <div class="context__menu-title">{{ table.name }} ({{ table.id }})</div>
       <ul class="context__menu">
-        <li v-if="$hasPermission('database.table.export', table)">
+        <li v-if="$hasPermission('database.table.run_export', table)">
           <a @click="exportTable()">
             <i class="context__menu-icon fas fa-fw fa-file-export"></i>
             {{ $t('sidebarItem.exportTable') }}
@@ -97,6 +98,16 @@ export default {
     return {
       deleteLoading: false,
     }
+  },
+  computed: {
+    showOptions() {
+      return (
+        this.$hasPermission('database.table.run_export', this.table) ||
+        this.$hasPermission('database.table.create_webhook', this.table) ||
+        this.$hasPermission('database.table.update', this.table) ||
+        this.$hasPermission('database.table.duplicate', this.table)
+      )
+    },
   },
   methods: {
     setLoading(database, value) {
