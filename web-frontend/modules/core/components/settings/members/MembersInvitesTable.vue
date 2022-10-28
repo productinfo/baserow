@@ -60,6 +60,7 @@ import EditInviteContext from '@baserow/modules/core/components/settings/members
 import MemberRoleField from '@baserow/modules/core/components/settings/members/MemberRoleField'
 import EditRoleContext from '@baserow/modules/core/components/settings/members/EditRoleContext'
 import { clone } from '@baserow/modules/core/utils/object'
+import { mapGetters } from 'vuex'
 
 export default {
   name: 'MembersInvitesTable',
@@ -77,24 +78,13 @@ export default {
   },
   data() {
     return {
-      roles: [
-        {
-          value: 'ADMIN',
-          name: this.$t('permission.admin'),
-          description: this.$t('permission.adminDescription'),
-        },
-        {
-          value: 'MEMBER',
-          name: this.$t('permission.member'),
-          description: this.$t('permission.memberDescription'),
-        },
-      ],
       editInvitation: {},
       editRoleInvitation: {},
       invitesAmount: 0,
     }
   },
   computed: {
+    ...mapGetters({ roles: 'roles/getAllRoles' }),
     service() {
       const service = GroupService(this.$client)
 
@@ -145,8 +135,7 @@ export default {
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated()) {
           columns = plugin.mutateMembersInvitesTableColumns(columns, {
-            groupId: this.group.id,
-            client: this.$client,
+            group: this.group,
           })
         }
       }
@@ -172,7 +161,7 @@ export default {
       this.editRoleInvitation = row
       this.$refs.editRoleContext[action](target, 'bottom', 'left', 4)
     },
-    async roleUpdate({ value: permissionsNew, row: invitation }) {
+    async roleUpdate({ uid: permissionsNew, row: invitation }) {
       const oldInvitation = clone(invitation)
       const newInvitation = clone(invitation)
       newInvitation.permissions = permissionsNew

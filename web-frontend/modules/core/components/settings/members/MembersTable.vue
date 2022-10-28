@@ -87,22 +87,10 @@ export default {
     return {
       editMember: {},
       editRoleMember: {},
-      roles: [
-        {
-          value: 'ADMIN',
-          name: this.$t('permission.admin'),
-          description: this.$t('permission.adminDescription'),
-        },
-        {
-          value: 'MEMBER',
-          name: this.$t('permission.member'),
-          description: this.$t('permission.memberDescription'),
-        },
-      ],
     }
   },
   computed: {
-    ...mapGetters({ userId: 'auth/getUserId' }),
+    ...mapGetters({ userId: 'auth/getUserId', roles: 'roles/getAllRoles' }),
     service() {
       const service = GroupService(this.$client)
       const options = {
@@ -178,7 +166,7 @@ export default {
     async refresh() {
       await this.$refs.crudTable.fetch()
     },
-    async roleUpdate({ value: permissionsNew, row: member }) {
+    async roleUpdate({ uid: permissionsNew, row: member }) {
       const oldMember = clone(member)
       const newMember = clone(member)
       newMember.permissions = permissionsNew
