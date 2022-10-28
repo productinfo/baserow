@@ -2,7 +2,7 @@ from django.shortcuts import reverse
 from django.test.utils import override_settings
 
 import pytest
-from baserow_enterprise.role.handler import USER_TYPE
+from baserow_enterprise.role.handler import USER_TYPE, RoleAssignmentHandler
 from baserow_enterprise.role.models import Role, RoleAssignment
 from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT
 
@@ -14,7 +14,7 @@ def test_create_role_assignment(
 ):
     user, token = data_fixture.create_user_and_token()
     user2 = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
+    group = data_fixture.create_group(user=user, members=[user2])
 
     table = data_fixture.create_database_table(user=user)
 
@@ -41,17 +41,17 @@ def test_create_role_assignment(
     assert response.status_code == HTTP_200_OK
     response_json = response.json()
 
-    role_assignments = list(RoleAssignment.objects.all())
+    role_assignment_user_2 = RoleAssignmentHandler().get_current_role_assignment(
+        user2, group, scope=table
+    )
 
-    assert len(role_assignments) == 1
-
-    assert role_assignments[0].scope == table
-    assert role_assignments[0].subject == user2
-    assert role_assignments[0].role == builder_role
-    assert role_assignments[0].group == group
+    assert role_assignment_user_2.scope == table
+    assert role_assignment_user_2.subject == user2
+    assert role_assignment_user_2.role == builder_role
+    assert role_assignment_user_2.group == group
 
     assert response_json == {
-        "id": role_assignments[0].id,
+        "id": role_assignment_user_2.id,
         "role": builder_role.uid,
         "scope_id": table.id,
         "scope_type": "database_table",
@@ -72,9 +72,12 @@ def test_create_role_assignment(
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
     )
 
-    role_assignments = list(RoleAssignment.objects.all())
+    role_assignment_user_2 = RoleAssignmentHandler().get_current_role_assignment(
+        user2, group
+    )
 
-    assert len(role_assignments) == 2
+    assert role_assignment_user_2.role == admin_role
+    assert role_assignment_user_2.scope == group
 
     # Check that we don't create new RoleAssignment for the same scope/subject/group
     response = api_client.post(
@@ -89,8 +92,12 @@ def test_create_role_assignment(
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
     )
 
-    role_assignments = list(RoleAssignment.objects.all())
-    assert len(role_assignments) == 2
+    role_assignment_user_2 = RoleAssignmentHandler().get_current_role_assignment(
+        user2, group, scope=table
+    )
+
+    assert role_assignment_user_2.role == admin_role
+    assert role_assignment_user_2.scope == table
 
     # Can we remove a role
     response = api_client.post(
@@ -105,5 +112,8 @@ def test_create_role_assignment(
     )
     assert response.status_code == HTTP_204_NO_CONTENT
 
-    role_assignments = list(RoleAssignment.objects.all())
-    assert len(role_assignments) == 1
+    role_assignment_user_2 = RoleAssignmentHandler().get_current_role_assignment(
+        user2, group, scope=table
+    )
+
+    assert role_assignment_user_2 is None

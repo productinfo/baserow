@@ -2,6 +2,8 @@ from django.test import override_settings
 
 import pytest
 from baserow_enterprise.role.default_roles import default_roles
+from baserow_enterprise.role.handler import RoleAssignmentHandler
+from baserow_enterprise.role.models import Role
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
 
 from baserow.contrib.database.models import Database
@@ -57,7 +59,15 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
     )
     group_2 = data_fixture.create_group(
         user=another_admin,
-        members=[admin, builder, viewer, editor, viewer_plus, builder_less, no_role],
+        custom_permissions=[
+            (admin, "NO_ROLE"),
+            (builder, "NO_ROLE"),
+            (viewer, "NO_ROLE"),
+            (editor, "NO_ROLE"),
+            (viewer_plus, "NO_ROLE"),
+            (builder_less, "NO_ROLE"),
+            (no_role, "NO_ROLE"),
+        ],
     )
 
     database_1 = data_fixture.create_database_application(group=group_1, order=1)
@@ -75,37 +85,28 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
     table_2_1.get_model().objects.create()
     table_2_2.get_model().objects.create()
 
-    enterprise_data_fixture.create_role_assignment(
-        user=admin, role_uid="ADMIN", group=group_1, scope=group_1
-    )
+    role_builder = Role.objects.get(uid="BUILDER")
+    role_viewer = Role.objects.get(uid="VIEWER")
+    role_editor = Role.objects.get(uid="EDITOR")
+    role_no_role = Role.objects.get(uid="NO_ROLE")
 
-    enterprise_data_fixture.create_role_assignment(
-        user=builder, role_uid="BUILDER", group=group_1, scope=group_1
-    )
-    enterprise_data_fixture.create_role_assignment(
-        user=builder, role_uid="BUILDER", group=group_2, scope=table_2_1
-    )
+    # Group level assignments
+    RoleAssignmentHandler().assign_role(builder, group_1, role=role_builder)
+    RoleAssignmentHandler().assign_role(viewer, group_1, role=role_viewer)
+    RoleAssignmentHandler().assign_role(editor, group_1, role=role_editor)
+    RoleAssignmentHandler().assign_role(viewer_plus, group_1, role=role_viewer)
+    RoleAssignmentHandler().assign_role(builder_less, group_1, role=role_builder)
+    RoleAssignmentHandler().assign_role(no_role, group_1, role=role_no_role)
 
-    enterprise_data_fixture.create_role_assignment(
-        user=editor, role_uid="EDITOR", group=group_1, scope=group_1
+    # Table level assignments
+    RoleAssignmentHandler().assign_role(
+        builder, group_2, role=role_builder, scope=table_2_1
     )
-
-    enterprise_data_fixture.create_role_assignment(
-        user=viewer, role_uid="VIEWER", group=group_1, scope=group_1
+    RoleAssignmentHandler().assign_role(
+        viewer_plus, group_1, role=role_builder, scope=table_1_1
     )
-
-    enterprise_data_fixture.create_role_assignment(
-        user=viewer_plus, role_uid="VIEWER", group=group_1, scope=group_1
-    )
-    enterprise_data_fixture.create_role_assignment(
-        user=viewer_plus, role_uid="BUILDER", group=group_1, scope=table_1_1
-    )
-
-    enterprise_data_fixture.create_role_assignment(
-        user=builder_less, role_uid="BUILDER", group=group_1, scope=group_1
-    )
-    enterprise_data_fixture.create_role_assignment(
-        user=builder_less, role_uid="VIEWER", group=group_1, scope=table_1_1
+    RoleAssignmentHandler().assign_role(
+        builder_less, group_1, role=role_viewer, scope=table_1_1
     )
 
     return (
