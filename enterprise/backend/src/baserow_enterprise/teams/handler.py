@@ -1,9 +1,11 @@
-from typing import Dict, NewType, Optional, Union, cast
+from optparse import Option
+from sre_constants import OP_IGNORE
+from typing import Dict, List, NewType, Optional, Union, cast
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import (
     Count,
     F,
@@ -46,11 +48,12 @@ SUPPORTED_SUBJECT_TYPES = (SUBJECT_TYPE_USER, "User")
 
 
 class TeamHandler:
-    def list_teams_in_group(
-        self, group_id: int, subject_sample_size: int = 10
-    ) -> QuerySet:
+    def get_teams_queryset(self, subject_sample_size: int = 10) -> QuerySet:
         """
-        Returns a list of teams in a given group.
+        Responsible for annotating `Team` querysets (in CRUD methods that follow)
+        with the `subject_count` and `subject_sample` data.
+
+        Needs to narrowed down further to select a specific ID or Group.
         """
 
         subj_count_sq = Subquery(
@@ -77,7 +80,16 @@ class TeamHandler:
         return Team.objects.annotate(
             subject_count=Coalesce(subj_count_sq, 0),
             subject_sample=ArrayAgg(subj_sample_sq, filter=Q(subject_count__gt=0)),
-        ).filter(group=group_id)
+        )
+
+    def list_teams_in_group(
+        self, group_id: int, subject_sample_size: int = 10
+    ) -> QuerySet:
+        """
+        Returns a list of teams in a given group.
+        """
+
+        return self.get_teams_queryset(subject_sample_size).filter(group=group_id)
 
     def get_team(self, team_id: int, base_queryset=None) -> Team:
         """
@@ -85,7 +97,7 @@ class TeamHandler:
         """
 
         if base_queryset is None:
-            base_queryset = Team.objects
+            base_queryset = self.get_teams_queryset()
 
         try:
             team = base_queryset.get(id=team_id)
@@ -102,20 +114,36 @@ class TeamHandler:
             ),
         )
 
-    def create_team(self, user: AbstractUser, name: str, group: Group) -> Team:
+    def create_team(
+        self,
+        user: AbstractUser,
+        name: str,
+        group: Group,
+        subjects: Optional[List[Dict]] = None,
+    ) -> Team:
         """
         Creates a new team for an existing group.
+        Can optionally be given an array of subjects to create at the same time.
         """
-        try:
-            team = Team.objects.create(group=group, name=name)
-        except IntegrityError as e:
-            if "unique constraint" in e.args[0]:
-                raise TeamNameNotUnique()
-            raise e
+        if subjects is None:
+            subjects = []
+
+        with transaction.atomic():
+            try:
+                team = Team.objects.create(group=group, name=name)
+            except IntegrityError as e:
+                if "unique constraint" in e.args[0]:
+                    raise TeamNameNotUnique()
+                raise e
+
+            for subject in subjects:
+                self.create_subject(
+                    user, {"id": subject["subject_id"]}, subject["subject_type"], team
+                )
 
         team_created.send(self, team_id=team.id, team=team, user=user)
 
-        return team
+        return self.get_team(team.id)
 
     def update_team(self, user: AbstractUser, team: Team, name: str) -> Team:
         """
