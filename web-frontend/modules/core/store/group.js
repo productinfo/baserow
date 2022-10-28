@@ -251,10 +251,11 @@ export const actions = {
         root: true,
       }
     )
-    // Load related permissions
+    // Load related permissions and roles
     dispatch('permissions/load', group, {
       root: true,
     })
+    dispatch('roles/fetchRoles', group, { root: true })
   },
   /**
    * Select a group by a given group id.

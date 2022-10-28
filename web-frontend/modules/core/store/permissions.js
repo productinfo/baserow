@@ -20,6 +20,7 @@ export const mutations = {
 export const actions = {
   async load({ commit }, group) {
     const { data } = await PermissionsService(this.$client).get(group)
+
     commit('SET_PERMISSIONS', data)
     commit('SET_LOADED', true)
   },
