@@ -10,13 +10,13 @@ from baserow.contrib.database.operations import (
     ListTablesDatabaseTableOperationType,
 )
 from baserow.contrib.database.rows.operations import (
-    CreateDatabaseRowOperationType,
     DeleteDatabaseRowOperationType,
     ReadDatabaseRowOperationType,
     UpdateDatabaseRowOperationType,
 )
 from baserow.contrib.database.table.models import Table
 from baserow.contrib.database.table.operations import (
+    CreateRowDatabaseTableOperationType,
     DeleteDatabaseTableOperationType,
     ListRowsDatabaseTableOperationType,
     ReadDatabaseTableOperationType,
@@ -198,7 +198,7 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (DeleteDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ListRowsDatabaseTableOperationType, table_1_1, False),
-        (CreateDatabaseRowOperationType, table_1_1, False),
+        (CreateRowDatabaseTableOperationType, table_1_1, False),
         (ReadDatabaseRowOperationType, table_1_1, False),
         (UpdateDatabaseRowOperationType, table_1_1, False),
         (DeleteDatabaseRowOperationType, table_1_1, False),
@@ -226,13 +226,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, True),
         (DeleteDatabaseTableOperationType, table_1_1, True),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, True),
+        (CreateRowDatabaseTableOperationType, table_1_1, True),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, True),
         (DeleteDatabaseTableOperationType, table_1_2, True),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, True),
+        (CreateRowDatabaseTableOperationType, table_1_2, True),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -242,13 +242,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, False),
         (DeleteDatabaseTableOperationType, table_2_1, False),
         (ListRowsDatabaseTableOperationType, table_2_1, False),
-        (CreateDatabaseRowOperationType, table_2_1, False),
+        (CreateRowDatabaseTableOperationType, table_2_1, False),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, True),
@@ -289,13 +289,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, True),
         (DeleteDatabaseTableOperationType, table_1_1, True),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, True),
+        (CreateRowDatabaseTableOperationType, table_1_1, True),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, True),
         (DeleteDatabaseTableOperationType, table_1_2, True),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, True),
+        (CreateRowDatabaseTableOperationType, table_1_2, True),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -305,13 +305,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, True),
         (DeleteDatabaseTableOperationType, table_2_1, True),
         (ListRowsDatabaseTableOperationType, table_2_1, True),
-        (CreateDatabaseRowOperationType, table_2_1, True),
+        (CreateRowDatabaseTableOperationType, table_2_1, True),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, True),
@@ -352,13 +352,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, False),
         (DeleteDatabaseTableOperationType, table_1_1, False),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, True),
+        (CreateRowDatabaseTableOperationType, table_1_1, True),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, False),
         (DeleteDatabaseTableOperationType, table_1_2, False),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, True),
+        (CreateRowDatabaseTableOperationType, table_1_2, True),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -368,13 +368,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, False),
         (DeleteDatabaseTableOperationType, table_2_1, False),
         (ListRowsDatabaseTableOperationType, table_2_1, False),
-        (CreateDatabaseRowOperationType, table_2_1, False),
+        (CreateRowDatabaseTableOperationType, table_2_1, False),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, True),
@@ -415,13 +415,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, False),
         (DeleteDatabaseTableOperationType, table_1_1, False),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, False),
+        (CreateRowDatabaseTableOperationType, table_1_1, False),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, False),
         (DeleteDatabaseTableOperationType, table_1_2, False),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, False),
+        (CreateRowDatabaseTableOperationType, table_1_2, False),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -431,13 +431,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, False),
         (DeleteDatabaseTableOperationType, table_2_1, False),
         (ListRowsDatabaseTableOperationType, table_2_1, False),
-        (CreateDatabaseRowOperationType, table_2_1, False),
+        (CreateRowDatabaseTableOperationType, table_2_1, False),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, False),
@@ -478,13 +478,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, True),
         (DeleteDatabaseTableOperationType, table_1_1, True),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, True),
+        (CreateRowDatabaseTableOperationType, table_1_1, True),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, False),
         (DeleteDatabaseTableOperationType, table_1_2, False),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, False),
+        (CreateRowDatabaseTableOperationType, table_1_2, False),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -494,13 +494,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, False),
         (DeleteDatabaseTableOperationType, table_2_1, False),
         (ListRowsDatabaseTableOperationType, table_2_1, False),
-        (CreateDatabaseRowOperationType, table_2_1, False),
+        (CreateRowDatabaseTableOperationType, table_2_1, False),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, True),
@@ -541,13 +541,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_1_1, False),
         (DeleteDatabaseTableOperationType, table_1_1, False),
         (ListRowsDatabaseTableOperationType, table_1_1, True),
-        (CreateDatabaseRowOperationType, table_1_1, False),
+        (CreateRowDatabaseTableOperationType, table_1_1, False),
         # Table_1_2
         (ReadDatabaseTableOperationType, table_1_2, True),
         (UpdateDatabaseTableOperationType, table_1_2, True),
         (DeleteDatabaseTableOperationType, table_1_2, True),
         (ListRowsDatabaseTableOperationType, table_1_2, True),
-        (CreateDatabaseRowOperationType, table_1_2, True),
+        (CreateRowDatabaseTableOperationType, table_1_2, True),
         # Database_2
         (ReadApplicationOperationType, database_2, False),
         (CreateTableDatabaseTableOperationType, database_2, False),
@@ -557,13 +557,13 @@ def test_check_permissions(data_fixture, enterprise_data_fixture):
         (UpdateDatabaseTableOperationType, table_2_1, False),
         (DeleteDatabaseTableOperationType, table_2_1, False),
         (ListRowsDatabaseTableOperationType, table_2_1, False),
-        (CreateDatabaseRowOperationType, table_2_1, False),
+        (CreateRowDatabaseTableOperationType, table_2_1, False),
         # Table_2_2
         (ReadDatabaseTableOperationType, table_2_2, False),
         (UpdateDatabaseTableOperationType, table_2_2, False),
         (DeleteDatabaseTableOperationType, table_2_2, False),
         (ListRowsDatabaseTableOperationType, table_2_2, False),
-        (CreateDatabaseRowOperationType, table_2_2, False),
+        (CreateRowDatabaseTableOperationType, table_2_2, False),
         # Table_1_1 rows
         (ReadDatabaseRowOperationType, table_1_1, True),
         (UpdateDatabaseRowOperationType, table_1_1, False),

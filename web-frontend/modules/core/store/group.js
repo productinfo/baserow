@@ -252,7 +252,7 @@ export const actions = {
       }
     )
     // Load related permissions and roles
-    dispatch('permissions/load', group, {
+    dispatch('permissions/fetchPermissions', group, {
       root: true,
     })
     dispatch('roles/fetchRoles', group, { root: true })

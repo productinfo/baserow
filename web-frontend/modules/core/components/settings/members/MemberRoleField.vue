@@ -1,5 +1,10 @@
 <template functional>
-  <span v-if="props.column.additionalProps.userId === props.row.user_id">
+  <span
+    v-if="
+      props.column.additionalProps.userId === props.row.user_id ||
+      !parent.$hasPermission('group_user.update', props.row)
+    "
+  >
     {{
       $options.methods.roleName(props.column.additionalProps.roles, props.row)
     }}

@@ -43,10 +43,13 @@ from baserow.core.jobs.exceptions import MaxJobCountExceeded
 from baserow.core.jobs.handler import JobHandler
 from baserow.core.jobs.registries import job_type_registry
 from baserow.core.models import Application
+from baserow.core.operations import (
+    CreateApplicationsGroupOperationType,
+    ListApplicationsGroupOperationType,
+)
 from baserow.core.registries import application_type_registry
 from baserow.core.trash.exceptions import CannotDeleteAlreadyDeletedItem
 
-from ...core.operations import ListApplicationsGroupOperationType
 from .serializers import (
     ApplicationCreateSerializer,
     ApplicationSerializer,
@@ -230,7 +233,10 @@ class ApplicationsView(APIView):
         group = CoreHandler().get_group(group_id)
 
         CoreHandler().check_permissions(
-            request.user, "group.create_application", group=group, context=group
+            request.user,
+            CreateApplicationsGroupOperationType.type,
+            group=group,
+            context=group,
         )
 
         application = action_type_registry.get_by_type(CreateApplicationActionType).do(

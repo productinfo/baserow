@@ -71,6 +71,10 @@ class ReadViewFieldOptionsOperationType(ViewOperationType):
     type = "database.table.view.read_field_options"
 
 
+class UpdateViewFieldOptionsOperationType(ViewOperationType):
+    type = "database.table.view.update_field_options"
+
+
 class UpdateViewOperationType(ViewOperationType):
     type = "database.table.view.update"
 
@@ -129,7 +133,3 @@ class UpdateViewDecorationOperationType(ViewDecorationOperationType):
 
 class DeleteViewDecorationOperationType(ViewDecorationOperationType):
     type = "database.table.view.decoration.delete"
-
-
-class UpdateViewFieldOptionsOperationType(ViewOperationType):
-    type = "database.table.view.update_options"

@@ -63,7 +63,7 @@
             ref="snapshotsModal"
             :application="application"
           ></SnapshotsModal>
-          <li>
+          <li v-if="$hasPermission('application.read_trash', application)">
             <a @click="showApplicationTrashModal">
               <i class="context__menu-icon fas fa-fw fa-recycle"></i>
               {{ $t('sidebarApplication.viewTrash') }}

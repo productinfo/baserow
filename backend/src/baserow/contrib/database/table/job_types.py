@@ -8,6 +8,9 @@ from baserow.contrib.database.db.atomic import (
 from baserow.contrib.database.table.actions import DuplicateTableActionType
 from baserow.contrib.database.table.handler import TableHandler
 from baserow.contrib.database.table.models import DuplicateTableJob
+from baserow.contrib.database.table.operations import (
+    DuplicateDatabaseTableOperationType,
+)
 from baserow.core.action.registries import action_type_registry
 from baserow.core.exceptions import GroupDoesNotExist, UserNotInGroup
 from baserow.core.handler import CoreHandler
@@ -46,7 +49,10 @@ class DuplicateTableJobType(JobType):
         table = TableHandler().get_table(values.pop("table_id"))
 
         CoreHandler().check_permissions(
-            user, "database.table.duplicate", group=table.database.group, context=table
+            user,
+            DuplicateDatabaseTableOperationType.type,
+            group=table.database.group,
+            context=table,
         )
 
         return {

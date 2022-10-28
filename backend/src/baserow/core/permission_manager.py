@@ -120,20 +120,18 @@ class BasicPermissionManagerType(PermissionManagerType):
 
     type = "basic"
 
-    ADMIN_ONLY_OPERATIONS = set(
-        [
-            ListInvitationsGroupOperationType.type,
-            CreateInvitationsGroupOperationType.type,
-            ReadInvitationGroupOperationType.type,
-            UpdateGroupInvitationType.type,
-            DeleteGroupInvitationOperationType.type,
-            ListGroupUsersGroupOperationType.type,
-            UpdateGroupOperationType.type,
-            DeleteGroupOperationType.type,
-            UpdateGroupUserOperationType.type,
-            DeleteGroupUserOperationType.type,
-        ]
-    )
+    ADMIN_ONLY_OPERATIONS = [
+        ListInvitationsGroupOperationType.type,
+        CreateInvitationsGroupOperationType.type,
+        ReadInvitationGroupOperationType.type,
+        UpdateGroupInvitationType.type,
+        DeleteGroupInvitationOperationType.type,
+        ListGroupUsersGroupOperationType.type,
+        UpdateGroupOperationType.type,
+        DeleteGroupOperationType.type,
+        UpdateGroupUserOperationType.type,
+        DeleteGroupUserOperationType.type,
+    ]
 
     def check_permissions(
         self, actor, operation, group=None, context=None, include_trash=False

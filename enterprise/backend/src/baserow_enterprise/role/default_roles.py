@@ -225,6 +225,9 @@ BUILDER_OPS = EDITOR_OPS + [
     DuplicateDatabaseTableOperationType,
     CreateViewSortOperationType,
     ReadGroupTrashOperationType,
+    CreateTokenOperationType,
+    ReadTokenOperationType,
+    UseTokenOperationType,
 ]
 ADMIN_OPS = BUILDER_OPS + [
     UpdateGroupOperationType,
@@ -237,10 +240,7 @@ ADMIN_OPS = BUILDER_OPS + [
     UpdateGroupUserOperationType,
     CreateInvitationsGroupOperationType,
     ListInvitationsGroupOperationType,
-    CreateTokenOperationType,
     UpdateGroupInvitationType,
-    ReadTokenOperationType,
-    UseTokenOperationType,
     CreateTeamOperationType,
     UpdateTeamOperationType,
     DeleteTeamOperationType,

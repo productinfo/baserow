@@ -1,5 +1,9 @@
-from baserow.core.models import Group
+from typing import TYPE_CHECKING
+
 from baserow.core.registry import Instance, Registry
+
+if TYPE_CHECKING:
+    from baserow.core.models import Group
 
 
 class UserDataType(Instance):
@@ -78,7 +82,7 @@ class MemberDataType(Instance):
     method is added to the payload under the key containing the type name.
     """
 
-    def annotate_serialized_data(self, group: Group, serialized_data: dict) -> dict:
+    def annotate_serialized_data(self, group: "Group", serialized_data: dict) -> dict:
         """
         Should be given a `Serializer.data` object, which the `MemberDataType`
         implementation will annotate with its own data. Should return the same
