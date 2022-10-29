@@ -241,7 +241,14 @@ export const actions = {
   /**
    * Select a group and fetch all the applications related to that group.
    */
-  select({ commit, dispatch }, group) {
+  select({ commit, dispatch, getters }, group) {
+    // If the group is already selected, no need to fetch data
+    try {
+      if (group.id === getters.selectedId) {
+        return
+      }
+    } catch {}
+
     commit('SET_SELECTED', group)
     setGroupCookie(group.id, this.app)
     dispatch(
