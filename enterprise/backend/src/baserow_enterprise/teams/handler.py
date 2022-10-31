@@ -1,22 +1,10 @@
-from optparse import Option
-from sre_constants import OP_IGNORE
 from typing import Dict, List, NewType, Optional, Union, cast
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import IntegrityError, transaction
-from django.db.models import (
-    Count,
-    F,
-    OuterRef,
-    Q,
-    QuerySet,
-    SmallIntegerField,
-    Subquery,
-    Value,
-)
-from django.db.models.functions import Coalesce, Concat, JSONObject
+from django.db.models import Count, F, OuterRef, QuerySet, Subquery, Value
+from django.db.models.functions import Coalesce, Concat
 
 from baserow_enterprise.models import Team, TeamSubject
 from baserow_enterprise.signals import (
@@ -29,8 +17,10 @@ from baserow_enterprise.signals import (
     team_updated,
 )
 
+from baserow.core.expressions import JsonBuildObject
 from baserow.core.models import Group
 from baserow.core.trash.handler import TrashHandler
+from baserow.core.utils import SubqueryArray
 
 from ..exceptions import (
     TeamDoesNotExist,
@@ -56,30 +46,30 @@ class TeamHandler:
         Needs to narrowed down further to select a specific ID or Group.
         """
 
-        subj_count_sq = Subquery(
-            TeamSubject.objects.annotate(count=Count("id"))
-            .filter(team_id=OuterRef("id"))
-            .values("count"),
-            output_field=SmallIntegerField(),
-        )
-        subj_sample_sq = (
+        subj_count = (
             TeamSubject.objects.filter(team_id=OuterRef("id"))
-            .annotate(
-                data=JSONObject(
-                    subject_id=F("subject_id"),
-                    subject_type=Concat(
-                        F("subject_type__app_label"),
-                        Value("_"),
-                        F("subject_type__model"),
-                    ),
-                )
-            )
-            .values_list("data")
-            .order_by("-created_on")[:subject_sample_size]
+            .order_by()
+            .values("team_id")
+            .annotate(count=Count("*"))
+            .values("count")
         )
+
+        json_subject = JsonBuildObject(
+            Value("subject_id"),
+            F("subject_id"),
+            Value("subject_type"),
+            Concat(F("subject_type__app_label"), Value("_"), F("subject_type__model")),
+        )
+        subject_sample_qs = (
+            TeamSubject.objects.filter(team=OuterRef("pk"))
+            .order_by("-created_on")
+            .annotate(json=json_subject)
+            .values("json")[:subject_sample_size]
+        )
+
         return Team.objects.annotate(
-            subject_count=Coalesce(subj_count_sq, 0),
-            subject_sample=ArrayAgg(subj_sample_sq, filter=Q(subject_count__gt=0)),
+            subject_count=Coalesce(Subquery(subj_count), 0),
+            subject_sample=SubqueryArray(subject_sample_qs),
         )
 
     def list_teams_in_group(
@@ -125,6 +115,7 @@ class TeamHandler:
         Creates a new team for an existing group.
         Can optionally be given an array of subjects to create at the same time.
         """
+
         if subjects is None:
             subjects = []
 
