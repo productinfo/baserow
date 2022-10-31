@@ -3,7 +3,7 @@ class TeamDoesNotExist(Exception):
 
 
 class TeamNameNotUnique(Exception):
-    """Raised when trying to create/update a team and the name is in use in the group."""
+    """Raised when trying to create/update a team and the name is in use in the group"""
 
 
 class TeamSubjectDoesNotExist(Exception):
