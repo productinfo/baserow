@@ -1,4 +1,6 @@
+from django.contrib.postgres.fields import JSONField
 from django.db.models import DateTimeField, Expression, Value
+from django.db.models.expressions import Func
 
 
 class Timezone(Expression):
@@ -44,3 +46,8 @@ class Timezone(Expression):
         params.extend(field_params)
         params.extend(timezone_params)
         return f"{field_sql} at time zone {timezone_sql}", params
+
+
+class JsonBuildObject(Func):
+    function = "jsonb_build_object"
+    output_field = JSONField()
