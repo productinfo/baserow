@@ -42,6 +42,7 @@ class CreateTeamActionType(ActionType):
         :param group: The group to create the team in.
         :param subjects: An array of subject ID/type objects.
         """
+
         if subjects is None:
             subjects = []
 
