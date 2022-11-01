@@ -136,17 +136,60 @@ class TeamHandler:
 
         return self.get_team(team.id)
 
-    def update_team(self, user: AbstractUser, team: Team, name: str) -> Team:
+    def update_team(
+        self,
+        user: AbstractUser,
+        team: Team,
+        name: str,
+        subjects: Optional[List[Dict]] = None,
+    ) -> Team:
         """
         Updates an existing team instance.
         """
 
-        team.name = name
-        team.save()
+        if subjects is None:
+            subjects = []
+
+        with transaction.atomic():
+
+            # Update the name with `name`.
+            team.name = name
+            team.save()
+
+            # Build a dictionary of existing subjects in the team. The key is the
+            # `TeamSubject` primary key, the value is the `subject_id` and
+            # `subject_type` pairing that we'll compare against what's in `subjects`.
+            existing_subjects = {}
+            existing_subject_qs = team.subjects.select_related("subject_type").all()
+            for existing_subject in existing_subject_qs:
+                existing_subjects[existing_subject.id] = {
+                    "subject_id": existing_subject.subject_id,
+                    "subject_type": existing_subject.subject_type_natural_key,
+                }
+
+            # Determine what is a new addition to our set of subjects.
+            # If the ID/type pairing isn't in `existing_subjects`, we need to create it.
+            subject_additions = [
+                subj for subj in subjects if subj not in existing_subjects.values()
+            ]
+            for subject in subject_additions:
+                self.create_subject(
+                    user, {"id": subject["subject_id"]}, subject["subject_type"], team
+                )
+
+            # Determine what is a removal from our existing subjects. If the
+            # ID/type pairing is in `existing_subjects`, but not `subjects`, remove it.
+            subject_removals = [
+                subj for subj in existing_subjects.values() if subj not in subjects
+            ]
+            for subject in subject_removals:
+                for subject_id, values in existing_subjects.items():
+                    if values == subject:
+                        self.delete_subject_by_id(user, subject_id)
 
         team_updated.send(self, team=team, user=user)
 
-        return team
+        return self.get_team(team.id)
 
     def delete_team_by_id(self, user: AbstractUser, team_id: int):
         """
