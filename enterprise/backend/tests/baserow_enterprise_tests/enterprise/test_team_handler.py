@@ -75,6 +75,50 @@ def test_update_team_name(data_fixture, enterprise_data_fixture):
 
 
 @pytest.mark.django_db
+def test_update_team_subjects(data_fixture, enterprise_data_fixture):
+    user = data_fixture.create_user()
+    userb = data_fixture.create_user()
+    userc = data_fixture.create_user()
+    group = data_fixture.create_group(users=[user, userb, userc])
+    team = enterprise_data_fixture.create_team(group=group)
+    assert team.subjects.count() == 0
+
+    # Add `user`
+    team = TeamHandler().update_team(
+        user, team, "Sales", [{"subject_id": user.id, "subject_type": "auth_user"}]
+    )
+    assert team.subject_count == 1
+
+    # Add `userb`
+    team = TeamHandler().update_team(
+        user,
+        team,
+        "Sales",
+        [
+            {"subject_id": user.id, "subject_type": "auth_user"},
+            {"subject_id": userb.id, "subject_type": "auth_user"},
+        ],
+    )
+    assert team.subject_count == 2
+
+    # Remove `userb`, add `userc`
+    team = TeamHandler().update_team(
+        user,
+        team,
+        "Sales",
+        [
+            {"subject_id": user.id, "subject_type": "auth_user"},
+            {"subject_id": userc.id, "subject_type": "auth_user"},
+        ],
+    )
+    assert team.subject_count == 2
+
+    # Remove everyone
+    team = TeamHandler().update_team(user, team, "Sales", [])
+    assert team.subject_count == 0
+
+
+@pytest.mark.django_db
 def test_delete_team(data_fixture, enterprise_data_fixture):
     user = data_fixture.create_user()
     group = data_fixture.create_group()
