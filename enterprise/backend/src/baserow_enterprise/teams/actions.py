@@ -89,9 +89,16 @@ class UpdateTeamActionType(ActionType):
         original_name: str
         name: str
         group_id: int
+        subjects: List[Dict]
 
     @classmethod
-    def do(cls, user: AbstractUser, team: Team, name: str) -> Team:
+    def do(
+        cls,
+        user: AbstractUser,
+        team: Team,
+        name: str,
+        subjects: Optional[List[Dict]] = None,
+    ) -> Team:
         """
         Updates an existing team instance.
         See baserow_enterprise.teams.handler.TeamHandler.update_team
@@ -101,17 +108,21 @@ class UpdateTeamActionType(ActionType):
         :param user: The user on whose behalf the team is updated.
         :param team: The team instance that needs to be updated.
         :param name: The new name of the team.
+        :param subjects: An array of subject ID/type objects.
         :raises ValueError: If one of the provided parameters is invalid.
         :return: The updated team instance.
         """
 
+        if subjects is None:
+            subjects = []
+
         original_name = team.name
 
-        team = TeamHandler().update_team(user, team, name)
+        team = TeamHandler().update_team(user, team, name, subjects)
 
         cls.register_action(
             user=user,
-            params=cls.Params(team.id, original_name, name, team.group_id),
+            params=cls.Params(team.id, original_name, name, team.group_id, subjects),
             scope=cls.scope(team.group_id),
         )
 
@@ -129,7 +140,7 @@ class UpdateTeamActionType(ActionType):
     @classmethod
     def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
         team = TeamHandler().get_team(params.team_id)
-        TeamHandler().update_team(user, team, params.new_name)
+        TeamHandler().update_team(user, team, params.new_name, params.subjects)
 
 
 class DeleteTeamActionType(ActionType):
