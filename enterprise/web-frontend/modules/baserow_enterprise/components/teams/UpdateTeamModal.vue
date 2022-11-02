@@ -26,7 +26,7 @@
           v-if="invitedUserSubjects"
           class="margin-top-2 select-members-list__items"
           :items="invitedUserSubjects"
-          :attributes="['email']"
+          :attributes="[]"
         >
           <template #left-side="{ item }">
             <div class="select-members-list__user-initials margin-left-1">
@@ -35,6 +35,14 @@
             <span class="margin-left-1">
               {{ item.name }}
             </span>
+          </template>
+          <template #right-side="{ item }">
+            <div class="margin-right-1">
+              {{ item.email }}
+              <a class="color-error" @click="removeSubject(item)"
+                ><i class="fas fa-fw fa-trash"></i
+              ></a>
+            </div>
           </template>
         </List>
       </template>
@@ -104,6 +112,14 @@ export default {
       this.hideError()
       this.parseSubjectsAndMembers()
       modal.methods.show.bind(this)(...args)
+    },
+    removeSubject(removal) {
+      // Re-add the member as an uninvited subject.
+      this.uninvitedUserSubjects.push(removal)
+      // Remove them as an invited subject.
+      this.invitedUserSubjects = this.invitedUserSubjects.filter(
+        (subj) => subj.user_id !== removal.user_id
+      )
     },
     async parseSubjectsAndMembers() {
       // When the modal displays, fetch all current subjects in this team.
