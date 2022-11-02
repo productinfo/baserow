@@ -11,7 +11,7 @@ export default (client) => {
         return client.post(`/teams/group/${groupId}/`, values)
       },
       update(id, values) {
-        return client.patch(`/teams/${id}/`, values)
+        return client.put(`/teams/${id}/`, values)
       },
       delete(id) {
         return client.delete(`/teams/${id}/`)
