@@ -447,5 +447,9 @@
                 }
             }
         }
+    },
+    "GroupUserSelectionList": {
+        "searchPlaceholder": "Find members...",
+        "selectedAmountLabel": "{count} members selected"
     }
 }
