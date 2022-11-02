@@ -200,7 +200,7 @@ class TeamView(APIView):
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
         }
     )
-    def patch(self, request, data, team_id: int):
+    def put(self, request, data, team_id: int):
         """Updates the team if the user belongs to the group."""
 
         team = TeamHandler().get_team_for_update(team_id)
@@ -212,7 +212,7 @@ class TeamView(APIView):
         )
 
         team = action_type_registry.get_by_type(UpdateTeamActionType).do(
-            request.user, team, name=data["name"]
+            request.user, team, data["name"], data["subjects"]
         )
 
         return Response(TeamResponseSerializer(team).data)
