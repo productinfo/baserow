@@ -1,5 +1,4 @@
 import { StoreItemLookupError } from '@baserow/modules/core/errors'
-import group from '@baserow/modules/core/services/group'
 import GroupService from '@baserow/modules/core/services/group'
 import {
   setGroupCookie,
@@ -356,20 +355,20 @@ export const actions = {
   /**
    * Fetches all the users in a specific group.
    */
-   async fetchAllGroupUser({ commit }, { groupId }) {
+  async fetchAllGroupUser({ commit }, { groupId }) {
     commit('SET_LOADING', true)
 
     try {
       const { data } = await GroupService(this.$client).fetchAllUsers(groupId)
       commit('SET_LOADED', true)
       commit('SET_GROUP_USERS', {
-        groupId: groupId,
-        items: data
+        groupId,
+        items: data,
       })
     } catch {
       commit('SET_GROUP_USERS', {
-        groupId: groupId,
-        items: []
+        groupId,
+        items: [],
       })
     }
 
