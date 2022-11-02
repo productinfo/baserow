@@ -54,10 +54,8 @@ export default {
   data() {
     return {
       loading: false,
-      max_subjects: 5,
       values: {
         name: this.name,
-        subjects: [],
       },
     }
   },
