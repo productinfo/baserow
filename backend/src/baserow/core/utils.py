@@ -13,9 +13,7 @@ from decimal import Decimal
 from itertools import islice
 from typing import Iterable, List, Optional, Tuple
 
-from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import FieldError
-from django.db.models import ForeignKey, Subquery
+from django.db.models import ForeignKey
 from django.db.models.fields import NOT_PROVIDED
 
 
@@ -634,16 +632,3 @@ class MirrorDict(dict):
 
     def get(self, key, default=None):
         return key
-
-
-class SubqueryArray(Subquery):
-    template = "ARRAY(%(subquery)s)"
-
-    @property
-    def output_field(self):
-        output_fields = [x.output_field for x in self.get_source_expressions()]
-
-        if len(output_fields) > 1:
-            raise FieldError("More than one column detected")
-
-        return ArrayField(base_field=output_fields[0])

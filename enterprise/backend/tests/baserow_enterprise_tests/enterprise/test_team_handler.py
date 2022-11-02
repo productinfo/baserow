@@ -56,8 +56,10 @@ def test_list_teams_in_group(data_fixture, enterprise_data_fixture):
     assert teams_qs[0].subject_count == 1
     assert teams_qs[0].subject_sample == [
         {
+            "team_subject_id": sales_subj.id,
             "subject_id": sales_subj.subject_id,
             "subject_type": sales_subj.subject_type_natural_key,
+            "subject_label": f"{user.first_name} {user.last_name}",
         }
     ]
     assert teams_qs[1].id == engineering.id

@@ -3,8 +3,9 @@ from typing import Dict, List, NewType, Optional, Union, cast
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, OuterRef, QuerySet, Subquery, Value
-from django.db.models.functions import Coalesce, Concat
+from django.db.models import Count, OuterRef, QuerySet, Subquery
+from django.db.models.expressions import RawSQL
+from django.db.models.functions import Coalesce
 
 from baserow_enterprise.models import Team, TeamSubject
 from baserow_enterprise.signals import (
@@ -17,10 +18,8 @@ from baserow_enterprise.signals import (
     team_updated,
 )
 
-from baserow.core.expressions import JsonBuildObject
 from baserow.core.models import Group
 from baserow.core.trash.handler import TrashHandler
-from baserow.core.utils import SubqueryArray
 
 from ..exceptions import (
     TeamDoesNotExist,
@@ -54,22 +53,31 @@ class TeamHandler:
             .values("count")
         )
 
-        json_subject = JsonBuildObject(
-            Value("subject_id"),
-            F("subject_id"),
-            Value("subject_type"),
-            Concat(F("subject_type__app_label"), Value("_"), F("subject_type__model")),
-        )
-        subject_sample_qs = (
-            TeamSubject.objects.filter(team=OuterRef("pk"))
-            .order_by("-created_on")
-            .annotate(json=json_subject)
-            .values("json")[:subject_sample_size]
-        )
+        subject_sample_sql = """
+            SELECT COALESCE(json_agg(sub), '[]') FROM (
+                SELECT
+                    sub.id AS team_subject_id,
+                    sub.subject_id,
+                    CONCAT(ct.app_label, '_', ct.model) AS subject_type,
+                    CASE
+                        WHEN (ct.app_label = 'auth' AND ct.model = 'user')
+                            THEN CONCAT(auth_user.first_name, ' ', auth_user.last_name)
+                        WHEN (ct.app_label = 'database' AND ct.model = 'token')
+                            THEN token.name
+                    END AS subject_label
+                FROM baserow_enterprise_teamsubject sub
+                INNER JOIN django_content_type ct ON (ct.id = sub.subject_type_id)
+                LEFT OUTER JOIN auth_user ON (auth_user.id = sub.subject_id)
+                LEFT OUTER JOIN database_token token ON (token.id = sub.subject_id)
+                WHERE sub.team_id = baserow_enterprise_team.id
+                ORDER BY sub.created_on DESC
+                LIMIT %s
+            ) sub
+        """
 
         return Team.objects.annotate(
             subject_count=Coalesce(Subquery(subj_count), 0),
-            subject_sample=SubqueryArray(subject_sample_qs),
+            subject_sample=RawSQL(subject_sample_sql, [subject_sample_size]),
         )
 
     def list_teams_in_group(
