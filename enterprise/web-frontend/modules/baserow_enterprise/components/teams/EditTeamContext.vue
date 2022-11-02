@@ -3,6 +3,12 @@
     <template v-if="Object.keys(team).length > 0">
       <ul class="context__menu">
         <li>
+          <a @click="$emit('edit', team)">
+            <i class="context__menu-icon fas fa-fw fa-pen"></i>
+            {{ $t('EditTeamContext.edit') }}
+          </a>
+        </li>
+        <li>
           <a
             :class="{
               'context__menu-item--loading': removeLoading,
@@ -11,7 +17,7 @@
             @click.prevent="remove(team)"
           >
             <i class="context__menu-icon fas fa-fw fa-trash"></i>
-            {{ $t('teamsSettings.teamsTable.actions.remove') }}
+            {{ $t('EditTeamContext.remove') }}
           </a>
         </li>
       </ul>
@@ -22,7 +28,6 @@
 <script>
 import context from '@baserow/modules/core/mixins/context'
 import { notifyIf } from '@baserow/modules/core/utils/error'
-import TeamService from '@baserow_enterprise/services/team'
 
 export default {
   name: 'EditTeamContext',

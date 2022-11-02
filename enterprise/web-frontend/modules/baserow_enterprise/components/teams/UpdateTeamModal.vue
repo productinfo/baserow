@@ -1,10 +1,10 @@
 <template>
   <Modal>
     <h2 class="box__title">
-      {{ $t('CreateTeamModal.title') }}
+      {{ $t('UpdateTeamModal.title', { teamName: team.name }) }}
     </h2>
     <Error :error="error"></Error>
-    <ManageTeamForm ref="manageForm" @submitted="createTeam">
+    <ManageTeamForm ref="manageForm" :name="team.name" @submitted="updateTeam">
       <template #inviteButton>
         <a
           v-if="uninvitedUserSubjects.length"
@@ -12,14 +12,14 @@
           class="button button--ghost"
           :disabled="loading"
           @click="$refs.groupUserAssignmentModal.show()"
-          >{{ $t('CreateTeamModal.inviteMembers') }}
+          >{{ $t('UpdateTeamModal.inviteMembers') }}
         </a>
       </template>
       <template #memberList>
         <h3>{{ $t('ManageTeamForm.usersTitle') }}</h3>
         <span v-if="!invitedUserSubjects.length">{{
-          $t('CreateTeamModal.NoSubjectsSelected', {
-            buttonLabel: $t('CreateTeamModal.inviteMembers'),
+          $t('UpdateTeamModal.NoSubjectsSelected', {
+            buttonLabel: $t('UpdateTeamModal.inviteMembers'),
           })
         }}</span>
         <List
@@ -44,10 +44,11 @@
           class="button"
           :disabled="loading"
         >
-          {{ $t('CreateTeamModal.submit') }}
+          {{ $t('UpdateTeamModal.submit') }}
         </button>
       </template>
     </ManageTeamForm>
+
     <GroupUserAssignmentModal
       ref="groupUserAssignmentModal"
       :users="uninvitedUserSubjects"
@@ -67,7 +68,7 @@ import { mapGetters } from 'vuex'
 import GroupUserAssignmentModal from '@baserow/modules/core/components/group/GroupUserAssignmentModal'
 
 export default {
-  name: 'CreateTeamModal',
+  name: 'UpdateTeamModal',
   components: { ManageTeamForm, GroupUserAssignmentModal },
   mixins: [modal, error],
   props: {
@@ -84,7 +85,7 @@ export default {
   data() {
     return {
       loading: false,
-      invitedUserSubjects: [], // All members we're inviting to the team.
+      invitedUserSubjects: [], // All invited members in the group and team.
       uninvitedUserSubjects: [], // All uninvited members in the group.
     }
   },
@@ -101,11 +102,39 @@ export default {
   methods: {
     show(...args) {
       this.hideError()
-      // Reset the array of invited subjects.
-      this.invitedUserSubjects = []
-      // Set the initial array of subjects available for invitation.
-      this.uninvitedUserSubjects = Object.values(this.members)
+      this.parseSubjectsAndMembers()
       modal.methods.show.bind(this)(...args)
+    },
+    async parseSubjectsAndMembers() {
+      // When the modal displays, fetch all current subjects in this team.
+      const { data } = await TeamService(this.$client).fetchAllSubjects(
+        this.team.id
+      )
+      const teamSubjects = data
+
+      // Pluck out the users in the `this.members` object.
+      const members = Object.values(this.members)
+
+      // Extract the subjects which are Users.
+      const userSubjects = teamSubjects.filter(
+        (subject) => subject.subject_type === 'auth_user'
+      )
+      // Extract the user subject PKs.
+      const userIds = userSubjects.map((subject) => subject.subject_id)
+
+      // Using those user PKs, find the members records in `this.members`.
+      const invitedMembers = members.filter((member) =>
+        userIds.includes(member.user_id)
+      )
+      // Assign `invitedUserSubjects` our list of GroupUser records who are NOT subjects in this team.
+      this.invitedUserSubjects = invitedMembers
+
+      // Using those user PKs, find the members records NOT in `this.members`.
+      const uninvitedMembers = members.filter(
+        (member) => !userIds.includes(member.user_id)
+      )
+      // Assign `uninvitedUserSubjects` our list of GroupUser records who are NOT subjects in this team.
+      this.uninvitedUserSubjects = uninvitedMembers
     },
     storeSelectedUsers(selections) {
       // Pluck out the user IDs in the objects of the `selections` array.
@@ -117,7 +146,7 @@ export default {
         (member) => !selectionsUserIds.includes(member.user_id)
       )
     },
-    async createTeam(values) {
+    async updateTeam(values) {
       this.loading = true
       this.hideError()
 
@@ -134,19 +163,19 @@ export default {
       }
 
       try {
-        const { team } = await TeamService(this.$client).create(
-          this.group.id,
+        const { data } = await TeamService(this.$client).update(
+          this.team.id,
           values
         )
         this.loading = false
-        this.$emit('created', team)
+        this.$emit('updated', data)
         this.hide()
       } catch (error) {
         this.loading = false
         this.handleError(error, 'team', {
           ERROR_TEAM_NAME_NOT_UNIQUE: new ResponseErrorMessage(
-            this.$t('CreateTeamModal.InvalidNameTitle'),
-            this.$t('CreateTeamModal.InvalidNameMessage')
+            this.$t('UpdateTeamModal.InvalidNameTitle'),
+            this.$t('UpdateTeamModal.InvalidNameMessage')
           ),
         })
       }

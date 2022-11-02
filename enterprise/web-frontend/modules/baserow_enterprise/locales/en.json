@@ -2,35 +2,40 @@
     "enterprise": {
         "licence": "Enterprise"
     },
-    "createTeamModal": {
-        "createNew": "Create new team",
-        "add": "Add team"
+    "CreateTeamModal": {
+        "title": "Create team",
+        "submit": "Create",
+        "inviteMembers": "Add members",
+        "InvalidNameTitle": "Please use a different name",
+        "InvalidNameMessage": "This team name is already in use in the specified group.",
+        "NoSubjectsSelected": "Click '{buttonLabel}' to optionally add team users."
+    },
+    "UpdateTeamModal": {
+        "title": "Update {teamName}",
+        "submit": "Update",
+        "inviteMembers": "Add members",
+        "InvalidNameTitle": "Please use a different name",
+        "InvalidNameMessage": "This team name is already in use in the specified group.",
+        "NoSubjectsSelected": "Click '{buttonLabel}' to optionally add team users."
+    },
+    "ManageTeamForm": {
+        "nameTitle": "Name",
+        "errorInvalidName": "Invalid team name",
+        "usersTitle": "Users"
+    },
+    "EditTeamContext": {
+        "edit": "Edit team",
+        "remove": "Delete team"
+    },
+    "TeamsTable": {
+        "title": "{teamCount} teams in {groupName}",
+        "createNew": "Create team",
+        "nameColumn": "Name",
+        "createdColumn": "Created on",
+        "subjectsColumn": "Members"
     },
     "teamsSettings": {
-        "teamsTabTitle": "Teams",
-        "teamsTable": {
-            "title": "{teamCount} teams in {groupName}",
-            "createNew": "Create team",
-            "columns": {
-                "name": "Name",
-                "created_on": "Created on",
-                "subjects": "Members"
-            },
-            "actions": {
-                "copyEmail": "Copy email",
-                "remove": "Delete team"
-            }
-        },
-        "createTeamModal": {
-            "title": "Create new team",
-            "submit": "Create"
-        },
-        "createTeamForm": {
-            "title": "Name",
-            "errorInvalidName": "Invalid team name"
-        },
-        "createTeamModalInvalidNameTitle": "Please use a different name",
-        "createTeamModalInvalidNameMessage": "This team name is already in use in the specified group."
+        "teamsTabTitle": "Teams"
     },
     "MemberRolesModal": {
         "MemberRolesDatabaseTabTitle": "Database",

@@ -10,7 +10,7 @@
     >
       <template #title>
         {{
-          $t('teamsSettings.teamsTable.title', {
+          $t('TeamsTable.title', {
             teamCount: teamCount,
             groupName: group.name,
           })
@@ -21,14 +21,15 @@
           class="button margin-left-2 button--large"
           @click="$refs.createModal.show()"
         >
-          {{ $t('teamsSettings.teamsTable.createNew') }}
+          {{ $t('TeamsTable.createNew') }}
         </div>
       </template>
       <template #menus>
         <EditTeamContext
           ref="editTeamContext"
           :group="group"
-          :team="editTeam"
+          :team="focusedTeam"
+          @edit="handleEditTeam"
           @refresh="refresh"
         ></EditTeamContext>
       </template>
@@ -38,11 +39,19 @@
       :group="group"
       @created="refresh"
     ></CreateTeamModal>
+    <UpdateTeamModal
+      v-if="focusedTeam"
+      ref="updateModal"
+      :group="group"
+      :team="focusedTeam"
+      @updated="refresh"
+    ></UpdateTeamModal>
   </div>
 </template>
 
 <script>
 import CreateTeamModal from '@baserow_enterprise/components/teams/CreateTeamModal'
+import UpdateTeamModal from '@baserow_enterprise/components/teams/UpdateTeamModal'
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import TeamService from '@baserow_enterprise/services/team'
 import { mapGetters } from 'vuex'
@@ -58,6 +67,7 @@ export default {
     CrudTable,
     EditTeamContext,
     CreateTeamModal,
+    UpdateTeamModal,
   },
   props: {
     group: {
@@ -67,7 +77,7 @@ export default {
   },
   data() {
     return {
-      editTeam: {},
+      focusedTeam: {},
       teamCount: 0,
     }
   },
@@ -88,20 +98,20 @@ export default {
       const columns = [
         new CrudTableColumn(
           'name',
-          this.$t('teamsSettings.teamsTable.columns.name'),
+          this.$t('TeamsTable.nameColumn'),
           SimpleField,
           true,
           true
         ),
         new CrudTableColumn(
           'created_on',
-          this.$t('teamsSettings.teamsTable.columns.created_on'),
+          this.$t('TeamsTable.createdColumn'),
           LocalDateField,
           true
         ),
         new CrudTableColumn(
           'subject_count',
-          this.$t('teamsSettings.teamsTable.columns.subjects'),
+          this.$t('TeamsTable.subjectsColumn'),
           SimpleField,
           true
         ),
@@ -111,6 +121,10 @@ export default {
     },
   },
   methods: {
+    handleEditTeam(team) {
+      this.focusedTeam = team
+      this.$refs.updateModal.show()
+    },
     onRowContext({ row, event, target }) {
       if (target === undefined) {
         target = {
@@ -119,8 +133,8 @@ export default {
         }
       }
 
-      const action = row.id === this.editTeam.id ? 'toggle' : 'show'
-      this.editTeam = row
+      const action = row.id === this.focusedTeam.id ? 'toggle' : 'show'
+      this.focusedTeam = row
       this.$refs.editTeamContext[action](target, 'bottom', 'left', 4)
     },
     async refresh() {
