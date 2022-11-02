@@ -90,14 +90,14 @@ def test_create_team(api_client, data_fixture):
 
 
 @pytest.mark.django_db
-def test_patch_team(api_client, data_fixture, enterprise_data_fixture):
+def test_put_team(api_client, data_fixture, enterprise_data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"
     )
     group = data_fixture.create_group(user=user)
     sales = enterprise_data_fixture.create_team(name="Sales", group=group)
 
-    response = api_client.patch(
+    response = api_client.put(
         reverse("api:enterprise:teams:item", kwargs={"team_id": sales.id}),
         {"name": "Engineering"},
         format="json",
@@ -110,7 +110,7 @@ def test_patch_team(api_client, data_fixture, enterprise_data_fixture):
 
 
 @pytest.mark.django_db
-def test_patch_team_not_as_group_member(
+def test_put_team_not_as_group_member(
     api_client, data_fixture, enterprise_data_fixture
 ):
     user, token = data_fixture.create_user_and_token(
@@ -119,7 +119,7 @@ def test_patch_team_not_as_group_member(
     group = data_fixture.create_group()
     sales = enterprise_data_fixture.create_team(name="Sales", group=group)
 
-    response = api_client.patch(
+    response = api_client.put(
         reverse("api:enterprise:teams:item", kwargs={"team_id": sales.id}),
         {"name": "Engineering"},
         format="json",
