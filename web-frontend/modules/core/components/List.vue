@@ -3,6 +3,7 @@
     <li v-for="(item, index) in items" :key="index" class="list__item">
       <div class="list__left-side">
         <checkbox
+          v-if="selectable"
           :value="selectedItemsIndexes.includes(index)"
           @input="selected($event, item, index)"
         />
