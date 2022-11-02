@@ -2,6 +2,9 @@
     "enterprise": {
         "licence": "Enterprise"
     },
+    "trashType": {
+        "team": "team"
+    },
     "CreateTeamModal": {
         "title": "Create team",
         "submit": "Create",
