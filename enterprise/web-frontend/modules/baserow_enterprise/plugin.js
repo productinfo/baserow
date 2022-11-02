@@ -29,7 +29,6 @@ export default (context) => {
     i18n.mergeLocaleMessage('it', it)
   }
 
-
   app.$registry.register(
     'permissionManager',
     new RolePermissionManagerType(context)
