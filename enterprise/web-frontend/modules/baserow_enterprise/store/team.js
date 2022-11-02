@@ -63,6 +63,10 @@ export const mutations = {
     })
     state.selected = {}
   },
+  SET_TEAM_SUBJECTS(state, { teamId, items }) {
+    const teamIndex = state.items.findIndex((item) => item.id === teamId)
+    state.items[teamIndex].subjects = items
+  },
 }
 
 export const actions = {
@@ -146,6 +150,28 @@ export const actions = {
   forceDelete({ commit }, job) {
     commit('DELETE_ITEM', job.id)
   },
+  /**
+   * Fetches all the subjects in a specific team.
+   */
+  async fetchAllSubjects({ commit }, { teamId }) {
+    commit('SET_LOADING', true)
+
+    try {
+      const { data } = await TeamService(this.$client).fetchAllSubjects(teamId)
+      commit('SET_LOADED', true)
+      commit('SET_TEAM_SUBJECTS', {
+        teamId,
+        items: data,
+      })
+    } catch {
+      commit('SET_TEAM_SUBJECTS', {
+        teamId,
+        items: [],
+      })
+    }
+
+    commit('SET_LOADING', false)
+  },
 }
 
 export const getters = {
@@ -178,7 +204,6 @@ export const getters = {
     if (!Object.prototype.hasOwnProperty.call(state.selected, 'id')) {
       throw new Error('There is no selected team.')
     }
-
     return state.selected
   },
 }
