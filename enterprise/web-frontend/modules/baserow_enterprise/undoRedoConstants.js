@@ -2,7 +2,7 @@
 export const ENTERPRISE_ACTION_SCOPES = {
   teams_in_group(groupId) {
     return {
-      group: groupId,
+      teams_in_group: groupId,
     }
   },
 }
