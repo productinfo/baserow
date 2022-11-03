@@ -61,7 +61,7 @@ class TeamHandler:
                     CONCAT(ct.app_label, '_', ct.model) AS subject_type,
                     CASE
                         WHEN (ct.app_label = 'auth' AND ct.model = 'user')
-                            THEN CONCAT(auth_user.first_name, ' ', auth_user.last_name)
+                            THEN TRIM(CONCAT(auth_user.first_name, ' ', auth_user.last_name))
                         WHEN (ct.app_label = 'database' AND ct.model = 'token')
                             THEN token.name
                     END AS subject_label
