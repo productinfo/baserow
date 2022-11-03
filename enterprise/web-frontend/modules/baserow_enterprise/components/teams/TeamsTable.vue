@@ -52,6 +52,7 @@
 <script>
 import CreateTeamModal from '@baserow_enterprise/components/teams/CreateTeamModal'
 import UpdateTeamModal from '@baserow_enterprise/components/teams/UpdateTeamModal'
+import SubjectSampleField from '@baserow_enterprise/components/crudTable/fields/SubjectSampleField'
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import TeamService from '@baserow_enterprise/services/team'
 import { mapGetters } from 'vuex'
@@ -110,9 +111,9 @@ export default {
           true
         ),
         new CrudTableColumn(
-          'subject_count',
+          'subject_sample',
           this.$t('TeamsTable.subjectsColumn'),
-          SimpleField,
+          SubjectSampleField,
           true
         ),
         new CrudTableColumn(null, null, MoreField, false, false, true),
