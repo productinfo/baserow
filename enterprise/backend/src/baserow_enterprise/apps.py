@@ -10,6 +10,7 @@ class BaserowEnterpriseConfig(AppConfig):
             EnterpriseMemberTeamsDataType,
         )
         from baserow_enterprise.role.actions import AssignRoleActionType
+        from baserow_enterprise.scopes import TeamsActionScopeType
         from baserow_enterprise.teams.actions import (
             CreateTeamActionType,
             CreateTeamSubjectActionType,
@@ -35,7 +36,10 @@ class BaserowEnterpriseConfig(AppConfig):
         from baserow_enterprise.trash_types import TeamTrashableItemType
 
         from baserow.api.user.registries import member_data_registry
-        from baserow.core.action.registries import action_type_registry
+        from baserow.core.action.registries import (
+            action_scope_registry,
+            action_type_registry,
+        )
         from baserow.core.registries import (
             object_scope_type_registry,
             operation_type_registry,
@@ -48,6 +52,8 @@ class BaserowEnterpriseConfig(AppConfig):
         from .role.operations import AssignRoleGroupOperationType
 
         plugin_registry.register(EnterprisePlugin())
+
+        action_scope_registry.register(TeamsActionScopeType())
 
         action_type_registry.register(CreateTeamActionType())
         action_type_registry.register(UpdateTeamActionType())
