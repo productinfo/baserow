@@ -70,10 +70,13 @@ import modal from '@baserow/modules/core/mixins/modal'
 import error from '@baserow/modules/core/mixins/error'
 import { ResponseErrorMessage } from '@baserow/modules/core/plugins/clientHandler'
 import ManageTeamForm from '@baserow_enterprise/components/teams/ManageTeamForm'
-import TeamService from '@baserow_enterprise/services/team'
 
-import { mapGetters } from 'vuex'
+import TeamService from '@baserow_enterprise/services/team'
+import GroupService from '@baserow/modules/core/services/group'
+
 import GroupUserAssignmentModal from '@baserow/modules/core/components/group/GroupUserAssignmentModal'
+
+export {}
 
 export default {
   name: 'UpdateTeamModal',
@@ -97,16 +100,6 @@ export default {
       uninvitedUserSubjects: [], // All uninvited members in the group.
     }
   },
-  computed: {
-    ...mapGetters({
-      members: 'group/getAllUsers',
-    }),
-  },
-  created() {
-    this.$store.dispatch('group/fetchAllGroupUser', {
-      groupId: this.group.id,
-    })
-  },
   methods: {
     show(...args) {
       this.hideError()
@@ -122,31 +115,33 @@ export default {
       )
     },
     async parseSubjectsAndMembers() {
-      // When the modal displays, fetch all current subjects in this team.
       const { data } = await TeamService(this.$client).fetchAllSubjects(
         this.team.id
       )
-      const teamSubjects = data
-
-      // Pluck out the users in the `this.members` object.
-      const members = Object.values(this.members)
+      this.teamSubjects = data
+      {
+        const { data } = await GroupService(this.$client).fetchAllUsers(
+          this.group.id
+        )
+        this.groupMembers = data
+      }
 
       // Extract the subjects which are Users.
-      const userSubjects = teamSubjects.filter(
+      const userSubjects = this.teamSubjects.filter(
         (subject) => subject.subject_type === 'auth_user'
       )
       // Extract the user subject PKs.
       const userIds = userSubjects.map((subject) => subject.subject_id)
 
-      // Using those user PKs, find the members records in `this.members`.
-      const invitedMembers = members.filter((member) =>
+      // Using those user PKs, find the members records in `this.groupMembers`.
+      const invitedMembers = this.groupMembers.filter((member) =>
         userIds.includes(member.user_id)
       )
       // Assign `invitedUserSubjects` our list of GroupUser records who are NOT subjects in this team.
       this.invitedUserSubjects = invitedMembers
 
-      // Using those user PKs, find the members records NOT in `this.members`.
-      const uninvitedMembers = members.filter(
+      // Using those user PKs, find the members records NOT in `this.groupMembers`.
+      const uninvitedMembers = this.groupMembers.filter(
         (member) => !userIds.includes(member.user_id)
       )
       // Assign `uninvitedUserSubjects` our list of GroupUser records who are NOT subjects in this team.

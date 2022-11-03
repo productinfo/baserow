@@ -69,9 +69,10 @@ import modal from '@baserow/modules/core/mixins/modal'
 import error from '@baserow/modules/core/mixins/error'
 import { ResponseErrorMessage } from '@baserow/modules/core/plugins/clientHandler'
 import ManageTeamForm from '@baserow_enterprise/components/teams/ManageTeamForm'
-import TeamService from '@baserow_enterprise/services/team'
 
-import { mapGetters } from 'vuex'
+import TeamService from '@baserow_enterprise/services/team'
+import GroupService from '@baserow/modules/core/services/group'
+
 import GroupUserAssignmentModal from '@baserow/modules/core/components/group/GroupUserAssignmentModal'
 
 export default {
@@ -96,23 +97,17 @@ export default {
       uninvitedUserSubjects: [], // All uninvited members in the group.
     }
   },
-  computed: {
-    ...mapGetters({
-      members: 'group/getAllUsers',
-    }),
-  },
-  created() {
-    this.$store.dispatch('group/fetchAllGroupUser', {
-      groupId: this.group.id,
-    })
-  },
   methods: {
-    show(...args) {
+    async show(...args) {
       this.hideError()
       // Reset the array of invited subjects.
       this.invitedUserSubjects = []
+      // Fetch all members in this group.
+      const { data } = await GroupService(this.$client).fetchAllUsers(
+        this.group.id
+      )
       // Set the initial array of subjects available for invitation.
-      this.uninvitedUserSubjects = Object.values(this.members)
+      this.uninvitedUserSubjects = data
       modal.methods.show.bind(this)(...args)
     },
     removeSubject(removal) {
