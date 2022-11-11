@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.db import transaction
 from django.db.models.signals import post_migrate
 
 from tqdm import tqdm
@@ -142,6 +143,7 @@ class BaserowEnterpriseConfig(AppConfig):
         import baserow_enterprise.ws.signals  # noqa: F
 
 
+@transaction.atomic
 def sync_default_roles_after_migrate(sender, **kwargs):
     from .role.default_roles import default_roles
 
@@ -163,8 +165,11 @@ def sync_default_roles_after_migrate(sender, **kwargs):
                 )
                 role.operations.all().delete()
 
+                to_add = []
                 for operation_type in operations:
                     operation, _ = Operation.objects.get_or_create(
                         name=operation_type.type
                     )
-                    role.operations.add(operation)
+                    to_add.append(operation)
+
+                role.operations.add(*to_add)

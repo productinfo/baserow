@@ -31,6 +31,7 @@ def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_ro
         group_2,
         database_1,
         database_2,
+        database_3,
         table_1_1,
         table_1_2,
         table_2_1,

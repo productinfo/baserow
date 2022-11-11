@@ -86,7 +86,7 @@ class RoleAssignmentHandler:
             and isinstance(subject, User)
         ):
             try:
-                group_user = GroupUser.objects.get(user=subject, group=group)
+                group_user = group.get_group_user(subject)
                 role_uid = group_user.permissions
                 role = self.get_role_or_fallback(role_uid)
                 # We need to fake a RoleAssignment instance here to keep the same
@@ -154,12 +154,8 @@ class RoleAssignmentHandler:
         content_types = ContentType.objects.get_for_models(scope, subject)
 
         # Group level permissions are not stored as RoleAssignment records
-        if (
-            isinstance(scope, Group)
-            and scope.id == group.id
-            and isinstance(subject, User)
-        ):
-            group_user = GroupUser.objects.get(group=group, user=subject)
+        if scope == group and scope.id == group.id and isinstance(subject, User):
+            group_user = group.get_group_user(subject)
             new_permissions = "MEMBER" if role.uid == "BUILDER" else role.uid
             CoreHandler().force_update_group_user(
                 None, group_user, permissions=new_permissions
@@ -202,14 +198,10 @@ class RoleAssignmentHandler:
         if scope is None:
             scope = group
 
-        if (
-            isinstance(scope, Group)
-            and scope.id == group.id
-            and isinstance(subject, User)
-        ):
-            GroupUser.objects.filter(user=subject, group=group).update(
-                permissions="NO_ROLE"
-            )
+        if scope == group and scope.id == group.id and isinstance(subject, User):
+            group_user = group.get_group_user(subject)
+            group_user.permissions = "NO_ROLE"
+            group_user.save()
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 

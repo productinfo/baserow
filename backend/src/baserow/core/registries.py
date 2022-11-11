@@ -498,6 +498,26 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
 
         return None
 
+    def get_parents(self, context: ContextObject) -> Optional[ContextObject]:
+        """
+        Returns all ancestors of the given context which belongs to the current
+        scope.
+
+        :param context: The context object which we want the ancestors for. This object
+            must belong to the current scope.
+        :return: the list of parent objects if it's a root object.
+        """
+
+        parent = self.get_parent(context)
+
+        if parent is None:
+            return []
+
+        parents = self.get_parent_scope().get_parents(parent)
+        parents.append(parent)
+
+        return parents
+
     def get_all_context_objects_in_scope(self, scope: ScopeObject) -> Iterable:
         """
         Returns the list of context object belonging to the current scope that are
@@ -511,6 +531,17 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
             f"Must be implemented by the specific type <{self.type}>"
         )
 
+    def contains(self, context: ContextObject):
+        """
+        Return True if the context is one object of this context.
+
+        :param context: The context to test
+        :return: True if the ObjectScopeType of the context is the same as this one.
+        """
+
+        context_scope_type = object_scope_type_registry.get_by_model(context)
+        return context_scope_type.type == self.type
+
 
 class ObjectScopeTypeRegistry(Registry[ObjectScopeType], ModelRegistryMixin):
     """
@@ -519,6 +550,17 @@ class ObjectScopeTypeRegistry(Registry[ObjectScopeType], ModelRegistryMixin):
     """
 
     name = "object_scope"
+
+    def get_parent(self, context):
+        """
+        Returns the parent object of the given context.
+
+        :param context: The context object which we want the parent for.
+        :return: the parent object or `None` if it's a root object.
+        """
+
+        context_scope_type = self.get_by_model(context)
+        return context_scope_type.get_parent(context)
 
     def scope_includes_context(
         self,
