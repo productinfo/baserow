@@ -884,3 +884,78 @@ def test_has_row(data_fixture):
 
     assert handler.has_row(user=user, table=table, row_id=row.id, raise_error=False)
     assert handler.has_row(user=user, table=table, row_id=row.id, raise_error=True)
+
+
+@pytest.mark.django_db
+def test_get_unique_orders_without_before_row(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(
+        name="Table", user=user, database=database
+    )
+
+    model = table.get_model()
+    model.objects.create(order=Decimal("1.00000000000000000000"))
+    model.objects.create(order=Decimal("2.00000000000000000000"))
+    model.objects.create(order=Decimal("3.00000000000000000000"))
+    model.objects.create(order=Decimal("4.00000000000000000000"))
+
+    handler = RowHandler()
+    assert handler.get_unique_orders_before_row(None, model) == [
+        Decimal("5.00000000000000000000")
+    ]
+    assert handler.get_unique_orders_before_row(None, model, 3) == [
+        Decimal("5.00000000000000000000"),
+        Decimal("6.00000000000000000000"),
+        Decimal("7.00000000000000000000"),
+    ]
+
+
+@pytest.mark.django_db
+def test_get_unique_orders_with_before_row(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(
+        name="Table", user=user, database=database
+    )
+
+    model = table.get_model()
+    model.objects.create(order=Decimal("1.00000000000000000000"))
+    row_2 = model.objects.create(order=Decimal("2.00000000000000000000"))
+    model.objects.create(order=Decimal("3.00000000000000000000"))
+    row_4 = model.objects.create(order=Decimal("4.00000000000000000000"))
+
+    handler = RowHandler()
+    assert handler.get_unique_orders_before_row(row_2, model) == [
+        Decimal("1.50000000000000000000")
+    ]
+    assert handler.get_unique_orders_before_row(row_2, model, 3) == [
+        Decimal("1.5"),
+        Decimal("1.6666666666666667406815349750104360282421112060546875"),
+        Decimal("1.75"),
+    ]
+    assert handler.get_unique_orders_before_row(row_4, model) == [
+        Decimal("3.50000000000000000000")
+    ]
+
+
+@pytest.mark.django_db
+def test_get_unique_orders_first_before_row(data_fixture):
+    user = data_fixture.create_user()
+    database = data_fixture.create_database_application(user=user)
+    table = data_fixture.create_database_table(
+        name="Table", user=user, database=database
+    )
+
+    model = table.get_model()
+    row_1 = model.objects.create(order=Decimal("1.00000000000000000000"))
+
+    handler = RowHandler()
+    assert handler.get_unique_orders_before_row(row_1, model) == [
+        Decimal("0.50000000000000000000")
+    ]
+    assert handler.get_unique_orders_before_row(row_1, model, 3) == [
+        Decimal("0.5"),
+        Decimal("0.66666666666666662965923251249478198587894439697265625"),
+        Decimal("0.75"),
+    ]

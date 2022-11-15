@@ -2,13 +2,13 @@ import re
 from collections import defaultdict
 from copy import copy
 from decimal import Decimal
-from math import ceil, floor
+from math import ceil
 from typing import Any, Dict, List, NewType, Optional, Set, Tuple, Type, cast
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import F, Max, Q, QuerySet
+from django.db.models import Max, Q, QuerySet
 from django.db.models.fields.related import ForeignKey, ManyToManyField
 from django.utils.encoding import force_str
 
@@ -50,6 +50,7 @@ from .signals import (
     rows_deleted,
     rows_updated,
 )
+from .utils import find_intermediate_order
 
 GeneratedTableModelForUpdate = NewType(
     "GeneratedTableModelForUpdate", GeneratedTableModel
@@ -252,51 +253,37 @@ class RowHandler:
 
         return values, manytomany_values
 
-    def get_order_before_row(
+    def get_unique_orders_before_row(
         self,
-        before: GeneratedTableModel,
+        before_row: GeneratedTableModel,
         model: Type[GeneratedTableModel],
         amount: int = 1,
-    ) -> Tuple[Decimal, Decimal]:
+    ) -> List[Decimal]:
         """
-        Calculates a new unique order lower than the provided before row
-        order and a step representing the change needed between multiple rows if
-        multiple rows are being placed at once.
-        This order can be used by existing or new rows. Several other rows
-        could be updated as their order might need to change.
-
-        :param before: The row instance where the before order must be calculated for.
-        :param model: The model of the related table
-        :param amount: The number of rows being placed.
-        :return: The order for the last inserted row and the
-            step (change) that should be used between all new rows.
-        :rtype: tuple(Decimal, Decimal)
+        @TODO add docs
         """
 
-        if before:
-            # When the rows are being inserted before an existing row, the order
-            # of the last new row is calculated by subtracting a fraction of
-            # the "before" row order.
-            # The same fraction is also going to be subtracted from the other
-            # rows that have been placed before. By using these fractions we don't
-            # have to re-order every row in the table.
-            step = Decimal("0.00000000000000000001")
-            order_last_row = before.order - step
-            model.objects.filter(
-                order__gt=floor(order_last_row), order__lte=order_last_row
-            ).update(order=F("order") - (step * amount))
+        if before_row:
+            adjacent_order = (
+                model.objects.filter(order__lt=before_row.order)
+                .aggregate(max=Max("order"))
+                .get("max")
+            ) or Decimal("0")
+            new_orders = []
+            new_order = adjacent_order
+            for i in range(0, amount):
+                new_order = Decimal(
+                    find_intermediate_order(new_order, before_row.order)
+                )
+                new_orders.append(new_order)
+
+            return new_orders
         else:
-            # Because the rows are by default added as last, we have to figure out
-            # what the highest order in the table is currently and increase that by
-            # the number of rows being inserted.
-            # The order of new rows should always be a whole number so the number is
-            # rounded up.
             step = Decimal("1.00000000000000000000")
             order_last_row = ceil(
                 model.objects.aggregate(max=Max("order")).get("max") or Decimal("0")
-            ) + (step * amount)
-
-        return order_last_row, step
+            )
+            return [order_last_row + (step * i) for i in range(1, amount + 1)]
 
     def get_row(
         self,
@@ -648,7 +635,7 @@ class RowHandler:
 
         values = self.prepare_values(model._field_objects, values)
         values, manytomany_values = self.extract_manytomany_values(values, model)
-        values["order"] = self.get_order_before_row(before, model)[0]
+        values["order"] = self.get_unique_orders_before_row(before, model)[0]
         instance = model.objects.create(**values)
 
         for name, value in manytomany_values.items():
@@ -909,7 +896,7 @@ class RowHandler:
         if model is None:
             model = table.get_model()
 
-        highest_order, step = self.get_order_before_row(
+        unique_orders = self.get_unique_orders_before_row(
             before_row, model, amount=len(rows_values)
         )
 
@@ -924,7 +911,7 @@ class RowHandler:
         rows_relationships = []
         for index, row in enumerate(rows, start=-len(rows)):
             values, manytomany_values = self.extract_manytomany_values(row, model)
-            values["order"] = highest_order - (step * (abs(index + 1)))
+            values["order"] = unique_orders[index]
             instance = model(**values)
 
             relations = {
@@ -1589,7 +1576,7 @@ class RowHandler:
             self, rows=[row], user=user, table=table, model=model, updated_field_ids=[]
         )
 
-        row.order = self.get_order_before_row(before_row, model)[0]
+        row.order = self.get_unique_orders_before_row(before_row, model)[0]
         row.save()
 
         update_collector = FieldUpdateCollector(table, starting_row_ids=[row.id])
