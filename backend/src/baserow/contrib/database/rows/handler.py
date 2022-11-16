@@ -260,10 +260,21 @@ class RowHandler:
         amount: int = 1,
     ) -> List[Decimal]:
         """
-        @TODO add docs
+        Calculates a list of unique decimal orders that can safely be used before the
+        provided `before_row`.
+
+        :param before_row: The row instance where the before orders must be
+            calculated for.
+        :param model: The model of the related table
+        :param amount: The number of orders that must be requested. Can be higher if
+            multiple rows are inserted or moved.
+        :return: A list of decimals containing safe to use orders in order.
         """
 
         if before_row:
+            # In order to find the intermediate order, we need to figure out what the
+            # order of the before adjacent row is. This queryset finds it in an
+            # efficient way.
             adjacent_order = (
                 model.objects.filter(order__lt=before_row.order)
                 .aggregate(max=Max("order"))
@@ -272,13 +283,15 @@ class RowHandler:
             new_orders = []
             new_order = adjacent_order
             for i in range(0, amount):
-                new_order = Decimal(
-                    find_intermediate_order(new_order, before_row.order)
-                )
+                float_order = find_intermediate_order(new_order, before_row.order)
+                # Row orders "only" store 20 decimal places, so we're already
+                # rounding it, so that the `order` will be set immediately.
+                new_order = round(Decimal(float_order), 20)
                 new_orders.append(new_order)
-
             return new_orders
         else:
+            # If no `before_row` is provided, we can just find the highest value and
+            # add one to it.
             step = Decimal("1.00000000000000000000")
             order_last_row = ceil(
                 model.objects.aggregate(max=Max("order")).get("max") or Decimal("0")
