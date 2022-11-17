@@ -200,8 +200,10 @@ class RoleAssignmentHandler:
 
         if scope == group and scope.id == group.id and isinstance(subject, User):
             group_user = group.get_group_user(subject)
-            group_user.permissions = "NO_ROLE"
-            group_user.save()
+            new_permissions = "NO_ROLE"
+            CoreHandler().force_update_group_user(
+                None, group_user, permissions=new_permissions
+            )
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 
