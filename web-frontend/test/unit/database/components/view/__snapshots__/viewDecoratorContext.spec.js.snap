@@ -300,9 +300,25 @@ exports[`GridViewRows component with decoration View with decoration configured 
            
           <div
             class="decorator-context__decorator-header-select"
-            style="display: none;"
           >
-            <!---->
+            <div
+              class="dropdown"
+            >
+              <a
+                class="dropdown__selected"
+              >
+                <i
+                  class="dropdown__selected-icon fas fa-filter"
+                />
+                
+    Fake value provider
+    
+                <i
+                  class="dropdown__toggle-icon fas fa-caret-down"
+                />
+              </a>
+               
+            </div>
           </div>
            
           <div
@@ -318,35 +334,8 @@ exports[`GridViewRows component with decoration View with decoration configured 
           </div>
         </div>
          
-        <div
-          class="value-provider-list value-provider-list--row"
-        >
-          <div
-            class="value-provider-list__item"
-          >
-            <div
-              class="value-provider-item"
-            >
-              <div
-                class="value-provider-item__title"
-              >
-                <i
-                  class="fa fa-fw fa-filter value-provider-item__icon"
-                />
-                
-    Fake value provider
-  
-              </div>
-               
-              <div
-                class="value-provider-item__description"
-              >
-                
-    Fake value provider description.
-  
-              </div>
-            </div>
-          </div>
+        <div>
+          fake_value_provider_form
         </div>
       </div>
     </div>

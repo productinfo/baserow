@@ -1,4 +1,17 @@
 import { TestApp } from '@baserow/test/helpers/testApp'
+import { DecoratorValueProviderType } from '@baserow/modules/database/decoratorValueProviders'
+
+export class SingleSelectValueProviderType extends DecoratorValueProviderType {
+  static getType() {
+    return 'single_select_color'
+  }
+}
+
+export class ConditionalColorValueProviderType extends DecoratorValueProviderType {
+  static getType() {
+    return 'conditional_color'
+  }
+}
 
 describe('View store - decorator', () => {
   let testApp = null
@@ -9,6 +22,15 @@ describe('View store - decorator', () => {
     testApp = new TestApp()
     store = testApp.store
     mockServer = testApp.mockServer
+    store.$registry.registerNamespace('decoratorValueProvider')
+    store.$registry.register(
+      'decoratorValueProvider',
+      new SingleSelectValueProviderType({ app: testApp })
+    )
+    store.$registry.register(
+      'decoratorValueProvider',
+      new ConditionalColorValueProviderType({ app: testApp })
+    )
   })
 
   afterEach(() => {

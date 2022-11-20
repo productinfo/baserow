@@ -201,6 +201,12 @@ describe('GridViewRows component with decoration', () => {
   })
 
   test('View with decoration configured', async () => {
+    const fakeDecorator = new FakeDecoratorType({ app: testApp })
+    const fakeValueProvider = new FakeValueProviderType({ app: testApp })
+
+    store.$registry.register('viewDecorator', fakeDecorator)
+    store.$registry.register('decoratorValueProvider', fakeValueProvider)
+
     const { application, table, fields, view } = await populateStore({
       decorations: [
         {
@@ -211,18 +217,12 @@ describe('GridViewRows component with decoration', () => {
         },
         {
           type: 'fake_decorator',
-          value_provider_type: '',
+          value_provider_type: 'fake_value_provider_type',
           value_provider_conf: {},
           _: { loading: false },
         },
       ],
     })
-
-    const fakeDecorator = new FakeDecoratorType({ app: testApp })
-    const fakeValueProvider = new FakeValueProviderType({ app: testApp })
-
-    store.$registry.register('viewDecorator', fakeDecorator)
-    store.$registry.register('decoratorValueProvider', fakeValueProvider)
 
     const wrapper = await mountComponent({
       database: application,
