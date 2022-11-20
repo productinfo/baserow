@@ -68,6 +68,7 @@
       @selectNext="$options.methods.selectNext(listeners, props, 'next')"
       @selectAbove="$options.methods.selectNext(listeners, props, 'above')"
       @selectBelow="$options.methods.selectNext(listeners, props, 'below')"
+      @add-row-after="$options.methods.addRowAfter(listeners, props)"
       @add-keep-alive="parent.addKeepAlive(props.field.id)"
       @remove-keep-alive="parent.removeKeepAlive(props.field.id)"
     />
@@ -200,6 +201,14 @@ export default {
           field: props.field,
           direction,
         })
+      }
+    },
+    /**
+     * @TODO docs
+     */
+    addRowAfter(listeners, props) {
+      if (listeners['add-row-after']) {
+        listeners['add-row-after'](props.row)
       }
     },
   },
