@@ -82,6 +82,13 @@ export class DecoratorValueProviderType extends Registerable {
   }
 
   /**
+   * A hook to populate the conf with needed data.
+   */
+  populateConf(conf) {
+    return conf
+  }
+
+  /**
    * Returns the value of this provider for the given row considering the configuration.
    *
    * @param {array} row the row

@@ -23,8 +23,15 @@ export function populateSort(sort) {
   return sort
 }
 
-export function populateDecoration(decoration) {
+export function populateDecoration(decoration, registry) {
+  const valueProvider = registry.get(
+    'decoratorValueProvider',
+    decoration.value_provider_type
+  )
   decoration._ = { loading: false }
+  decoration.value_provider_conf = valueProvider.populateConf(
+    decoration.value_provider_conf
+  )
   return decoration
 }
 
@@ -55,7 +62,7 @@ export function populateView(view, registry) {
 
   if (Object.prototype.hasOwnProperty.call(view, 'decorations')) {
     view.decorations.forEach((decoration) => {
-      populateDecoration(decoration)
+      populateDecoration(decoration, registry)
     })
   } else {
     view.decorations = []
@@ -598,7 +605,7 @@ export const actions = {
    */
   async createDecoration({ commit }, { view, values, readOnly = false }) {
     const decoration = { ...values }
-    populateDecoration(decoration)
+    populateDecoration(decoration, this.$registry)
     decoration.id = uuid()
     decoration._.loading = !readOnly
 
@@ -628,7 +635,7 @@ export const actions = {
    */
   forceCreateDecoration({ commit }, { view, values }) {
     const decoration = { ...values }
-    populateDecoration(decoration)
+    populateDecoration(decoration, this.$registry)
     commit('ADD_DECORATION', { view, decoration })
   },
   /**

@@ -17,6 +17,7 @@ For example:
 * Improved grid view on smaller screens by not making the primary field sticky. [#690](https://gitlab.com/bramw/baserow/-/issues/690)
 
 ### Bug Fixes
+* Fixed bug where it was not possible to change `conditional_color` decorator provider color after reloading. [#1098](https://gitlab.com/bramw/baserow/-/issues/1098)
 
 ### Refactors
 

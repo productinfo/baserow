@@ -86,8 +86,14 @@ export class ConditionalColorValueProviderType extends DecoratorValueProviderTyp
               fields,
             }),
           ],
-      uid: uuid(),
     }
+  }
+
+  populateConf(conf) {
+    conf.colors.forEach((color) => {
+      color.uid = uuid()
+    })
+    return conf
   }
 
   getName() {
