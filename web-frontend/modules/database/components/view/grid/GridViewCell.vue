@@ -204,7 +204,7 @@ export default {
       }
     },
     /**
-     * @TODO docs
+     * Emits an event that creates a row directly after this row.
      */
     addRowAfter(listeners, props) {
       if (listeners['add-row-after']) {
