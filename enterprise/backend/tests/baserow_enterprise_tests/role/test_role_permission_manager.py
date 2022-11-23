@@ -186,9 +186,15 @@ def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
                 group = context
 
             if result:
-                assert perm_manager.check_permissions(
-                    user, permission.type, group=group, context=context
-                ), f"User {user} should have permission {permission.type} on context {context}"
+                try:
+                    assert perm_manager.check_permissions(
+                        user, permission.type, group=group, context=context
+                    ), f"User {user} should have permission {permission.type} on context {context}"
+                except PermissionException:
+                    print(
+                        f"User {user} should have permission {permission.type} on context {context}"
+                    )
+                    raise
             else:
                 with pytest.raises(PermissionException):
                     perm_manager.check_permissions(

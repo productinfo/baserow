@@ -1,11 +1,9 @@
 from collections import defaultdict
-from functools import cached_property, cmp_to_key
-from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict, Union
+from functools import cached_property
+from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
-from django.contrib.contenttypes.models import ContentType
-from baserow.core.object_scopes import GroupObjectScopeType
 
 from baserow_premium.license.handler import LicenseHandler
 from rest_framework.exceptions import NotAuthenticated
@@ -13,7 +11,8 @@ from rest_framework.exceptions import NotAuthenticated
 from baserow.contrib.database.object_scopes import DatabaseObjectScopeType
 from baserow.contrib.database.table.object_scopes import DatabaseTableObjectScopeType
 from baserow.core.exceptions import PermissionDenied
-from baserow.core.models import Group, Operation
+from baserow.core.models import Group
+from baserow.core.object_scopes import GroupObjectScopeType
 from baserow.core.registries import (
     OperationType,
     PermissionManagerType,
@@ -21,10 +20,9 @@ from baserow.core.registries import (
     operation_type_registry,
 )
 from baserow_enterprise.features import RBAC
-from baserow_enterprise.models import Team
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 
-from .models import RoleAssignment
+from .models import Role
 from .operations import (
     AssignRoleGroupOperationType,
     ReadRoleDatabaseOperationType,
@@ -37,24 +35,6 @@ from .operations import (
 User = get_user_model()
 
 
-def compare_scopes(a, b):
-    a_scope_type = object_scope_type_registry.get_by_model(a[0])
-    b_scope_type = object_scope_type_registry.get_by_model(b[0])
-    a_includes_b = object_scope_type_registry.scope_type_includes_scope_type(
-        a_scope_type, b_scope_type
-    )
-    b_includes_a = object_scope_type_registry.scope_type_includes_scope_type(
-        b_scope_type, a_scope_type
-    )
-
-    if a_includes_b and b_includes_a:
-        return 0
-    if a_includes_b:
-        return -1
-    if b_includes_a:
-        return 1
-
-
 class OperationPermissionContent(TypedDict):
     default: bool
     exceptions: List[int]
@@ -62,7 +42,6 @@ class OperationPermissionContent(TypedDict):
 
 class RolePermissionManagerType(PermissionManagerType):
     type = "role"
-    _role_cache: Dict[int, List[str]] = {}
     role_assignable_object_map = {
         GroupObjectScopeType.type: {
             "READ": ReadRoleGroupOperationType,
@@ -88,67 +67,15 @@ class RolePermissionManagerType(PermissionManagerType):
 
         return LicenseHandler.group_has_feature(RBAC, group)
 
-    def get_sorted_user_scope_operations(
-        self, group: Group, actor: Union[AbstractUser, Team]
-    ) -> List[Tuple[Any, List[str]]]:
+    def get_role_operations(self, role: Role) -> List[str]:
         """
-        Returns the RoleAssignments for the given actor in the given group. The roles
-        are ordered by position of the role scope in the object hierarchy: the highest
-        parent is before the lowest.
+        Return the operation name list for the role with the given role_id.
 
-        :param group: The group the RoleAssignments belong to.
-        :param actor: The subject for whom we want the RoleAssignments
-        :param operation: An optional Operation to select only roles containing this
-            operation.
-        :return: A list of tuple containing the role_id and the scope ordered by scope.
-            The higher a scope is high in the object hierarchy, the higher the tuple in
-            the list.
-        """
-
-        roles = RoleAssignment.objects.filter(
-            group=group,
-            subject_type=ContentType.objects.get_for_model(User),
-            subject_id=actor.id,
-        ).exclude(scope_type=ContentType.objects.get_for_model(Group))
-
-        # TODO n-queries here.
-        available_operations_per_scope = [
-            (r.scope, self.get_role_operations(r.role_id)) for r in roles
-        ]
-
-        # Get the group level role by reading the GroupUser permissions property
-        group_level_role = RoleAssignmentHandler().get_role(
-            group.get_group_user(actor).permissions
-        )
-
-        available_operations_per_scope = [
-            (
-                group,
-                self.get_role_operations(group_level_role.id),
-            )
-        ] + available_operations_per_scope
-
-        # Roles are ordered by scope size. The higher in the hierarchy, the higher
-        # in the list.
-        available_operations_per_scope.sort(key=cmp_to_key(compare_scopes))
-
-        return available_operations_per_scope
-
-    def get_role_operations(self, role_id: int) -> List[str]:
-        """
-        Return the operation list for the role with the given role_id. This method is
-        memoized.
-
-        :param role_id: The role ID we want the operations for.
+        :param role: The role we want the operation names for.
         :return: A list of role operation name.
         """
 
-        if role_id not in self._role_cache:
-            self._role_cache[role_id] = list(
-                Operation.objects.filter(roles=role_id).values_list("name", flat=True)
-            )
-
-        return set(self._role_cache[role_id])
+        return set([op.name for op in role.operations.all()])
 
     @cached_property
     def read_operations(self) -> Set[str]:
@@ -157,7 +84,10 @@ class RolePermissionManagerType(PermissionManagerType):
         """
 
         return set(
-            Operation.objects.filter(roles__uid="VIEWER").values_list("name", flat=True)
+            op.name
+            for op in RoleAssignmentHandler()
+            .get_role_with_fallback(role_uid="VIEWER")
+            .operations.all()
         )
 
     def check_permissions(
@@ -181,40 +111,13 @@ class RolePermissionManagerType(PermissionManagerType):
             if not user.is_authenticated:
                 raise NotAuthenticated()
 
-            if (
-                group.get_group_user(user, include_trash=include_trash).permissions
-                == "ADMIN"
-            ):
-                return True
-
             operation_type = operation_type_registry.get(operation_name)
 
-            # Get all role assignments for this user into this group
-            role_assignments = self.get_sorted_user_scope_operations(group, user)
+            computed_role = RoleAssignmentHandler().get_computed_role(
+                group, actor, context
+            )
 
-            operation_of_most_precise_role = set()
-
-            for (scope, allowed_operations) in role_assignments:
-                if object_scope_type_registry.scope_includes_context(scope, context):
-                    # Check if this scope includes the context. As the role assignments
-                    # are Sorted, the new scope is more precise than the previous one.
-                    # So we keep this new role.
-                    operation_of_most_precise_role = allowed_operations
-                elif (
-                    object_scope_type_registry.scope_includes_context(context, scope)
-                    and allowed_operations
-                ):
-                    # Here the user has a permission on a scope that is a child of the
-                    # context, then we grant the user permission on all read operations
-                    # for all parents of that scope and hence this context should be
-                    # readable.
-                    # For example, if you have a "BUILDER" role on only a table scope,
-                    # and the context here is the parent database of this table the
-                    # user should be able to read this database object so they can
-                    # actually have access to lower down.
-                    operation_of_most_precise_role |= self.read_operations
-
-            if operation_type.type in operation_of_most_precise_role:
+            if operation_type.type in self.get_role_operations(computed_role):
                 return True
 
             raise PermissionDenied()
@@ -244,11 +147,12 @@ class RolePermissionManagerType(PermissionManagerType):
         )
 
         # Permission at the group level
-        _, default_group_operations = role_assignments[0]
-        default = operation_type.type in default_group_operations
+        _, default_group_role = role_assignments[0]
+        default = operation_type.type in self.get_role_operations(default_group_role)
         exceptions = set([])
 
-        for (scope, allowed_operations) in role_assignments[1:]:
+        for (scope, role) in role_assignments[1:]:
+            allowed_operations = self.get_role_operations(role)
 
             scope_type = object_scope_type_registry.get_by_model(scope)
 
@@ -262,8 +166,10 @@ class RolePermissionManagerType(PermissionManagerType):
 
                 # Remove or add exceptions to the exception list according to the
                 # default policy for the group
-
-                if operation_type.type not in allowed_operations:
+                if (
+                    operation_type.type not in allowed_operations
+                    or role.uid == RoleAssignmentHandler.ADMIN_ROLE
+                ):
                     if default:
                         exceptions |= set(context_exceptions)
                     else:
@@ -318,14 +224,16 @@ class RolePermissionManagerType(PermissionManagerType):
         if group is None or not self.is_enabled(group):
             return None
 
-        if group.get_group_user(actor).permissions == "ADMIN":
+        if group.get_group_user(actor).permissions == RoleAssignmentHandler.ADMIN_ROLE:
             return {
                 op.type: {"default": True, "exceptions": []}
                 for op in operation_type_registry.get_all()
             }
 
         # Get all role assignments for this actor into this group
-        role_assignments = self.get_sorted_user_scope_operations(group, actor)
+        role_assignments = RoleAssignmentHandler().get_sorted_subject_scope_roles(
+            group, actor
+        )
 
         result = defaultdict(lambda: {"default": False, "exceptions": []})
 
@@ -353,11 +261,13 @@ class RolePermissionManagerType(PermissionManagerType):
             return queryset
 
         # Admin bypass
-        if group.get_group_user(actor).permissions == "ADMIN":
+        if group.get_group_user(actor).permissions == RoleAssignmentHandler.ADMIN_ROLE:
             return queryset
 
         # Get all role assignments for this user into this group
-        role_assignments = self.get_sorted_user_scope_operations(group, actor)
+        role_assignments = RoleAssignmentHandler().get_sorted_subject_scope_roles(
+            group, actor
+        )
 
         operation_type = operation_type_registry.get(operation_name)
 

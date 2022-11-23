@@ -17,6 +17,7 @@ from baserow.core.registries import (
     subject_type_registry,
 )
 from baserow_enterprise.features import RBAC
+from baserow_enterprise.role.exceptions import CantAssignRoleExceptionToAdmin
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
@@ -80,6 +81,15 @@ class AssignRoleActionType(ActionType):
         previous_role = role_assignment_handler.get_current_role_assignment(
             subject, group, scope=scope
         )
+
+        # Check if the role assignment is not an exception for an admin
+        if role_assignment_handler.get_computed_role(
+            group, subject, scope
+        ).uid == role_assignment_handler.ADMIN_ROLE and (
+            previous_role is None
+            or previous_role.role.uid != role_assignment_handler.ADMIN_ROLE
+        ):
+            raise CantAssignRoleExceptionToAdmin()
 
         role_assignment = role_assignment_handler.assign_role(
             subject,

@@ -204,8 +204,6 @@ BUILDER_OPS = EDITOR_OPS + [
     UpdateFieldOperationType,
     TypeFormulaOperationType,
     RunAirtableImportJobOperationType,
-    OrderTablesDatabaseTableOperationType,
-    OrderApplicationsOperationType,
     UpdateViewOperationType,
     DeleteViewOperationType,
     RestoreViewOperationType,
@@ -266,6 +264,8 @@ ADMIN_OPS = BUILDER_OPS + [
     UpdateRoleDatabaseOperationType,
     ReadRoleTableOperationType,
     UpdateRoleTableOperationType,
+    OrderTablesDatabaseTableOperationType,
+    OrderApplicationsOperationType,
 ]
 default_roles = {
     "ADMIN": ADMIN_OPS,

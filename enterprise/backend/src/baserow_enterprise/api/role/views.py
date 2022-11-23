@@ -27,6 +27,7 @@ from baserow.core.registries import (
 )
 from baserow.core.utils import unique_dicts_in_list
 from baserow_enterprise.api.errors import (
+    ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
     ERROR_DUPLICATE_ROLE_ASSIGNMENTS,
     ERROR_OBJECT_SCOPE_TYPE_DOES_NOT_EXIST,
     ERROR_ROLE_DOES_NOT_EXIST,
@@ -42,6 +43,7 @@ from baserow_enterprise.exceptions import (
 )
 from baserow_enterprise.features import RBAC
 from baserow_enterprise.role.actions import AssignRoleActionType
+from baserow_enterprise.role.exceptions import CantAssignRoleExceptionToAdmin
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
 
@@ -82,6 +84,7 @@ class RoleAssignmentsView(APIView):
                 [
                     "ERROR_USER_NOT_IN_GROUP",
                     "ERROR_REQUEST_BODY_VALIDATION",
+                    "ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN",
                 ]
             ),
         },
@@ -90,6 +93,7 @@ class RoleAssignmentsView(APIView):
         {
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
             ScopeNotExist: ERROR_SCOPE_DOES_NOT_EXIST,
+            CantAssignRoleExceptionToAdmin: ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
         }
     )
     @validate_body(CreateRoleAssignmentSerializer, return_validated=True)

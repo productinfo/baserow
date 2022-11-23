@@ -4,7 +4,7 @@ from django.shortcuts import reverse
 from django.test.utils import override_settings
 
 import pytest
-from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
 
 from baserow.core.subjects import UserSubjectType
 from baserow_enterprise.role.handler import RoleAssignmentHandler
@@ -23,12 +23,16 @@ def test_create_role_assignment(
 ):
     user, token = data_fixture.create_user_and_token()
     user2 = data_fixture.create_user()
-    group = data_fixture.create_group(user=user, members=[user2])
+    group = data_fixture.create_group(
+        user=user,
+        custom_permissions=[(user2, "VIEWER")],
+    )
     database = data_fixture.create_database_application(group=group)
 
-    table = data_fixture.create_database_table(user=user, database=database)
+    table = data_fixture.create_database_table(database=database, user=user)
 
     admin_role = Role.objects.get(uid="ADMIN")
+    editor_role = Role.objects.get(uid="EDITOR")
     builder_role = Role.objects.get(uid="BUILDER")
 
     assert len(RoleAssignment.objects.all()) == 0
@@ -48,8 +52,9 @@ def test_create_role_assignment(
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
     )
 
-    assert response.status_code == HTTP_200_OK
     response_json = response.json()
+
+    assert response.status_code == HTTP_200_OK
 
     role_assignment_user_2 = RoleAssignmentHandler().get_current_role_assignment(
         user2, group, scope=table
@@ -83,7 +88,7 @@ def test_create_role_assignment(
             "scope_type": "group",
             "subject_id": user2.id,
             "subject_type": UserSubjectType.type,
-            "role": admin_role.uid,
+            "role": editor_role.uid,
         },
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
     )
@@ -92,7 +97,7 @@ def test_create_role_assignment(
         user2, group
     )
 
-    assert role_assignment_user_2.role == admin_role
+    assert role_assignment_user_2.role == editor_role
     assert role_assignment_user_2.scope == group
 
     # Check that we don't create new RoleAssignment for the same scope/subject/group
@@ -103,7 +108,7 @@ def test_create_role_assignment(
             "scope_type": "database_table",
             "subject_id": user2.id,
             "subject_type": UserSubjectType.type,
-            "role": admin_role.uid,
+            "role": editor_role.uid,
         },
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
     )
@@ -112,7 +117,7 @@ def test_create_role_assignment(
         user2, group, scope=table
     )
 
-    assert role_assignment_user_2.role == admin_role
+    assert role_assignment_user_2.role == editor_role
     assert role_assignment_user_2.scope == table
 
     # Can we remove a role
@@ -137,6 +142,54 @@ def test_create_role_assignment(
     )
 
     assert role_assignment_user_2 is None
+
+    # Put admin at database level and try to change a sub scope to another role
+    response = api_client.post(
+        url,
+        {
+            "scope_id": database.id,
+            "scope_type": "database",
+            "subject_id": user2.id,
+            "subject_type": UserSubjectType.type,
+            "role": admin_role.uid,
+        },
+        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
+    )
+    assert response.status_code == HTTP_200_OK
+
+    response = api_client.post(
+        url,
+        {
+            "scope_id": table.id,
+            "scope_type": "database_table",
+            "subject_id": user2.id,
+            "subject_type": UserSubjectType.type,
+            "role": editor_role.uid,
+        },
+        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
+    )
+    response_json = response.json()
+
+    assert response.status_code == HTTP_400_BAD_REQUEST
+    assert response_json == {
+        "error": "ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN",
+        "detail": "You can't assign a role exception to a scope with ADMIN role.",
+    }
+
+    # But we can still change the role at this level
+    response = api_client.post(
+        url,
+        {
+            "scope_id": database.id,
+            "scope_type": "database",
+            "subject_id": user2.id,
+            "subject_type": UserSubjectType.type,
+            "role": editor_role.uid,
+        },
+        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
+    )
+
+    assert response.status_code == HTTP_200_OK
 
 
 @pytest.mark.django_db

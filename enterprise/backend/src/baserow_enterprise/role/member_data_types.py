@@ -27,7 +27,9 @@ class EnterpriseRolesDataType(MemberDataType):
             return serialized_data
 
         for member in serialized_data:
-            role = RoleAssignmentHandler().get_role_or_fallback(member["permissions"])
+            role = RoleAssignmentHandler().get_role_with_fallback(
+                role_uid=member["permissions"]
+            )
             member["role_uid"] = role.uid
 
         return serialized_data

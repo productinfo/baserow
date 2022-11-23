@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, Union
+from functools import cmp_to_key
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
@@ -19,27 +20,80 @@ from baserow_enterprise.teams.models import Team
 User = get_user_model()
 
 
+def compare_scopes(a, b):
+    a_scope_type = object_scope_type_registry.get_by_model(a[0])
+    b_scope_type = object_scope_type_registry.get_by_model(b[0])
+    a_includes_b = object_scope_type_registry.scope_type_includes_scope_type(
+        a_scope_type, b_scope_type
+    )
+    b_includes_a = object_scope_type_registry.scope_type_includes_scope_type(
+        b_scope_type, a_scope_type
+    )
+
+    if a_includes_b and b_includes_a:
+        return 0
+    if a_includes_b:
+        return -1
+    if b_includes_a:
+        return 1
+
+
 class RoleAssignmentHandler:
     _role_cache_by_uid: Dict[str, List[str]] = {}
+    _role_cache_by_id: Dict[int, List[str]] = {}
+    _init = False
     role_fallback = "NO_ROLE"
+    ADMIN_ROLE = "ADMIN"
+    NO_ROLE_ROLE = "NO_ROLE"
 
-    def get_role(self, role_uid: str = None) -> Role:
+    def get_role(self, role_uid: str = None, role_id: int = None) -> Role:
         """
-        Returns the role for the given uid.
+        Returns the role for the given id or uid.
 
-        This method is memoized.
+        This method is kinda memoized.
 
         :param role_uid: The uid we want the role for.
+        :param role_id: The id we want the role for.
         :return: A role.
         """
 
         if role_uid == "MEMBER":
             role_uid = "BUILDER"
 
-        if role_uid not in self._role_cache_by_uid:
-            self._role_cache_by_uid[role_uid] = Role.objects.get(uid=role_uid)
+        if not self._init:
+            # Populate the cache
+            self._init = True
+            for role in Role.objects.prefetch_related("operations").all():
+                self._role_cache_by_uid[role.uid] = role
+                self._role_cache_by_id[role.id] = role
 
-        return self._role_cache_by_uid[role_uid]
+        if role_uid is not None:
+            if role_uid not in self._role_cache_by_uid:
+                raise Role.DoesNotExist()
+            return self._role_cache_by_uid[role_uid]
+
+        elif role_id is not None:
+            if role_id not in self._role_cache_by_id:
+                raise Role.DoesNotExist()
+            return self._role_cache_by_id[role_id]
+
+    def get_role_with_fallback(self, role_uid: str = None, role_id: int = None) -> Role:
+        """
+        Returns the role for the given uid or the id.
+        If `role_uid` or `role_id` isn't found, we fall back to `role_fallback`.
+
+        :param role_uid: The uid we want the role for.
+        :param role_id: The id we want the role for.
+        :return: A role.
+        """
+
+        try:
+            return self.get_role(role_uid=role_uid, role_id=role_id)
+        except Role.DoesNotExist:
+            # If `role_fallback` doesn't exist, raise.
+            if role_uid == self.role_fallback:
+                raise
+            return self.get_role(role_uid=self.role_fallback)
 
     def get_role_or_fallback(self, role_uid: str = None) -> Role:
         """
@@ -88,7 +142,7 @@ class RoleAssignmentHandler:
             try:
                 group_user = group.get_group_user(subject)
                 role_uid = group_user.permissions
-                role = self.get_role_or_fallback(role_uid)
+                role = self.get_role_with_fallback(role_uid=role_uid)
                 # We need to fake a RoleAssignment instance here to keep the same
                 # return interface
                 return RoleAssignment(
@@ -115,6 +169,88 @@ class RoleAssignmentHandler:
             return role_assignment
         except RoleAssignment.DoesNotExist:
             return None
+
+    def get_sorted_subject_scope_roles(
+        self, group: Group, actor: AbstractUser
+    ) -> List[Tuple[Any, Role]]:
+        """
+        Returns the RoleAssignments for the given actor in the given group. The roles
+        are ordered by position of the role scope in the object hierarchy: the highest
+        parent is before the lowest.
+
+        :param group: The group the RoleAssignments belong to.
+        :param actor: The actor for whom we want the RoleAssignments for.
+        :param operation: An optional Operation to select only roles containing this
+            operation.
+        :return: A list of tuple containing the scope and the role ordered by scope.
+            The higher a scope is high in the object hierarchy, the higher the tuple in
+            the list.
+        """
+
+        role_assignment_handler = RoleAssignmentHandler()
+
+        roles = RoleAssignment.objects.filter(
+            group=group,
+            subject_type=ContentType.objects.get_for_model(User),
+            subject_id=actor.id,
+        ).exclude(scope_type=ContentType.objects.get_for_model(Group))
+
+        # TODO potentially n-queries here.
+        available_operations_per_scope = [
+            (r.scope, role_assignment_handler.get_role(role_id=r.role_id))
+            for r in roles
+        ]
+
+        # Get the group level role by reading the GroupUser permissions property
+        group_level_role = role_assignment_handler.get_role_with_fallback(
+            role_uid=group.get_group_user(actor).permissions
+        )
+
+        available_operations_per_scope = [
+            (
+                group,
+                group_level_role,
+            )
+        ] + available_operations_per_scope
+
+        # Roles are ordered by scope size. The higher in the hierarchy, the higher
+        # in the list.
+        available_operations_per_scope.sort(key=cmp_to_key(compare_scopes))
+
+        return available_operations_per_scope
+
+    def get_computed_role(self, group, actor, context):
+        role_assignments = self.get_sorted_subject_scope_roles(group, actor)
+        most_precise_role = self.NO_ROLE_ROLE
+
+        for (scope, role) in role_assignments:
+            if object_scope_type_registry.scope_includes_context(scope, context):
+                # If any role of a scope parent of the context is ADMIN then the
+                # operation is allowed even if a child creates exceptions.
+                if role.uid == self.ADMIN_ROLE:
+                    return role
+                # Check if this scope includes the context. As the role assignments
+                # are Sorted, the new scope is more precise than the previous one.
+                # So we keep this new role.
+                most_precise_role = role
+            elif (
+                object_scope_type_registry.scope_includes_context(context, scope)
+                and role.uid != self.NO_ROLE_ROLE
+            ):
+                # Here the user has a permission on a scope that is a child of the
+                # context, then we grant the user permission on all read operations
+                # for all parents of that scope and hence this context should be
+                # readable.
+                # For example, if you have a "BUILDER" role on only a table scope,
+                # and the context here is the parent database of this table the
+                # user should be able to read this database object so they can
+                # actually have access to lower down.
+                if most_precise_role.uid == self.NO_ROLE_ROLE:
+                    most_precise_role = RoleAssignmentHandler().get_role(
+                        role_uid="VIEWER"
+                    )
+
+        return most_precise_role
 
     def assign_role(
         self,
@@ -204,6 +340,7 @@ class RoleAssignmentHandler:
             CoreHandler().force_update_group_user(
                 None, group_user, permissions=new_permissions
             )
+            return
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 
