@@ -32,6 +32,7 @@ from baserow.core.operations import (
     ListGroupsOperationType,
     ReadApplicationOperationType,
     ReadGroupOperationType,
+    UpdateApplicationOperationType,
     UpdateGroupOperationType,
     UpdateSettingsOperationType,
 )
@@ -620,10 +621,158 @@ def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
     check_perms(builder_less, builder_less_tests)
 
 
+def test_check_permissions_with_teams(
+    data_fixture, enterprise_data_fixture, synced_roles
+):
+    enterprise_data_fixture.enable_enterprise()
+    user = data_fixture.create_user()
+
+    group_1 = data_fixture.create_group(
+        user=user,
+    )
+    database_1 = data_fixture.create_database_application(group=group_1, order=1)
+
+    table_1_1, _, _ = data_fixture.build_table(
+        columns=[("number", "number"), ("text", "text")],
+        rows=[[1, "test"]],
+        database=database_1,
+        order=1,
+    )
+
+    table_1_2, _, _ = data_fixture.build_table(
+        columns=[("number", "number"), ("text", "text")],
+        rows=[[1, "test"]],
+        database=database_1,
+        order=2,
+    )
+
+    team1 = enterprise_data_fixture.create_team(group=group_1, members=[user])
+
+    role_builder = Role.objects.get(uid="BUILDER")
+    role_viewer = Role.objects.get(uid="VIEWER")
+    role_no_access = Role.objects.get(uid="NO_ACCESS")
+    low_priority_role = Role.objects.get(uid="NO_ROLE_LOW_PRIORITY")
+
+    perm_manager = RolePermissionManagerType()
+
+    # The low priority role gives no permissions
+    RoleAssignmentHandler().assign_role(user, group_1, role=low_priority_role)
+
+    with pytest.raises(PermissionException):
+        perm_manager.check_permissions(
+            user,
+            ReadApplicationOperationType.type,
+            group=group_1,
+            context=database_1,
+        )
+
+    # The user role should take the precedence
+    RoleAssignmentHandler().assign_role(user, group_1, role=role_builder)
+    RoleAssignmentHandler().assign_role(team1, group_1, role=role_viewer)
+
+    assert (
+        perm_manager.check_permissions(
+            user,
+            UpdateApplicationOperationType.type,
+            group=group_1,
+            context=database_1,
+        )
+        is True
+    )
+
+    # Now the user role is low_priority the team role should work
+    RoleAssignmentHandler().assign_role(user, group_1, role=low_priority_role)
+
+    assert (
+        perm_manager.check_permissions(
+            user,
+            ReadApplicationOperationType.type,
+            group=group_1,
+            context=database_1,
+        )
+        is True
+    )
+
+    with pytest.raises(PermissionException):
+        perm_manager.check_permissions(
+            user,
+            UpdateApplicationOperationType.type,
+            group=group_1,
+            context=database_1,
+        )
+
+    # Prevent from accessing the table at team level
+    RoleAssignmentHandler().assign_role(
+        team1, group_1, role=role_no_access, scope=table_1_1
+    )
+
+    with pytest.raises(PermissionException):
+        perm_manager.check_permissions(
+            user,
+            ReadDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_1,
+        )
+
+    assert (
+        perm_manager.check_permissions(
+            user,
+            ReadDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_2,
+        )
+        is True
+    )
+
+    # And now user level table role should override the team role
+    RoleAssignmentHandler().assign_role(
+        user, group_1, role=role_builder, scope=table_1_1
+    )
+
+    assert (
+        perm_manager.check_permissions(
+            user,
+            UpdateDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_1,
+        )
+        is True
+    )
+
+    with pytest.raises(PermissionException):
+        perm_manager.check_permissions(
+            user,
+            UpdateDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_2,
+        )
+
+    # User is now BUILDER at database level. Team most precise role should be used
+    RoleAssignmentHandler().assign_role(user, group_1, role=None, scope=table_1_1)
+    RoleAssignmentHandler().assign_role(
+        user, group_1, role=role_builder, scope=database_1
+    )
+
+    with pytest.raises(PermissionException):
+        perm_manager.check_permissions(
+            user,
+            ReadDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_1,
+        )
+
+    assert (
+        perm_manager.check_permissions(
+            user,
+            ReadDatabaseTableOperationType.type,
+            group=group_1,
+            context=table_1_2,
+        )
+        is True
+    )
+
+
 @pytest.mark.django_db(transaction=True)
-@override_settings(
-    PERMISSION_MANAGERS=["core", "staff", "member", "role", "basic"],
-)
 def test_get_permissions_object(data_fixture, enterprise_data_fixture, synced_roles):
     (
         admin,
@@ -691,10 +840,101 @@ def test_get_permissions_object(data_fixture, enterprise_data_fixture, synced_ro
         builder_less, group_1, role=role_admin, scope=database_1
     )
 
-    perms = perm_manager.get_permissions_object(builder_less, group=group_1)
 
-    assert perms[UpdateDatabaseRowOperationType.type]["default"] is True
-    assert perms[UpdateDatabaseRowOperationType.type]["exceptions"] == []
+@pytest.mark.django_db(transaction=True)
+def test_get_permissions_object_with_teams(
+    data_fixture, enterprise_data_fixture, synced_roles
+):
+    enterprise_data_fixture.enable_enterprise()
+    user = data_fixture.create_user()
+
+    group_1 = data_fixture.create_group(
+        user=user,
+    )
+    database_1 = data_fixture.create_database_application(group=group_1, order=1)
+
+    table_1_1, _, _ = data_fixture.build_table(
+        columns=[("number", "number"), ("text", "text")],
+        rows=[[1, "test"]],
+        database=database_1,
+        order=1,
+    )
+
+    table_1_2, _, _ = data_fixture.build_table(
+        columns=[("number", "number"), ("text", "text")],
+        rows=[[1, "test"]],
+        database=database_1,
+        order=2,
+    )
+
+    team1 = enterprise_data_fixture.create_team(group=group_1, members=[user])
+    team2 = enterprise_data_fixture.create_team(group=group_1, members=[user])
+
+    role_builder = Role.objects.get(uid="BUILDER")
+    role_viewer = Role.objects.get(uid="VIEWER")
+    role_no_access = Role.objects.get(uid="NO_ACCESS")
+    low_priority_role = Role.objects.get(uid="NO_ROLE_LOW_PRIORITY")
+
+    perm_manager = RolePermissionManagerType()
+
+    RoleAssignmentHandler().assign_role(user, group_1, role=low_priority_role)
+
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert all([not perm["default"] for perm in perms])
+    assert all([not perm["exceptions"] for perm in perms])
+
+    # The user role should take the precedence
+    RoleAssignmentHandler().assign_role(user, group_1, role=role_builder)
+    RoleAssignmentHandler().assign_role(team1, group_1, role=role_viewer)
+    RoleAssignmentHandler().assign_role(team2, group_1, role=role_viewer)
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[UpdateApplicationOperationType.type]["default"] is True
+    assert perms[UpdateApplicationOperationType.type]["exceptions"] == []
+
+    # Now the user role is low_priority the team role should work
+    RoleAssignmentHandler().assign_role(user, group_1, role=low_priority_role)
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[UpdateApplicationOperationType.type]["default"] is False
+    assert perms[UpdateApplicationOperationType.type]["exceptions"] == []
+
+    # Prevent from accessing the table at team level
+    RoleAssignmentHandler().assign_role(
+        team1, group_1, role=role_no_access, scope=table_1_1
+    )
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[ReadDatabaseTableOperationType.type]["default"] is True
+    assert perms[ReadDatabaseTableOperationType.type]["exceptions"] == [table_1_1.id]
+
+    # And now user level table role should override the team role
+    RoleAssignmentHandler().assign_role(
+        user, group_1, role=role_builder, scope=table_1_1
+    )
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[ReadDatabaseTableOperationType.type]["default"] is True
+    assert perms[ReadDatabaseTableOperationType.type]["exceptions"] == []
+
+    # User is now BUILDER at database level. Team most precise role should be used
+    RoleAssignmentHandler().assign_role(user, group_1, role=None, scope=table_1_1)
+    RoleAssignmentHandler().assign_role(
+        user, group_1, role=role_builder, scope=database_1
+    )
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[ReadDatabaseTableOperationType.type]["default"] is True
+    assert perms[ReadDatabaseTableOperationType.type]["exceptions"] == [table_1_1.id]
+
+    RoleAssignmentHandler().assign_role(
+        team2, group_1, role=role_builder, scope=table_1_1
+    )
+    perms = perm_manager.get_permissions_object(user, group=group_1)
+
+    assert perms[ReadDatabaseTableOperationType.type]["default"] is True
+    assert perms[ReadDatabaseTableOperationType.type]["exceptions"] == []
 
 
 @pytest.mark.django_db(transaction=True)
