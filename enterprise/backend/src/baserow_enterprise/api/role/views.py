@@ -29,7 +29,6 @@ from baserow.core.registries import (
 )
 from baserow.core.utils import unique_dicts_in_list
 from baserow_enterprise.api.errors import (
-    ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
     ERROR_DUPLICATE_ROLE_ASSIGNMENTS,
     ERROR_OBJECT_SCOPE_TYPE_DOES_NOT_EXIST,
     ERROR_ROLE_DOES_NOT_EXIST,
@@ -45,7 +44,6 @@ from baserow_enterprise.exceptions import (
 )
 from baserow_enterprise.features import RBAC
 from baserow_enterprise.role.actions import AssignRoleActionType
-from baserow_enterprise.role.exceptions import CantLowerAdminsRoleOnChildException
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
 
@@ -109,7 +107,6 @@ class RoleAssignmentsView(APIView):
             SubjectNotExist: ERROR_SUBJECT_DOES_NOT_EXIST,
             ScopeNotExist: ERROR_SCOPE_DOES_NOT_EXIST,
             RoleNotExist: ERROR_ROLE_DOES_NOT_EXIST,
-            CantLowerAdminsRoleOnChildException: ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
         }
     )
     @validate_body(CreateRoleAssignmentSerializer, return_validated=True)
@@ -291,7 +288,6 @@ class BatchRoleAssignmentsView(APIView):
             ScopeNotExist: ERROR_SCOPE_DOES_NOT_EXIST,
             RoleNotExist: ERROR_ROLE_DOES_NOT_EXIST,
             DuplicateRoleAssignments: ERROR_DUPLICATE_ROLE_ASSIGNMENTS,
-            CantLowerAdminsRoleOnChildException: ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
         }
     )
     @validate_body(

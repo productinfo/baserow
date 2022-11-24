@@ -565,7 +565,7 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
 
     def contains(self, context: ContextObject):
         """
-        Return True if the context is one object of this context.
+        Returns True if the context is one object of this context.
 
         :param context: The context to test
         :return: True if the ObjectScopeType of the context is the same as this one.
@@ -573,6 +573,21 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
 
         context_scope_type = object_scope_type_registry.get_by_model(context)
         return context_scope_type.type == self.type
+
+    @cached_property
+    def level(self) -> int:
+        """
+        Returns the level of this scope in the full object hierarchy. The level is the
+        number of ancestor to get to the root object.
+
+        :return: The level of the scope.
+        """
+
+        parent = self.get_parent_scope()
+        if parent is None:
+            return 0
+        else:
+            return parent.level + 1
 
 
 class ObjectScopeTypeRegistry(Registry[ObjectScopeType], ModelRegistryMixin):

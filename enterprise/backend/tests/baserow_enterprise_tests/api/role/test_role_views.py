@@ -36,7 +36,6 @@ def test_create_role_assignment(
 
     table = data_fixture.create_database_table(database=database, user=user)
 
-    admin_role = Role.objects.get(uid="ADMIN")
     editor_role = Role.objects.get(uid="EDITOR")
     builder_role = Role.objects.get(uid="BUILDER")
 
@@ -147,54 +146,6 @@ def test_create_role_assignment(
     )
 
     assert role_assignment_user_2 is None
-
-    # Put admin at database level and try to change a sub scope to another role
-    response = api_client.post(
-        url,
-        {
-            "scope_id": database.id,
-            "scope_type": "database",
-            "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
-            "role": admin_role.uid,
-        },
-        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
-    )
-    assert response.status_code == HTTP_200_OK
-
-    response = api_client.post(
-        url,
-        {
-            "scope_id": table.id,
-            "scope_type": "database_table",
-            "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
-            "role": editor_role.uid,
-        },
-        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
-    )
-    response_json = response.json()
-
-    assert response.status_code == HTTP_400_BAD_REQUEST
-    assert response_json == {
-        "error": "ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN",
-        "detail": "You can't assign a role exception to a scope with ADMIN role.",
-    }
-
-    # But we can still change the role at this level
-    response = api_client.post(
-        url,
-        {
-            "scope_id": database.id,
-            "scope_type": "database",
-            "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
-            "role": editor_role.uid,
-        },
-        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
-    )
-
-    assert response.status_code == HTTP_200_OK
 
 
 def test_create_role_assignment_invalid_requests(api_client, data_fixture):

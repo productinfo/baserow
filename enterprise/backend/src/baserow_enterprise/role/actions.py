@@ -17,7 +17,6 @@ from baserow.core.registries import (
     subject_type_registry,
 )
 from baserow_enterprise.features import RBAC
-from baserow_enterprise.role.exceptions import CantLowerAdminsRoleOnChildException
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
@@ -81,21 +80,6 @@ class AssignRoleActionType(ActionType):
         previous_role = role_assignment_handler.get_current_role_assignment(
             subject, group, scope=scope
         )
-
-        def has_parent_with_admin_role():
-            parent = object_scope_type_registry.get_parent(scope)
-            return (
-                parent is not None
-                and role_assignment_handler.get_computed_role(
-                    group, subject, parent
-                ).uid
-                == role_assignment_handler.ADMIN_ROLE
-            )
-
-        # Check if the role assignment is not an exception for a scope under another
-        # scope targeted by an ADMIN role.
-        if role is not None and has_parent_with_admin_role():
-            raise CantLowerAdminsRoleOnChildException()
 
         role_assignment = role_assignment_handler.assign_role(
             subject,

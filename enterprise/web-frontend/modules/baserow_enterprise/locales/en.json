@@ -127,9 +127,13 @@
             "name": "Viewer",
             "description": "Can only read data."
         },
-        "noRole": {
+        "noAccess": {
             "name": "No access",
             "description": "Can't access anything."
+        },
+        "noRoleLowPriority": {
+            "name": "No role",
+            "description": "Can't access anything by default but use the roles defined on the user teams if any."
         }
     },
     "memberRolesModal": {

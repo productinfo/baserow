@@ -11,6 +11,7 @@ export default (client, $hasFeature) => {
             { uid: 'COMMENTER' },
             { uid: 'VIEWER' },
             { uid: 'NO_ACCESS' },
+            { uid: 'NO_ROLE_LOW_PRIORITY', allowed_scope_types: ['group'] },
           ],
         }
       }

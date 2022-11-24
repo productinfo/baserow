@@ -87,7 +87,10 @@ export default {
       return this.$store.getters['group/get'](this.groupId)
     },
     roles() {
-      return this.group ? this.group._.roles : []
+      return this.group._.roles.filter(
+        ({ allowed_scope_type: allowedScopeType }) =>
+          !allowedScopeType || this.scopeType in allowedScopeType
+      )
     },
     roleAssignmentsSorted() {
       return [...this.roleAssignments].sort((a, b) =>

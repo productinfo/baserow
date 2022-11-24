@@ -57,6 +57,12 @@ export default {
       )
     },
     roles() {
+      if (this.group) {
+        return this.group._.roles.filter(
+          ({ allowed_scope_type: allowedScopeType }) =>
+            !allowedScopeType || 'group' in allowedScopeType
+        )
+      }
       return this.group ? this.group._.roles : []
     },
     ...mapGetters({ userId: 'auth/getUserId' }),
