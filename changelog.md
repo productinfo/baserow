@@ -11,20 +11,42 @@ For example:
 
 ### New Features
 
-* OAuth 2 flows now support redirects to specific pages. [#1288](https://gitlab.com/bramw/baserow/-/issues/1288)
-* Add support for language selection and group invitation tokens for OAuth 2 and SAML. [#1293](https://gitlab.com/bramw/baserow/-/issues/1293)
-* Calendar / date field picker: Highlight the current date and weekend [#1128](https://gitlab.com/bramw/baserow/-/issues/1128)
+* Automatically enable/disable enterprise features upon activation/deactivation without needing a page refresh first. [#1306](https://gitlab.com/bramw/baserow/-/issues/1306)
+* Allow creating a new option by pressing enter in the dropdown [#1169](https://gitlab.com/bramw/baserow/-/issues/1169)
+* Added the teams functionality as an enterprise feature. [#1226](https://gitlab.com/bramw/baserow/-/issues/1226)
+* Improved grid view on smaller screens by not making the primary field sticky. [#690](https://gitlab.com/bramw/baserow/-/issues/690)
 * Pressing shift + enter in a selected cell of the grid view creates a new row. [#1097](https://gitlab.com/bramw/baserow/-/issues/1097)
 
 ### Bug Fixes
 
+### Refactors
+
+* Refresh the JWT token when needed instead of periodically. [#1294](https://gitlab.com/bramw/baserow/-/issues/1294)
+
+## Released (2022-11-22 1.13.1)
+
+### New Features
+
+* OAuth 2 flows now support redirects to specific pages. [#1288](https://gitlab.com/bramw/baserow/-/issues/1288)
+* Add support for language selection and group invitation tokens for OAuth 2 and SAML. [#1293](https://gitlab.com/bramw/baserow/-/issues/1293)
+* Implemented the option to start direct support if the instance is on the enterprise plan.
+* Calendar / date field picker: Highlight the current date and weekend [#1128](https://gitlab.com/bramw/baserow/-/issues/1128)
+* Made it possible to optionally hide fields in a publicly shared form by providing the `hide_FIELD` query parameter. [#1096](https://gitlab.com/bramw/baserow/-/issues/1096)
+
+### Bug Fixes
+
+* Standardize the API documentation "token" references.
 * Raise an exception when a user doesn't have a required feature on an endpoint
 * Fixed authenticated state changing before redirected to the login page when logging off. [#1328](https://gitlab.com/bramw/baserow/-/issues/1328)
 * `permanently_delete_marked_trash` task no longer fails on permanently deleting a table before an associated rows batch.  [#1266](https://gitlab.com/bramw/baserow/-/issues/1266)
+* Fixed bug where "add filter" link was not clickable if the primary field has no compatible filter types. [#1302](https://gitlab.com/bramw/baserow/-/issues/1302)
+* Fixed OAuth 2 flows for providers that don't provide user's name. Email will be used as a temporary placeholder so that an account can be created.  [#1371](https://gitlab.com/bramw/baserow/-/issues/1371)
 
 ### Refactors
+
 * Changed `TableGroupStorageUsageItemType.calculate_storage_usage` to use a PL/pgSQL function to speedup the storage usage calculation.
 * Replace the CSS classes for SSO settings forms. [#1336](https://gitlab.com/bramw/baserow/-/issues/1336)
+* Moved the Open Sans font to the static directory instead of a Google fonts dependency. [#1246](https://gitlab.com/bramw/baserow/-/issues/1246)
 
 ### Breaking Changes
 

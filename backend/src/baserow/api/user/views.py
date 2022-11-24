@@ -64,7 +64,7 @@ from .errors import (
     ERROR_INVALID_CREDENTIALS,
     ERROR_INVALID_OLD_PASSWORD,
     ERROR_INVALID_PASSWORD,
-    ERROR_INVALID_TOKEN,
+    ERROR_INVALID_REFRESH_TOKEN,
     ERROR_UNDO_REDO_LOCK_CONFLICT,
     ERROR_USER_IS_LAST_ADMIN,
     ERROR_USER_NOT_FOUND,
@@ -106,13 +106,13 @@ class ObtainJSONWebToken(TokenObtainPairView):
         operation_id="token_auth",
         description=(
             "Authenticates an existing user based on their email and their password. "
-            "If successful an access token and a refresh token will be returned."
+            "If successful, an access token and a refresh token will be returned."
         ),
         responses={
             200: create_user_response_schema,
             401: {
-                "description": "A user with the provided username and password is "
-                "not found."
+                "description": "An active user with the provided email and password "
+                "could not be found."
             },
         },
         auth=[],
@@ -139,11 +139,11 @@ class RefreshJSONWebToken(TokenRefreshView):
         ),
         responses={
             200: authenticate_user_schema,
-            401: {"description": "The refresh token is invalid or expired."},
+            401: {"description": "The JWT refresh token is invalid or expired."},
         },
         auth=[],
     )
-    @map_exceptions({InvalidToken: ERROR_INVALID_TOKEN})
+    @map_exceptions({InvalidToken: ERROR_INVALID_REFRESH_TOKEN})
     def post(self, *args, **kwargs):
         return super().post(*args, **kwargs)
 
@@ -160,11 +160,11 @@ class VerifyJSONWebToken(TokenVerifyView):
         ),
         responses={
             200: verify_user_schema,
-            401: {"description": "The refresh token is invalid or expired."},
+            401: {"description": "The JWT refresh token is invalid or expired."},
         },
         auth=[],
     )
-    @map_exceptions({InvalidToken: ERROR_INVALID_TOKEN})
+    @map_exceptions({InvalidToken: ERROR_INVALID_REFRESH_TOKEN})
     def post(self, *args, **kwargs):
         return super().post(*args, **kwargs)
 
@@ -178,7 +178,7 @@ class UserView(APIView):
         operation_id="create_user",
         description=(
             "Creates a new user based on the provided values. If desired an "
-            "authentication token can be generated right away. After creating an "
+            "authentication JWT can be generated right away. After creating an "
             "account the initial group containing a database is created."
         ),
         responses={
@@ -326,7 +326,7 @@ class ResetPasswordView(APIView):
     )
     @validate_body(ResetPasswordBodyValidationSerializer)
     def post(self, request, data):
-        """Changes users password if the provided token is valid."""
+        """Changes users password if the provided reset token is valid."""
 
         handler = UserHandler()
         handler.reset_password(data["token"], data["password"])

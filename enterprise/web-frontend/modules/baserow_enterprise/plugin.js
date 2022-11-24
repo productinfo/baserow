@@ -11,6 +11,7 @@ import {
   OpenIdConnectAuthProviderType,
 } from '@baserow_enterprise/authProviderTypes'
 
+import { TeamsGroupSettingsPageType } from '@baserow_enterprise/groupSettingsPageTypes'
 import { EnterpriseMembersPagePluginType } from '@baserow_enterprise/membersPagePluginTypes'
 import en from '@baserow_enterprise/locales/en.json'
 import fr from '@baserow_enterprise/locales/fr.json'
@@ -18,7 +19,11 @@ import nl from '@baserow_enterprise/locales/nl.json'
 import de from '@baserow_enterprise/locales/de.json'
 import es from '@baserow_enterprise/locales/es.json'
 import it from '@baserow_enterprise/locales/it.json'
-import { EnterpriseLicenseType } from '@baserow_enterprise/licenseTypes'
+import {
+  EnterpriseWithoutSupportLicenseType,
+  EnterpriseLicenseType,
+} from '@baserow_enterprise/licenseTypes'
+import { EnterprisePlugin } from '@baserow_enterprise/plugins'
 
 export default (context) => {
   const { app, isDev, store } = context
@@ -33,6 +38,8 @@ export default (context) => {
     i18n.mergeLocaleMessage('es', es)
     i18n.mergeLocaleMessage('it', it)
   }
+
+  app.$registry.register('plugin', new EnterprisePlugin(context))
 
   app.$registry.register(
     'permissionManager',
@@ -57,6 +64,16 @@ export default (context) => {
   app.$registry.register(
     'membersPagePlugins',
     new EnterpriseMembersPagePluginType(context)
+  )
+
+  app.$registry.register(
+    'groupSettingsPage',
+    new TeamsGroupSettingsPageType(context)
+  )
+
+  app.$registry.register(
+    'license',
+    new EnterpriseWithoutSupportLicenseType(context)
   )
 
   app.$registry.register('license', new EnterpriseLicenseType(context))
