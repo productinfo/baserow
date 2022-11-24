@@ -24,14 +24,16 @@ export function populateSort(sort) {
 }
 
 export function populateDecoration(decoration, registry) {
-  const valueProvider = registry.get(
-    'decoratorValueProvider',
-    decoration.value_provider_type
-  )
   decoration._ = { loading: false }
-  decoration.value_provider_conf = valueProvider.populateConf(
-    decoration.value_provider_conf
-  )
+  if (decoration.value_provider_type) {
+    const valueProvider = registry.get(
+      'decoratorValueProvider',
+      decoration.value_provider_type
+    )
+    decoration.value_provider_conf = valueProvider.populateConf(
+      decoration.value_provider_conf
+    )
+  }
   return decoration
 }
 
@@ -646,6 +648,8 @@ export const actions = {
     { dispatch, commit },
     { decoration, values, readOnly = false }
   ) {
+    console.log(values)
+
     commit('SET_DECORATION_LOADING', { decoration, value: true })
 
     const oldValues = {}

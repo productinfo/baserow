@@ -134,13 +134,13 @@ export class ConditionalColorValueProviderType extends DecoratorValueProviderTyp
 
   getDefaultConfiguration({ fields }) {
     const { $registry } = this.app
-    return {
+    return this.populateConf({
       default: null,
       colors: [
         ConditionalColorValueProviderType.getDefaultColorConf($registry, {
           fields,
         }),
       ],
-    }
+    })
   }
 }
