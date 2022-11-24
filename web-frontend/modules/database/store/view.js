@@ -648,8 +648,6 @@ export const actions = {
     { dispatch, commit },
     { decoration, values, readOnly = false }
   ) {
-    console.log(values)
-
     commit('SET_DECORATION_LOADING', { decoration, value: true })
 
     const oldValues = {}
