@@ -17,7 +17,7 @@ from baserow.core.registries import (
     subject_type_registry,
 )
 from baserow_enterprise.features import RBAC
-from baserow_enterprise.role.exceptions import CantAssignRoleExceptionToAdmin
+from baserow_enterprise.role.exceptions import CantLowerAdminsRoleOnChildException
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
@@ -82,14 +82,17 @@ class AssignRoleActionType(ActionType):
             subject, group, scope=scope
         )
 
-        # Check if the role assignment is not an exception for an admin
-        if role_assignment_handler.get_computed_role(
-            group, subject, scope
-        ).uid == role_assignment_handler.ADMIN_ROLE and (
-            previous_role is None
-            or previous_role.role.uid != role_assignment_handler.ADMIN_ROLE
-        ):
-            raise CantAssignRoleExceptionToAdmin()
+        def has_parent_with_admin_role():
+            parent = object_scope_type_registry.get_parent(scope)
+            return (
+                role_assignment_handler.get_computed_role(group, subject, parent).uid
+                == role_assignment_handler.ADMIN_ROLE
+            )
+
+        # Check if the role assignment is not an exception for a scope under another
+        # scope targeted by an ADMIN role.
+        if has_parent_with_admin_role():
+            raise CantLowerAdminsRoleOnChildException()
 
         role_assignment = role_assignment_handler.assign_role(
             subject,
@@ -147,7 +150,7 @@ class AssignRoleActionType(ActionType):
         )
 
         role = (
-            Role.objects.get(uid=params.original_role_uid)
+            role_assignment_handler.get_role_by_uid(params.original_role_uid)
             if params.original_role_uid
             else None
         )
@@ -186,7 +189,11 @@ class AssignRoleActionType(ActionType):
             params.subject_id, params.subject_type
         )
 
-        role = Role.objects.get(uid=params.role_uid) if params.role_uid else None
+        role = (
+            role_assignment_handler.get_role_by_uid(params.role_uid)
+            if params.role_uid
+            else None
+        )
 
         role_assignment_handler.assign_role(
             subject,

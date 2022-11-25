@@ -29,7 +29,7 @@ export class RolePermissionManagerType extends PermissionManagerType {
         name: i18n.t('roles.viewer.name'),
         description: i18n.t('roles.viewer.description'),
       },
-      NO_ROLE: {
+      NO_ACCESS: {
         name: i18n.t('roles.noRole.name'),
         description: i18n.t('roles.noRole.description'),
       },

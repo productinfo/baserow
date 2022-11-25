@@ -26,7 +26,7 @@ def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_ro
         viewer,
         viewer_plus,
         builder_less,
-        no_role,
+        no_access,
         group_1,
         group_2,
         database_1,
@@ -38,7 +38,7 @@ def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_ro
         table_2_2,
     ) = _populate_test_data(data_fixture, enterprise_data_fixture)
 
-    users = [admin, builder, editor, viewer, viewer_plus, builder_less, no_role]
+    users = [admin, builder, editor, viewer, viewer_plus, builder_less, no_access]
 
     result = EnterpriseRolesDataType().annotate_serialized_data(
         group_1,
@@ -59,7 +59,7 @@ def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_ro
         {"permissions": "VIEWER", "role_uid": "VIEWER", "user_id": viewer.id},
         {"permissions": "VIEWER", "role_uid": "VIEWER", "user_id": viewer_plus.id},
         {"permissions": "BUILDER", "role_uid": "BUILDER", "user_id": builder_less.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": no_role.id},
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": no_access.id},
     ]
 
     result = EnterpriseRolesDataType().annotate_serialized_data(
@@ -75,11 +75,19 @@ def test_roles_member_data_type(data_fixture, enterprise_data_fixture, synced_ro
         ],
     )
     assert result == [
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": admin.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": builder.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": editor.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": viewer.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": viewer_plus.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": builder_less.id},
-        {"permissions": "NO_ROLE", "role_uid": "NO_ROLE", "user_id": no_role.id},
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": admin.id},
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": builder.id},
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": editor.id},
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": viewer.id},
+        {
+            "permissions": "NO_ACCESS",
+            "role_uid": "NO_ACCESS",
+            "user_id": viewer_plus.id,
+        },
+        {
+            "permissions": "NO_ACCESS",
+            "role_uid": "NO_ACCESS",
+            "user_id": builder_less.id,
+        },
+        {"permissions": "NO_ACCESS", "role_uid": "NO_ACCESS", "user_id": no_access.id},
     ]

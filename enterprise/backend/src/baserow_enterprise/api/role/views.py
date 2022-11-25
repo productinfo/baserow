@@ -43,7 +43,7 @@ from baserow_enterprise.exceptions import (
 )
 from baserow_enterprise.features import RBAC
 from baserow_enterprise.role.actions import AssignRoleActionType
-from baserow_enterprise.role.exceptions import CantAssignRoleExceptionToAdmin
+from baserow_enterprise.role.exceptions import CantLowerAdminsRoleOnChildException
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.permission_manager import RolePermissionManagerType
 
@@ -93,7 +93,7 @@ class RoleAssignmentsView(APIView):
         {
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
             ScopeNotExist: ERROR_SCOPE_DOES_NOT_EXIST,
-            CantAssignRoleExceptionToAdmin: ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
+            CantLowerAdminsRoleOnChildException: ERROR_CANT_ASSIGN_ROLE_EXCEPTION_TO_ADMIN,
         }
     )
     @validate_body(CreateRoleAssignmentSerializer, return_validated=True)

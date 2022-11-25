@@ -114,7 +114,7 @@ def test_remove_role(data_fixture):
         user, group, scope=table
     )
 
-    assert role_assignment_group.role.uid == "NO_ROLE"
+    assert role_assignment_group.role.uid == "NO_ACCESS"
     assert role_assignment_table is None
 
 
@@ -386,7 +386,7 @@ def test_assign_role_batch_delete_group_user(data_fixture):
     user_type = ContentType.objects.get_for_model(user)
     group_type = ContentType.objects.get_for_model(group)
     admin_role = Role.objects.get(uid="ADMIN")
-    no_role_role = Role.objects.get(uid="NO_ROLE")
+    no_access_role = Role.objects.get(uid="NO_ACCESS")
 
     values = [
         {
@@ -420,7 +420,7 @@ def test_assign_role_batch_delete_group_user(data_fixture):
     RoleAssignmentHandler().assign_role_batch(user, group, values)
 
     group_user_2 = GroupUser.objects.get(group=group, user=user_2)
-    assert group_user_2.permissions == no_role_role.uid
+    assert group_user_2.permissions == no_access_role.uid
 
 
 @pytest.mark.django_db
@@ -490,7 +490,7 @@ def test_assign_role_batch_performance(data_fixture):
     database = data_fixture.create_database_application(group=group)
 
     admin_role = Role.objects.get(uid="ADMIN")
-    no_role_role = Role.objects.get(uid="NO_ROLE")
+    no_access_role = Role.objects.get(uid="NO_ACCESS")
     user_type = ContentType.objects.get_for_model(user)
     group_type = ContentType.objects.get_for_model(group)
     database_type = ContentType.objects.get_for_model(database)
@@ -544,7 +544,7 @@ def test_assign_role_batch_performance(data_fixture):
     assert len(group_users) == sample_size
 
     for group_user in group_users:
-        assert group_user.permissions == no_role_role.uid
+        assert group_user.permissions == no_access_role.uid
 
     print("----------GROUP LEVEL DELETIONS------------")
     print(profiler.output_text(unicode=True, color=True))

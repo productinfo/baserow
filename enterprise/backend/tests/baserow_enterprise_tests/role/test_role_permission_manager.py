@@ -55,23 +55,23 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
     viewer = data_fixture.create_user(email="viewer@test.net")
     viewer_plus = data_fixture.create_user(email="viewer_plus@test.net")
     builder_less = data_fixture.create_user(email="builder_less@test.net")
-    no_role = data_fixture.create_user(email="no_role@test.net")
+    no_access = data_fixture.create_user(email="no_access@test.net")
     another_admin = data_fixture.create_user(email="another_admin@test.net")
 
     group_1 = data_fixture.create_group(
         user=admin,
-        members=[builder, viewer, editor, viewer_plus, builder_less, no_role],
+        members=[builder, viewer, editor, viewer_plus, builder_less, no_access],
     )
     group_2 = data_fixture.create_group(
         user=another_admin,
         custom_permissions=[
-            (admin, "NO_ROLE"),
-            (builder, "NO_ROLE"),
-            (viewer, "NO_ROLE"),
-            (editor, "NO_ROLE"),
-            (viewer_plus, "NO_ROLE"),
-            (builder_less, "NO_ROLE"),
-            (no_role, "NO_ROLE"),
+            (admin, "NO_ACCESS"),
+            (builder, "NO_ACCESS"),
+            (viewer, "NO_ACCESS"),
+            (editor, "NO_ACCESS"),
+            (viewer_plus, "NO_ACCESS"),
+            (builder_less, "NO_ACCESS"),
+            (no_access, "NO_ACCESS"),
         ],
     )
 
@@ -108,7 +108,7 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
     role_builder = Role.objects.get(uid="BUILDER")
     role_viewer = Role.objects.get(uid="VIEWER")
     role_editor = Role.objects.get(uid="EDITOR")
-    role_no_role = Role.objects.get(uid="NO_ROLE")
+    role_no_access = Role.objects.get(uid="NO_ACCESS")
 
     # Group level assignments
     RoleAssignmentHandler().assign_role(builder, group_1, role=role_builder)
@@ -116,7 +116,7 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
     RoleAssignmentHandler().assign_role(editor, group_1, role=role_editor)
     RoleAssignmentHandler().assign_role(viewer_plus, group_1, role=role_viewer)
     RoleAssignmentHandler().assign_role(builder_less, group_1, role=role_builder)
-    RoleAssignmentHandler().assign_role(no_role, group_1, role=role_no_role)
+    RoleAssignmentHandler().assign_role(no_access, group_1, role=role_no_access)
 
     # Table level assignments
     RoleAssignmentHandler().assign_role(
@@ -136,7 +136,7 @@ def _populate_test_data(data_fixture, enterprise_data_fixture):
         viewer,
         viewer_plus,
         builder_less,
-        no_role,
+        no_access,
         group_1,
         group_2,
         database_1,
@@ -162,7 +162,7 @@ def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
         viewer,
         viewer_plus,
         builder_less,
-        no_role,
+        no_access,
         group_1,
         group_2,
         database_1,
@@ -204,7 +204,7 @@ def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
                         f"User {user} shouldn't have permission {permission.type} on context {context}"
                     )
 
-    no_role_tests = [
+    no_access_tests = [
         # Group 1
         (ReadGroupOperationType, group_1, False),
         (UpdateGroupOperationType, group_1, False),
@@ -237,7 +237,7 @@ def test_check_permissions(data_fixture, enterprise_data_fixture, synced_roles):
         (DeleteDatabaseRowOperationType, table_1_1, False),
     ]
 
-    check_perms(no_role, no_role_tests)
+    check_perms(no_access, no_access_tests)
 
     print("ADMIN")
 
@@ -632,7 +632,7 @@ def test_get_permissions_object(data_fixture, enterprise_data_fixture, synced_ro
         viewer,
         viewer_plus,
         builder_less,
-        no_role,
+        no_access,
         group_1,
         group_2,
         database_1,
@@ -697,7 +697,7 @@ def test_filter_queryset(data_fixture, enterprise_data_fixture):
         viewer,
         viewer_plus,
         builder_less,
-        no_role,
+        no_access,
         group_1,
         group_2,
         database_1,
@@ -735,15 +735,15 @@ def test_filter_queryset(data_fixture, enterprise_data_fixture):
 
     assert list(admin_table_queryset_2) == []
 
-    no_role_table_queryset = perm_manager.filter_queryset(
-        no_role,
+    no_access_table_queryset = perm_manager.filter_queryset(
+        no_access,
         ListTablesDatabaseTableOperationType.type,
         table_1_queryset,
         group=group_1,
         context=database_1,
     )
 
-    assert list(no_role_table_queryset) == []
+    assert list(no_access_table_queryset) == []
 
     builder_table_queryset = perm_manager.filter_queryset(
         builder,
@@ -756,10 +756,10 @@ def test_filter_queryset(data_fixture, enterprise_data_fixture):
     assert list(builder_table_queryset) == [table_2_1]
 
     viewer_role = Role.objects.get(uid="VIEWER")
-    role_no_role = Role.objects.get(uid="NO_ROLE")
+    role_no_access = Role.objects.get(uid="NO_ACCESS")
 
     # In this scenario the user is:
-    # - No_role at group_2 level
+    # - no_access at group_2 level
     # - Builder at table_2_1 level
     # -> should be able to see database_2 because it's parent of table_2_1
     builder_database_queryset = perm_manager.filter_queryset(
@@ -790,11 +790,11 @@ def test_filter_queryset(data_fixture, enterprise_data_fixture):
 
     # In this scenario the user is:
     # - Viewer at group_2 level
-    # - No_role at database_2 level
+    # - no_access at database_2 level
     # - builder at at table_2_1 level
     # -> should still be able to see database_2 and database_3
     RoleAssignmentHandler().assign_role(
-        builder, group_2, role=role_no_role, scope=database_2
+        builder, group_2, role=role_no_access, scope=database_2
     )
 
     builder_database_queryset = perm_manager.filter_queryset(

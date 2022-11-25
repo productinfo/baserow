@@ -1,5 +1,5 @@
-class CantAssignRoleExceptionToAdmin(Exception):
+class CantLowerAdminsRoleOnChildException(Exception):
     """
-    Raised when the user try to assign a role to scope that has already the ADMIN
+    Raised when the user tries to assign a role to scope that has already the ADMIN
     computed role.
     """

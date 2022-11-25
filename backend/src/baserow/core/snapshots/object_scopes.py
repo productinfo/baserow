@@ -19,6 +19,6 @@ class SnapshotObjectScopeType(ObjectScopeType):
             return Snapshot.objects.filter(snapshot_from_application__group=scope)
         if scope_type.type == ApplicationObjectScopeType.type:
             return Snapshot.objects.filter(snapshot_from_application=scope)
-        if scope_type.type == "snapshot":
+        if scope_type.type == self.type:
             return [scope]
         return []

@@ -10,7 +10,7 @@ export default (client, $hasFeature) => {
             { uid: 'EDITOR' },
             { uid: 'COMMENTER' },
             { uid: 'VIEWER' },
-            { uid: 'NO_ROLE' },
+            { uid: 'NO_ACCESS' },
           ],
         }
       }

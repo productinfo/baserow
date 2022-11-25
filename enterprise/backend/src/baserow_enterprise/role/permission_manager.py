@@ -85,9 +85,7 @@ class RolePermissionManagerType(PermissionManagerType):
 
         return set(
             op.name
-            for op in RoleAssignmentHandler()
-            .get_role_with_fallback(role_uid="VIEWER")
-            .operations.all()
+            for op in RoleAssignmentHandler().get_role_by_uid("VIEWER").operations.all()
         )
 
     def check_permissions(
@@ -117,7 +115,10 @@ class RolePermissionManagerType(PermissionManagerType):
                 group, actor, context
             )
 
-            if operation_type.type in self.get_role_operations(computed_role):
+            if (
+                computed_role.uid == RoleAssignmentHandler.ADMIN_ROLE
+                or operation_type.type in self.get_role_operations(computed_role)
+            ):
                 return True
 
             raise PermissionDenied()
@@ -167,8 +168,8 @@ class RolePermissionManagerType(PermissionManagerType):
                 # Remove or add exceptions to the exception list according to the
                 # default policy for the group
                 if (
-                    operation_type.type not in allowed_operations
-                    or role.uid == RoleAssignmentHandler.ADMIN_ROLE
+                    role.uid == RoleAssignmentHandler.ADMIN_ROLE
+                    or operation_type.type not in allowed_operations
                 ):
                     if default:
                         exceptions |= set(context_exceptions)

@@ -141,8 +141,8 @@ from baserow_enterprise.teams.operations import (
     UpdateTeamOperationType,
 )
 
-NO_ROLE_OPS = []
-VIEWER_OPS = NO_ROLE_OPS + [
+NO_ACCESS_OPS = []
+VIEWER_OPS = NO_ACCESS_OPS + [
     ReadGroupOperationType,
     ListApplicationsGroupOperationType,
     ListTablesDatabaseTableOperationType,
@@ -273,5 +273,5 @@ default_roles = {
     "EDITOR": EDITOR_OPS,
     "COMMENTER": COMMENTER_OPS,
     "VIEWER": VIEWER_OPS,
-    "NO_ROLE": NO_ROLE_OPS,
+    "NO_ACCESS": NO_ACCESS_OPS,
 }
