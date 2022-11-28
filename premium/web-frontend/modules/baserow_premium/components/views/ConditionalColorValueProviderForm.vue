@@ -122,6 +122,7 @@ export default {
       )
     },
     addColor() {
+      const colorCodesToExclude = this.options.colors.map((color) => color.color)
       this.$emit('update', {
         colors: [
           ...this.options.colors,
@@ -130,7 +131,8 @@ export default {
             {
               fields: this.fields,
             },
-            true
+            true,
+            colorCodesToExclude
           ),
         ],
       })
