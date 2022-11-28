@@ -1,4 +1,4 @@
-import uuid
+from uuid import uuid4
 
 from django.db import migrations
 
@@ -16,7 +16,7 @@ def forward(apps, schema_editor):
     for view_decorations in grouper(chunk_size, queryset):
         for view_decoration in view_decorations:
             for color in view_decoration.value_provider_conf["colors"]:
-                color["id"] = str(uuid.uuid4())
+                color["id"] = str(uuid4())
         ViewDecoration.objects.bulk_update(view_decorations, ["value_provider_conf"])
 
 
