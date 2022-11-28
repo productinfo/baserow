@@ -75,7 +75,12 @@ export class ConditionalColorValueProviderType extends DecoratorValueProviderTyp
     return filter
   }
 
-  static getDefaultColorConf(registry, { fields }, noFilter = false, excludeColors = undefined) {
+  static getDefaultColorConf(
+    registry,
+    { fields },
+    noFilter = false,
+    excludeColors = undefined
+  ) {
     return {
       color: randomColor(excludeColors),
       operator: 'AND',
@@ -86,7 +91,7 @@ export class ConditionalColorValueProviderType extends DecoratorValueProviderTyp
               fields,
             }),
           ],
-      uid: uuid(),
+      id: uuid(),
     }
   }
 

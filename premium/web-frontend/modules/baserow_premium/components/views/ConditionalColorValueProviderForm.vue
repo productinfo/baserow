@@ -3,9 +3,9 @@
     <div>
       <div
         v-for="color in options.colors || []"
-        :key="color.uid"
+        :key="color.id"
         v-sortable="{
-          id: color.uid,
+          id: color.id,
           update: orderColor,
           handle: '[data-sortable-handle]',
           marginTop: -5,
@@ -18,7 +18,7 @@
             data-sortable-handle
           />
           <a
-            :ref="`colorSelect-${color.uid}`"
+            :ref="`colorSelect-${color.id}`"
             class="conditional-color-value-provider-form__color-color"
             :class="`background-color--${color.color}`"
             @click="openColor(color)"
@@ -61,7 +61,7 @@
           {{ $t('conditionalColorValueProviderForm.addCondition') }}</a
         >
         <ColorSelectContext
-          :ref="`colorContext-${color.uid}`"
+          :ref="`colorContext-${color.id}`"
           @selected="updateColor(color, { color: $event })"
         ></ColorSelectContext>
       </div>
@@ -106,23 +106,23 @@ export default {
   methods: {
     orderColor(colorIds) {
       const newColors = colorIds.map((colorId) =>
-        this.options.colors.find(({ uid }) => uid === colorId)
+        this.options.colors.find(({ id }) => id === colorId)
       )
       this.$emit('update', {
         colors: newColors,
       })
     },
     openColor(color) {
-      this.$refs[`colorContext-${color.uid}`][0].setActive(color.color)
-      this.$refs[`colorContext-${color.uid}`][0].toggle(
-        this.$refs[`colorSelect-${color.uid}`][0],
+      this.$refs[`colorContext-${color.id}`][0].setActive(color.color)
+      this.$refs[`colorContext-${color.id}`][0].toggle(
+        this.$refs[`colorSelect-${color.id}`][0],
         'bottom',
         'left',
         4
       )
     },
     addColor() {
-      const colorCodesToExclude = this.options.colors.map((color) => color.color)
+      const colorToExclude = this.options.colors.map((color) => color.color)
       this.$emit('update', {
         colors: [
           ...this.options.colors,
@@ -132,14 +132,14 @@ export default {
               fields: this.fields,
             },
             true,
-            colorCodesToExclude
+            colorToExclude
           ),
         ],
       })
     },
     updateColor(color, values) {
       const newColors = this.options.colors.map((colorConf) => {
-        if (colorConf.uid === color.uid) {
+        if (colorConf.id === color.id) {
           return { ...colorConf, ...values }
         }
         return colorConf
@@ -150,8 +150,8 @@ export default {
       })
     },
     deleteColor(color) {
-      const newColors = this.options.colors.filter(({ uid }) => {
-        return uid !== color.uid
+      const newColors = this.options.colors.filter(({ id }) => {
+        return id !== color.id
       })
 
       this.$emit('update', {
@@ -160,7 +160,7 @@ export default {
     },
     addFilter(color) {
       const newColors = this.options.colors.map((colorConf) => {
-        if (colorConf.uid === color.uid) {
+        if (colorConf.id === color.id) {
           return {
             ...colorConf,
             filters: [
@@ -183,7 +183,7 @@ export default {
     },
     updateFilter(color, { filter, values }) {
       const newColors = this.options.colors.map((colorConf) => {
-        if (colorConf.uid === color.uid) {
+        if (colorConf.id === color.id) {
           const newFilters = colorConf.filters.map((filterConf) => {
             if (filterConf.id === filter.id) {
               return { ...filter, ...values }
@@ -204,7 +204,7 @@ export default {
     },
     deleteFilter(color, filter) {
       const newColors = this.options.colors.map((colorConf) => {
-        if (colorConf.uid === color.uid) {
+        if (colorConf.id === color.id) {
           const newFilters = colorConf.filters.filter((filterConf) => {
             return filterConf.id !== filter.id
           })
