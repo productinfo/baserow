@@ -18,11 +18,19 @@ export default function () {
     const settingsRoute = configRoutes.find(
       (route) => route.name === 'settings'
     )
-    settingsRoute.children.push({
-      name: 'settings-teams',
-      path: 'teams',
-      component: path.resolve(__dirname, 'pages/settings/teams.vue'),
-    })
+
+    // Search for the "settings-teams" route in the array of children
+    // in the "settings" route. If it's not already present, we'll add it.
+    const settingsTeams = settingsRoute.children.find(
+      (child) => child.name === 'settings-teams'
+    )
+    if (settingsTeams === undefined) {
+      settingsRoute.children.push({
+        name: 'settings-teams',
+        path: 'teams',
+        component: path.resolve(__dirname, 'pages/settings/teams.vue'),
+      })
+    }
 
     configRoutes.push(...routes)
   })
