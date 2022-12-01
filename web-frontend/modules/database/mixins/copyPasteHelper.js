@@ -2,7 +2,10 @@
  * A mixin that can be used to copy and paste row values.
  */
 
-import { setRichClipboard } from '@baserow/modules/database/utils/clipboard'
+import {
+  getRichClipboard,
+  setRichClipboard,
+} from '@baserow/modules/database/utils/clipboard'
 
 export default {
   methods: {
@@ -33,13 +36,7 @@ export default {
       setRichClipboard(values)
     },
     async extractClipboardData(event) {
-      const textRawData = event.clipboardData.getData('text/plain').trim()
-
-      let jsonRawData
-      if (event.clipboardData.types.includes('application/json')) {
-        jsonRawData = event.clipboardData.getData('application/json')
-      }
-
+      const { textRawData, jsonRawData } = getRichClipboard(event)
       const { data: textData } = await this.$papa.parsePromise(textRawData, {
         delimiter: '\t',
       })
