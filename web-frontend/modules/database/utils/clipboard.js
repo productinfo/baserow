@@ -16,12 +16,11 @@ const isSafariBrowser = () =>
  * @param {object} values object of mimetypes -> clipboard content.
  */
 export const setRichClipboard = (values) => {
-  // In recent versions of Safari, the execCommand doesn't work, so we need to use the
-  // clipboard API.
+  // In safari the execCommand doesn't work so we need to use the clipboard API.
   if (isSafariBrowser()) {
     navigator.clipboard.writeText(values['text/plain'])
-    // since the clipboard API accept only a few types, we use the localStorage
-    // to save the other data needed to paste this back in the correct format
+    // since the clipboard API accept only a few mime types, use the localStorage
+    // to save the other metadata needed to get back the rich data format.
     localStorage.setItem('baserow.clipboardData', JSON.stringify(values))
   } else {
     const listener = (e) => {
@@ -41,8 +40,8 @@ export const getRichClipboard = (event) => {
   const textRawData = event.clipboardData.getData('text/plain')
   let jsonRawData
 
-  // In recent versions of Safari, the execCommand doesn't work, so we need to get
-  // the metadata from the localStorage.
+  // In Safari the execCommand doesn't work so use get the metadata from the
+  // localStorage (see setRichClipboard for more info).
   if (isSafariBrowser()) {
     let clipboardData = localStorage.getItem('baserow.clipboardData')
     localStorage.removeItem('baserow.clipboardData')

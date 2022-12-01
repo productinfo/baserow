@@ -52,6 +52,7 @@ For example:
 * Fixed a problem of some specific error messages not being recognized by the web front-end.
 
 * Fixed failing webhook call log creation when a table has more than one webhooks. [#1100](https://gitlab.com/bramw/baserow/-/merge_requests/1100)
+* Fix copy & paste in safari. [#1392](https://gitlab.com/bramw/baserow/-/issues/1392)
 
 ### Refactors
 * Refresh the JWT token when needed instead of periodically. [#1294](https://gitlab.com/bramw/baserow/-/issues/1294)
