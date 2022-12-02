@@ -41,13 +41,10 @@ class TeamSubjectSerializer(
     subject_id = serializers.IntegerField(
         required=False, default=None, help_text="The subject's unique identifier."
     )
-    subject_user_email = serializers.EmailField(
-        required=False, default=None, help_text="The user subject's email address."
-    )
 
     class Meta:
         model = TeamSubject
-        fields = ("id", "subject_id", "subject_user_email", "subject_type")
+        fields = ("id", "subject_id", "subject_type")
         extra_kwargs = {"id": {"read_only": True}}
 
 
