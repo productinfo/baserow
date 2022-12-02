@@ -76,7 +76,7 @@ export default {
     removeSubject(removal) {
       // Remove them as an invited subject.
       this.invitedUserSubjects = this.invitedUserSubjects.filter(
-        (subj) => subj.user_id !== removal.user_id
+        (subj) => subj.id !== removal.id
       )
     },
     async parseSubjectsAndMembers() {
@@ -88,16 +88,16 @@ export default {
       this.teamSubjects = data
       this.subjectsLoading = false
 
-      // Extract the subjects which are Users.
+      // Extract the subjects which are users.
       const userSubjects = this.teamSubjects.filter(
-        (subject) => subject.subject_type === 'auth.User'
+        (subject) => subject.subject_type === 'core.GroupUser'
       )
       // Extract the user subject PKs.
       const userIds = userSubjects.map((subject) => subject.subject_id)
 
       // Using those user PKs, find the members records in `this.group.user`.
       const invitedMembers = this.group.users.filter((member) =>
-        userIds.includes(member.user_id)
+        userIds.includes(member.id)
       )
       // Assign `invitedUserSubjects` our list of GroupUser records who are NOT subjects in this team.
       this.invitedUserSubjects = invitedMembers

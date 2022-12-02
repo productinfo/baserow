@@ -38,7 +38,12 @@ class EnterpriseFixtures:
 
     def create_subject(self, **kwargs):
         if "subject" not in kwargs:
-            kwargs["subject"] = self.create_user()
+            team = kwargs.get("team", None)
+            if not team:
+                raise RuntimeError(
+                    "A Team is required to create a new subject fixture."
+                )
+            kwargs["subject"] = super().create_user_group(group=team.group)
         subject = TeamSubject.objects.create(**kwargs)
         return subject
 

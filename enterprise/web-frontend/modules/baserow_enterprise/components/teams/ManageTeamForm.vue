@@ -158,8 +158,8 @@ export default {
       this.values.subjects = []
       for (let s = 0; s < this.invitedUserSubjects.length; s++) {
         this.values.subjects.push({
-          subject_id: this.invitedUserSubjects[s].user_id,
-          subject_type: 'auth.User',
+          subject_id: this.invitedUserSubjects[s].id,
+          subject_type: 'core.GroupUser',
         })
       }
     },

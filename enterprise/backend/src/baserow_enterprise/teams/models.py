@@ -100,7 +100,7 @@ class TeamSubject(ParentTeamTrashableModelMixin, CreatedAndUpdatedOnMixin):
     def subject_type_natural_key(self) -> str:
         """
         Responsible for returning the subject's `ContentType`
-        model class label (e.g. "auth.User").
+        model class label (e.g. SUBJECT_TYPE_USER).
         """
 
         return self.subject_type.model_class()._meta.label

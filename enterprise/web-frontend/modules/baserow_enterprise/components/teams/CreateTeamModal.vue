@@ -65,7 +65,7 @@ export default {
     removeSubject(removal) {
       // Remove them as an invited subject.
       this.invitedUserSubjects = this.invitedUserSubjects.filter(
-        (subj) => subj.user_id !== removal.user_id
+        (subj) => subj.id !== removal.id
       )
     },
     storeSelectedUsers(selections) {

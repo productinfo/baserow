@@ -217,17 +217,15 @@ class CreateTeamSubjectActionType(ActionType):
     @dataclasses.dataclass
     class Params:
         team_id: int
-        subject_id: int  # TeamSubject PK
-        subject_lookup: Dict[
-            str, Union[str, int]
-        ]  # User.email | TeamSubject.subject_id
+        team_subject_id: int  # TeamSubject PK
+        subject_id: int  # TeamSubject.subject_id
         subject_subject_type_natural_key: int  # TeamSubject.subject_type natural key
 
     @classmethod
     def do(
         cls,
         user: AbstractUser,
-        subject_lookup: Dict[str, Union[str, int]],
+        subject_id: int,
         subject_type: str,
         team: Team,
     ) -> TeamSubject:
@@ -238,17 +236,16 @@ class CreateTeamSubjectActionType(ActionType):
         redoing it restores it from the trash.
 
         :param user: The user creating the team.
-        :param subject_lookup: The subject's identifier. A dictionary pointing to
-            the subject's ID/PK or an email address is required.
+        :param subject_id: The subject's unique identifier.
         :param subject_type: The subject's content type natural key.
         :param team: The team to invite the subject to.
         """
 
-        subject = TeamHandler().create_subject(user, subject_lookup, subject_type, team)
+        subject = TeamHandler().create_subject(user, subject_id, subject_type, team)
 
         cls.register_action(
             user=user,
-            params=cls.Params(team.id, subject.id, subject_lookup, subject_type),
+            params=cls.Params(team.id, subject.id, subject_id, subject_type),
             scope=cls.scope(team.group_id),
         )
         return subject
@@ -265,7 +262,7 @@ class CreateTeamSubjectActionType(ActionType):
         action_to_undo: Action,
     ):
         team = TeamHandler().get_team(user, params.team_id)
-        TeamHandler().delete_subject_by_id(user, params.subject_id, team)
+        TeamHandler().delete_subject_by_id(user, params.team_subject_id, team)
 
     @classmethod
     def redo(
@@ -277,10 +274,10 @@ class CreateTeamSubjectActionType(ActionType):
         team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().create_subject(
             user,
-            params.subject_lookup,
+            params.subject_id,
             params.subject_subject_type_natural_key,
             team,
-            params.subject_id,
+            params.team_subject_id,
         )
 
 
@@ -290,8 +287,8 @@ class DeleteTeamSubjectActionType(ActionType):
     @dataclasses.dataclass
     class Params:
         team_id: int
-        subject_id: int  # TeamSubject PK
-        subject_subject_id: int  # TeamSubject.subject_id
+        team_subject_id: int  # TeamSubject PK
+        subject_id: int  # TeamSubject.subject_id
         subject_subject_type_natural_key: int  # TeamSubject.subject_type natural key
 
     @classmethod
@@ -329,13 +326,13 @@ class DeleteTeamSubjectActionType(ActionType):
         team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().create_subject(
             user,
-            {"pk": params.subject_subject_id},
+            params.subject_id,
             params.subject_subject_type_natural_key,
             team,
-            params.subject_id,
+            params.team_subject_id,
         )
 
     @classmethod
     def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
         team = TeamHandler().get_team(user, params.team_id)
-        TeamHandler().delete_subject_by_id(user, params.subject_id, team)
+        TeamHandler().delete_subject_by_id(user, params.team_subject_id, team)

@@ -7,13 +7,12 @@ import pytest
 from baserow_enterprise.role.models import Role
 from baserow_enterprise.teams.exceptions import (
     TeamNameNotUnique,
-    TeamSubjectBadRequest,
     TeamSubjectBulkDoesNotExist,
     TeamSubjectDoesNotExist,
     TeamSubjectNotInGroup,
     TeamSubjectTypeUnsupported,
 )
-from baserow_enterprise.teams.handler import TeamHandler
+from baserow_enterprise.teams.handler import SUBJECT_TYPE_USER, TeamHandler
 
 
 @pytest.fixture(autouse=True)
@@ -33,17 +32,17 @@ def test_create_team(data_fixture):
 
 @pytest.mark.django_db
 def test_bulk_create_subjects(data_fixture):
-    user_a = data_fixture.create_user()
-    user_b = data_fixture.create_user()
-    user_c = data_fixture.create_user()
-    group = data_fixture.create_group(users=[user_a, user_b, user_c])
-    team = TeamHandler().create_team(user_a, "Engineering", group)
+    group = data_fixture.create_group()
+    groupuser_a = data_fixture.create_user_group(group=group)
+    groupuser_b = data_fixture.create_user_group(group=group)
+    groupuser_c = data_fixture.create_user_group(group=group)
+    team = TeamHandler().create_team(groupuser_a.user, "Engineering", group)
     subjects = TeamHandler().bulk_create_subjects(
         team,
         [
-            {"subject_id": user_a.id, "subject_type": "auth.User"},
-            {"subject_id": user_b.id, "subject_type": "auth.User"},
-            {"subject_id": user_c.id, "subject_type": "auth.User"},
+            {"subject_id": groupuser_a.id, "subject_type": SUBJECT_TYPE_USER},
+            {"subject_id": groupuser_b.id, "subject_type": SUBJECT_TYPE_USER},
+            {"subject_id": groupuser_c.id, "subject_type": SUBJECT_TYPE_USER},
         ],
     )
     assert len(subjects) == 3
@@ -51,13 +50,13 @@ def test_bulk_create_subjects(data_fixture):
 
 @pytest.mark.django_db
 def test_bulk_create_subjects_specific_pk(data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
-    team = TeamHandler().create_team(user, "Engineering", group)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group)
+    team = TeamHandler().create_team(groupuser.user, "Engineering", group)
     subjects = TeamHandler().bulk_create_subjects(
         team,
         [
-            {"pk": 5, "subject_id": user.id, "subject_type": "auth.User"},
+            {"pk": 5, "subject_id": groupuser.id, "subject_type": SUBJECT_TYPE_USER},
         ],
     )
     assert len(subjects) == 1
@@ -67,40 +66,40 @@ def test_bulk_create_subjects_specific_pk(data_fixture):
 
 @pytest.mark.django_db
 def test_bulk_create_subjects_raise_on_missing_does_not_exist(data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
-    team = TeamHandler().create_team(user, "Engineering", group)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group)
+    team = TeamHandler().create_team(groupuser.user, "Engineering", group)
     with pytest.raises(TeamSubjectBulkDoesNotExist) as exc_info:
         TeamHandler().bulk_create_subjects(
             team,
             [
-                {"subject_id": user.id, "subject_type": "auth.User"},
-                {"subject_id": 100000001, "subject_type": "auth.User"},
+                {"subject_id": groupuser.id, "subject_type": SUBJECT_TYPE_USER},
+                {"subject_id": 100000001, "subject_type": SUBJECT_TYPE_USER},
             ],
         )
     assert exc_info.value.missing_subjects == [
-        {"subject_id": 100000001, "subject_type": "auth.User"}
+        {"subject_id": 100000001, "subject_type": SUBJECT_TYPE_USER}
     ]
 
 
 @pytest.mark.django_db
 def test_bulk_create_subjects_raise_on_missing_not_group_member(data_fixture):
-    user_a = data_fixture.create_user()
-    user_b = data_fixture.create_user()
-    user_c = data_fixture.create_user()  # Not a group member!
-    group = data_fixture.create_group(users=[user_a, user_b])
-    team = TeamHandler().create_team(user_a, "Engineering", group)
+    group = data_fixture.create_group()
+    groupuser_a = data_fixture.create_user_group(group=group)
+    groupuser_b = data_fixture.create_user_group(group=group)
+    groupuser_c = data_fixture.create_user_group()  # Not a group member!
+    team = TeamHandler().create_team(groupuser_a.user, "Engineering", group)
     with pytest.raises(TeamSubjectBulkDoesNotExist) as exc_info:
         TeamHandler().bulk_create_subjects(
             team,
             [
-                {"subject_id": user_a.id, "subject_type": "auth.User"},
-                {"subject_id": user_b.id, "subject_type": "auth.User"},
-                {"subject_id": user_c.id, "subject_type": "auth.User"},
+                {"subject_id": groupuser_a.id, "subject_type": SUBJECT_TYPE_USER},
+                {"subject_id": groupuser_b.id, "subject_type": SUBJECT_TYPE_USER},
+                {"subject_id": groupuser_c.id, "subject_type": SUBJECT_TYPE_USER},
             ],
         )
     assert exc_info.value.missing_subjects == [
-        {"subject_id": user_c.id, "subject_type": "auth.User"}
+        {"subject_id": groupuser_c.id, "subject_type": SUBJECT_TYPE_USER}
     ]
 
 
@@ -115,26 +114,28 @@ def test_create_team_non_unique_name(data_fixture):
 
 @pytest.mark.django_db
 def test_create_team_with_subjects(data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group)
     team = TeamHandler().create_team(
-        user,
+        groupuser.user,
         "Engineering",
         group,
-        [{"subject_id": user.id, "subject_type": "auth.User"}],
+        [{"subject_id": groupuser.id, "subject_type": SUBJECT_TYPE_USER}],
     )
     subject = team.subjects.all()[0]
-    assert subject.subject_id == user.id
+    assert subject.subject_id == groupuser.id
 
 
 @pytest.mark.django_db
 def test_list_teams_in_group(data_fixture, enterprise_data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group)
     sales = enterprise_data_fixture.create_team(group=group)
     engineering = enterprise_data_fixture.create_team(group=group)
-    sales_subj = enterprise_data_fixture.create_subject(team=sales, subject=user)
-    teams_qs = TeamHandler().list_teams_in_group(user, group.id).order_by("id")
+    sales_subj = enterprise_data_fixture.create_subject(team=sales, subject=groupuser)
+    teams_qs = (
+        TeamHandler().list_teams_in_group(groupuser.user, group.id).order_by("id")
+    )
     assert teams_qs[0].id == sales.id
     assert teams_qs[0].subject_count == 1
     assert teams_qs[0].subject_sample == [
@@ -142,7 +143,7 @@ def test_list_teams_in_group(data_fixture, enterprise_data_fixture):
             "team_subject_id": sales_subj.id,
             "subject_id": sales_subj.subject_id,
             "subject_type": sales_subj.subject_type_natural_key,
-            "subject_label": user.get_full_name().strip(),
+            "subject_label": groupuser.user.get_full_name().strip(),
         }
     ]
     assert teams_qs[1].id == engineering.id
@@ -177,45 +178,48 @@ def test_update_team_non_unique_name(data_fixture):
 
 @pytest.mark.django_db
 def test_update_team_subjects(data_fixture, enterprise_data_fixture):
-    user = data_fixture.create_user()
-    userb = data_fixture.create_user()
-    userc = data_fixture.create_user()
-    group = data_fixture.create_group(users=[user, userb, userc])
+    group = data_fixture.create_group()
+    groupuser_a = data_fixture.create_user_group(group=group)
+    groupuser_b = data_fixture.create_user_group(group=group)
+    groupuser_c = data_fixture.create_user_group(group=group)
     team = enterprise_data_fixture.create_team(group=group)
     assert team.subjects.count() == 0
 
-    # Add `user`
+    # Add `groupuser_a`
     team = TeamHandler().update_team(
-        user, team, "Sales", [{"subject_id": user.id, "subject_type": "auth.User"}]
+        groupuser_a.user,
+        team,
+        "Sales",
+        [{"subject_id": groupuser_a.id, "subject_type": SUBJECT_TYPE_USER}],
     )
     assert team.subject_count == 1
 
-    # Add `userb`
+    # Add `groupuser_b`
     team = TeamHandler().update_team(
-        user,
+        groupuser_a.user,
         team,
         "Sales",
         [
-            {"subject_id": user.id, "subject_type": "auth.User"},
-            {"subject_id": userb.id, "subject_type": "auth.User"},
+            {"subject_id": groupuser_a.id, "subject_type": SUBJECT_TYPE_USER},
+            {"subject_id": groupuser_b.id, "subject_type": SUBJECT_TYPE_USER},
         ],
     )
     assert team.subject_count == 2
 
-    # Remove `userb`, add `userc`
+    # Remove `groupuser_b`, add `groupuser_c`
     team = TeamHandler().update_team(
-        user,
+        groupuser_a.user,
         team,
         "Sales",
         [
-            {"subject_id": user.id, "subject_type": "auth.User"},
-            {"subject_id": userc.id, "subject_type": "auth.User"},
+            {"subject_id": groupuser_a.id, "subject_type": SUBJECT_TYPE_USER},
+            {"subject_id": groupuser_c.id, "subject_type": SUBJECT_TYPE_USER},
         ],
     )
     assert team.subject_count == 2
 
     # Remove everyone
-    team = TeamHandler().update_team(user, team, "Sales", [])
+    team = TeamHandler().update_team(groupuser_a.user, team, "Sales", [])
     assert team.subject_count == 0
 
 
@@ -237,7 +241,7 @@ def test_create_subject_unsupported_type(
 ):
     team = enterprise_data_fixture.create_team()
     with pytest.raises(TeamSubjectTypeUnsupported):
-        TeamHandler().create_subject(User(), {"pk": 123}, "foo_bar", team)
+        TeamHandler().create_subject(User(), 123, "foo_bar", team)
 
 
 @pytest.mark.django_db
@@ -246,50 +250,34 @@ def test_create_subject_unknown_subject(data_fixture, enterprise_data_fixture):
     team = enterprise_data_fixture.create_team()
     assert not User.objects.filter(pk=123).exists()
     with pytest.raises(TeamSubjectDoesNotExist):
-        TeamHandler().create_subject(user, {"pk": 123}, "auth.User", team)
-
-
-@pytest.mark.django_db
-def test_create_subject_with_unsupported_lookup(data_fixture, enterprise_data_fixture):
-    user = data_fixture.create_user()
-    team = enterprise_data_fixture.create_team()
-    with pytest.raises(TeamSubjectBadRequest):
-        TeamHandler().create_subject(user, {"username": "baserow"}, "auth.User", team)
+        TeamHandler().create_subject(user, 123, SUBJECT_TYPE_USER, team)
 
 
 @pytest.mark.django_db
 def test_create_subject_from_different_group_to_team(
     data_fixture, enterprise_data_fixture
 ):
-    user = data_fixture.create_user()
-    data_fixture.create_group(user=user)
-    team = enterprise_data_fixture.create_team()
+    group_a = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group_a)
+    group_b = data_fixture.create_group()
+    team = enterprise_data_fixture.create_team(group=group_b)
     with pytest.raises(TeamSubjectNotInGroup):
-        TeamHandler().create_subject(user, {"pk": user.id}, "auth.User", team)
+        TeamHandler().create_subject(
+            groupuser.user, groupuser.id, SUBJECT_TYPE_USER, team
+        )
 
 
 @pytest.mark.django_db
 def test_create_subject_by_id(data_fixture, enterprise_data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
-    team = enterprise_data_fixture.create_team(group=group)
-    subject = TeamHandler().create_subject(user, {"pk": user.id}, "auth.User", team)
-    assert subject.team_id == team.id
-    assert subject.subject_id == user.id
-    assert isinstance(user, subject.subject_type.model_class())
-
-
-@pytest.mark.django_db
-def test_create_subject_by_email(data_fixture, enterprise_data_fixture):
-    user = data_fixture.create_user()
-    group = data_fixture.create_group(user=user)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(group=group)
     team = enterprise_data_fixture.create_team(group=group)
     subject = TeamHandler().create_subject(
-        user, {"email": user.email}, "auth.User", team
+        groupuser.user, groupuser.id, SUBJECT_TYPE_USER, team
     )
     assert subject.team_id == team.id
-    assert subject.subject_id == user.id
-    assert isinstance(user, subject.subject_type.model_class())
+    assert subject.subject_id == groupuser.id
+    assert isinstance(groupuser, subject.subject_type.model_class())
 
 
 @pytest.mark.django_db

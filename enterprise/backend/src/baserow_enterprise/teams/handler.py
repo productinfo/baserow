@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import Any, Dict, List, NewType, Optional, Union, cast
+from typing import Any, Dict, List, NewType, Optional, cast
 
-from django.contrib.auth.models import AbstractUser, User
+from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.models import ContentType
 from django.db import DatabaseError, IntegrityError
 from django.db.models import Count, OuterRef, QuerySet, Subquery
@@ -11,7 +11,7 @@ from django.db.models.functions import Coalesce
 from baserow_premium.license.handler import LicenseHandler
 
 from baserow.contrib.database.tokens.models import Token
-from baserow.core.models import Group
+from baserow.core.models import Group, GroupUser
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.utils import atomic_if_not_already
 from baserow_enterprise.models import Role, RoleAssignment, Team, TeamSubject
@@ -28,7 +28,6 @@ from baserow_enterprise.signals import (
 from baserow_enterprise.teams.exceptions import (
     TeamDoesNotExist,
     TeamNameNotUnique,
-    TeamSubjectBadRequest,
     TeamSubjectBulkDoesNotExist,
     TeamSubjectDoesNotExist,
     TeamSubjectNotInGroup,
@@ -40,9 +39,9 @@ from ..features import TEAMS
 TeamForUpdate = NewType("TeamForUpdate", Team)
 TeamSubjectForUpdate = NewType("TeamSubjectForUpdate", TeamSubject)
 
-SUBJECT_TYPE_USER = "auth.User"
+SUBJECT_TYPE_USER = "core.GroupUser"
 SUBJECT_TYPE_TOKEN = "database.Token"  # nosec
-SUPPORTED_SUBJECT_TYPES = {SUBJECT_TYPE_USER: User}
+SUPPORTED_SUBJECT_TYPES = {SUBJECT_TYPE_USER: GroupUser}
 
 
 class TeamHandler:
@@ -91,18 +90,18 @@ class TeamHandler:
                 SELECT
                     sub.id AS team_subject_id,
                     sub.subject_id,
-                    CONCAT(ct.app_label, '.', INITCAP(ct.model)) AS subject_type,
                     CASE
-                        WHEN (ct.app_label = 'auth' AND ct.model = 'user')
+                        WHEN (ct.app_label = 'core' AND ct.model = 'groupuser')
+                            THEN 'core.GroupUser'
+                    END AS subject_type,
+                    CASE
+                        WHEN (ct.app_label = 'core' AND ct.model = 'groupuser')
                             THEN auth_user.first_name
                     END AS subject_label
                 FROM baserow_enterprise_teamsubject sub
                 INNER JOIN django_content_type ct ON (ct.id = sub.subject_type_id)
-                LEFT OUTER JOIN auth_user ON (
-                    auth_user.id = sub.subject_id AND
-                    ct.app_label = 'auth' AND
-                    ct.model = 'user'
-                )
+                LEFT OUTER JOIN core_groupuser ON (core_groupuser.id = sub.subject_id)
+                LEFT OUTER JOIN auth_user ON (auth_user.id = core_groupuser.user_id)
                 WHERE sub.team_id = baserow_enterprise_team.id
                 ORDER BY sub.created_on DESC
                 LIMIT %s
@@ -179,7 +178,7 @@ class TeamHandler:
 
             for subject in subjects:
                 self.create_subject(
-                    user, {"id": subject["subject_id"]}, subject["subject_type"], team
+                    user, subject["subject_id"], subject["subject_type"], team
                 )
 
         # If we've been given a `default_role`, assign it to the team.
@@ -239,7 +238,7 @@ class TeamHandler:
                 subject_id = subject["subject_id"]
                 subject_type = subject["subject_type"]
                 if subject_id not in existing_subjects[subject_type]:
-                    self.create_subject(user, {"id": subject_id}, subject_type, team)
+                    self.create_subject(user, subject_id, subject_type, team)
 
             # Determine if any existing subjects need to be removed.
             for existing_type, existing_type_ids in existing_subjects.items():
@@ -432,7 +431,7 @@ class TeamHandler:
     def create_subject(
         self,
         user: AbstractUser,
-        subject_lookup: Dict[str, Union[str, int]],
+        subject_id: int,
         subject_natural_key: str,
         team: Team,
         pk: Optional[int] = None,
@@ -453,29 +452,19 @@ class TeamHandler:
                 f"The subject type {subject_natural_key} is unsupported."
             )
 
-        # We only support creating a subject via an ID/PK or
-        # in the case of a user, its email.
-        permitted_lookups = ["id", "pk", "email"]
-        unexpected_lookups = list(set(subject_lookup.keys()) - set(permitted_lookups))
-        if unexpected_lookups:
-            raise TeamSubjectBadRequest(
-                f"A subject cannot be created with lookups {', '.join(unexpected_lookups)}."
-            )
-
         # Get the model for this `subject_natural_key`.
         model_class = SUPPORTED_SUBJECT_TYPES[subject_natural_key]
 
         try:
-            subject = model_class.objects.get(**subject_lookup)
+            subject = model_class.objects.get(id=subject_id)
         except model_class.DoesNotExist:
-            lookup_str = ", ".join([f"{k}={v}" for k, v in subject_lookup.items()])
             raise TeamSubjectDoesNotExist(
-                f"The subject with {lookup_str} and type={subject_natural_key} does not exist."
+                f"The subject with id={subject_id} and type={subject_natural_key} does not exist."
             )
 
         # Verify that the subject belongs to the group the team belongs to.
-        if isinstance(subject, User):
-            if not team.group.users.filter(groupuser__user_id=subject.id).exists():
+        if isinstance(subject, GroupUser):
+            if subject.group_id != team.group_id:
                 raise TeamSubjectNotInGroup()
         elif isinstance(subject, Token):
             if subject.group_id != team.group_id:

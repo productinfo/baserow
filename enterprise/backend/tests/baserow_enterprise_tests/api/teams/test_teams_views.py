@@ -9,6 +9,7 @@ from rest_framework.status import (
 )
 
 from baserow.api.errors import ERROR_USER_NOT_IN_GROUP
+from baserow_enterprise.teams.handler import SUBJECT_TYPE_USER
 
 
 @pytest.fixture(autouse=True)
@@ -220,41 +221,21 @@ def test_list_team_subjects(api_client, data_fixture, enterprise_data_fixture):
 @pytest.mark.django_db
 def test_create_team_subject_by_id(api_client, data_fixture, enterprise_data_fixture):
     user, token = data_fixture.create_user_and_token()
-    group = data_fixture.create_group(user=user)
+    group = data_fixture.create_group()
+    groupuser = data_fixture.create_user_group(user=user, group=group)
     team = enterprise_data_fixture.create_team(group=group)
 
     response = api_client.post(
         reverse("api:enterprise:teams:subject-list", kwargs={"team_id": team.id}),
-        {"subject_id": user.id, "subject_type": "auth.User"},
+        {"subject_id": groupuser.id, "subject_type": SUBJECT_TYPE_USER},
         format="json",
         HTTP_AUTHORIZATION=f"JWT {token}",
     )
     assert response.status_code == HTTP_200_OK
     response_json = response.json()
     assert response_json["team"] == team.id
-    assert response_json["subject_id"] == user.id
-    assert response_json["subject_type"] == "auth.User"
-
-
-@pytest.mark.django_db
-def test_create_team_subject_by_email(
-    api_client, data_fixture, enterprise_data_fixture
-):
-    user, token = data_fixture.create_user_and_token()
-    group = data_fixture.create_group(user=user)
-    team = enterprise_data_fixture.create_team(group=group)
-
-    response = api_client.post(
-        reverse("api:enterprise:teams:subject-list", kwargs={"team_id": team.id}),
-        {"subject_user_email": user.email, "subject_type": "auth.User"},
-        format="json",
-        HTTP_AUTHORIZATION=f"JWT {token}",
-    )
-    assert response.status_code == HTTP_200_OK
-    response_json = response.json()
-    assert response_json["team"] == team.id
-    assert response_json["subject_id"] == user.id
-    assert response_json["subject_type"] == "auth.User"
+    assert response_json["subject_id"] == groupuser.id
+    assert response_json["subject_type"] == SUBJECT_TYPE_USER
 
 
 @pytest.mark.django_db

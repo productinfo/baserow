@@ -405,12 +405,8 @@ class TeamSubjectsView(APIView):
             context=team,
         )
 
-        subject_lookup = {"id": data["subject_id"]}
-        if data["subject_user_email"]:
-            subject_lookup = {"email": data["subject_user_email"]}
-
         subject = action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-            request.user, subject_lookup, data["subject_type"], team
+            request.user, data["subject_id"], data["subject_type"], team
         )
         return Response(TeamSubjectResponseSerializer(subject).data)
 

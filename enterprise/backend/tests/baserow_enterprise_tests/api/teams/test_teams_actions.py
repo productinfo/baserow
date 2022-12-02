@@ -14,7 +14,11 @@ from baserow_enterprise.teams.actions import (
     DeleteTeamSubjectActionType,
     UpdateTeamActionType,
 )
-from baserow_enterprise.teams.handler import TeamForUpdate, TeamHandler
+from baserow_enterprise.teams.handler import (
+    SUBJECT_TYPE_USER,
+    TeamForUpdate,
+    TeamHandler,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -163,13 +167,13 @@ def test_can_undo_redo_deleting_team(data_fixture):
 @pytest.mark.undo_redo
 def test_can_undo_creating_subject_by_id(data_fixture, enterprise_data_fixture):
     session_id = "session-id"
-    invitee = data_fixture.create_user()
+    group = data_fixture.create_group()
+    invitee = data_fixture.create_user_group(group=group)
     user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
     team = enterprise_data_fixture.create_team(group=group)
 
     action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"id": invitee.id}, "auth.User", team
+        user, invitee.id, SUBJECT_TYPE_USER, team
     )
 
     ActionHandler.undo(user, [TeamsActionScopeType.value(group.id)], session_id)
@@ -181,52 +185,13 @@ def test_can_undo_creating_subject_by_id(data_fixture, enterprise_data_fixture):
 @pytest.mark.undo_redo
 def test_can_undo_redo_creating_subject_by_id(data_fixture, enterprise_data_fixture):
     session_id = "session-id"
-    invitee = data_fixture.create_user()
+    group = data_fixture.create_group()
+    invitee = data_fixture.create_user_group(group=group)
     user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
     team = enterprise_data_fixture.create_team(group=group)
 
     subject = action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"id": invitee.id}, "auth.User", team
-    )
-    assert TeamSubject.objects.filter(pk=subject.id).exists()
-
-    ActionHandler.undo(user, [TeamsActionScopeType.value(group.id)], session_id)
-    assert not TeamSubject.objects.filter(pk=subject.id).exists()
-
-    ActionHandler.redo(user, [TeamsActionScopeType.value(group.id)], session_id)
-    assert TeamSubject.objects.filter(pk=subject.id).exists()
-
-
-@pytest.mark.django_db
-@pytest.mark.undo_redo
-def test_can_undo_creating_subject_by_email(data_fixture, enterprise_data_fixture):
-    session_id = "session-id"
-    invitee = data_fixture.create_user()
-    user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
-    team = enterprise_data_fixture.create_team(group=group)
-
-    action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"email": invitee.email}, "auth.User", team
-    )
-
-    ActionHandler.undo(user, [TeamsActionScopeType.value(group.id)], session_id)
-
-    assert not TeamSubject.objects.filter(team=team).exists()
-
-
-@pytest.mark.django_db
-@pytest.mark.undo_redo
-def test_can_undo_redo_creating_subject_by_email(data_fixture, enterprise_data_fixture):
-    session_id = "session-id"
-    invitee = data_fixture.create_user()
-    user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
-    team = enterprise_data_fixture.create_team(group=group)
-
-    subject = action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"email": invitee.email}, "auth.User", team
+        user, invitee.id, SUBJECT_TYPE_USER, team
     )
     assert TeamSubject.objects.filter(pk=subject.id).exists()
 
@@ -241,13 +206,13 @@ def test_can_undo_redo_creating_subject_by_email(data_fixture, enterprise_data_f
 @pytest.mark.undo_redo
 def test_can_undo_deleting_team_subject(data_fixture, enterprise_data_fixture):
     session_id = "session-id"
-    invitee = data_fixture.create_user()
+    group = data_fixture.create_group()
+    invitee = data_fixture.create_user_group(group=group)
     user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
     team = enterprise_data_fixture.create_team(group=group)
 
     subject = action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"id": invitee.id}, "auth.User", team
+        user, invitee.id, SUBJECT_TYPE_USER, team
     )
     subject_id = subject.id
     assert TeamSubject.objects.filter(pk=subject_id).exists()
@@ -263,13 +228,13 @@ def test_can_undo_deleting_team_subject(data_fixture, enterprise_data_fixture):
 @pytest.mark.undo_redo
 def test_can_undo_redo_deleting_team_subject(data_fixture, enterprise_data_fixture):
     session_id = "session-id"
-    invitee = data_fixture.create_user()
+    group = data_fixture.create_group()
+    invitee = data_fixture.create_user_group(group=group)
     user = data_fixture.create_user(session_id=session_id)
-    group = data_fixture.create_group(user=invitee)
     team = enterprise_data_fixture.create_team(group=group)
 
     subject = action_type_registry.get_by_type(CreateTeamSubjectActionType).do(
-        user, {"id": invitee.id}, "auth.User", team
+        user, invitee.id, SUBJECT_TYPE_USER, team
     )
     subject_id = subject.id
     assert TeamSubject.objects.filter(pk=subject_id).exists()
