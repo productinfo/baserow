@@ -117,7 +117,7 @@ class AdminDashboardHandler:
             expression="actor_id",
             now=now,
             distinct=True,
-            additional_filters={"action": "SIGNED_IN"},
+            additional_filters={"action__in": ["SIGNED_IN", "REFRESHED_TOKEN"]},
             include_previous=include_previous,
         )
 

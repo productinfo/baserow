@@ -74,7 +74,8 @@ def test_get_new_user_counts(premium_data_fixture):
 
 @pytest.mark.django_db
 @override_settings(DEBUG=True)
-def test_get_active_user_counts(premium_data_fixture):
+@pytest.mark.parametrize("action", ["SIGNED_IN", "REFRESHED_TOKEN"])
+def test_get_active_user_counts(premium_data_fixture, action):
     tz = timezone("UTC")
 
     user_1 = premium_data_fixture.create_user()
@@ -85,7 +86,7 @@ def test_get_active_user_counts(premium_data_fixture):
         for d in dates:
             entry = UserLogEntry()
             entry.actor = user
-            entry.action = "SIGNED_IN"
+            entry.action = action
             entry.save()
             # To override the auto_now_add.
             entry.timestamp = d

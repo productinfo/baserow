@@ -237,6 +237,49 @@ def test_token_password_auth_disabled_superadmin(api_client, data_fixture):
     assert response_json["user"]["is_staff"] is True
 
 
+def test_token_refresh_log_entries(api_client, data_fixture):
+    user = data_fixture.create_user(
+        email="test@test.nl", password="password", first_name="Test1", is_active=True
+    )
+
+    refresh_token = data_fixture.generate_refresh_token(user)
+
+    with freeze_time("2020-01-01 12:30"):
+        response = api_client.post(
+            reverse("api:user:token_refresh"),
+            {"refresh_token": refresh_token},
+            format="json",
+        )
+    assert "user" in response_json
+
+    logs = UserLogEntry.objects.all()
+    assert len(logs) == 1
+    log_entry = logs[0]
+    assert log_entry.actor_id == user.id
+    assert log_entry.action == "REFRESHED_TOKEN"
+    assert log_entry.timestamp == datetime(2020, 1, 1, 12, 30, tzinfo=timezone("UTC"))
+
+    # a second refresh, updates the previous log entry
+    with freeze_time("2020-01-01 12:40"):
+        response = api_client.post(
+            reverse("api:user:token_refresh"),
+            {"refresh_token": refresh_token},
+            format="json",
+        )
+
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    assert "access_token" in response_json
+    assert "user" in response_json
+
+    logs = UserLogEntry.objects.all()
+    assert len(logs) == 1
+    log_entry = logs[0]
+    assert log_entry.actor_id == user.id
+    assert log_entry.action == "REFRESHED_TOKEN"
+    assert log_entry.timestamp == datetime(2020, 1, 1, 12, 40, tzinfo=timezone("UTC"))
+
+
 @pytest.mark.django_db
 def test_token_refresh(api_client, data_fixture):
     class TmpPlugin(Plugin):

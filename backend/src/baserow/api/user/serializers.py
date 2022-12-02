@@ -234,6 +234,8 @@ class TokenRefreshWithUserSerializer(TokenRefreshSerializer):
 
         user = get_user_from_token(attrs["refresh"], RefreshToken)
         data = generate_session_tokens_for_user(user)
+        UserHandler().user_refreshed_session_token(user)
+
         data.update(**get_all_user_data_serialized(user, self.context["request"]))
         return data
 

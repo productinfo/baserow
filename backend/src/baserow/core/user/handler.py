@@ -381,6 +381,17 @@ class UserHandler:
         for plugin in plugin_registry.registry.values():
             plugin.user_signed_in(user)
 
+    def user_refreshed_session_token(self, user: AbstractUser):
+        """
+        Adds a UserLogEntry for statistics.
+
+        :param user: The user that has just refreshed his session.
+        """
+
+        UserLogEntry.objects.update_or_create(
+            actor=user, action="REFRESHED_TOKEN", defaults={"timestamp": timezone.now()}
+        )
+
     def schedule_user_deletion(self, user: AbstractUser):
         """
         Schedules the user account deletion. The user is flagged as `to_be_deleted` and
