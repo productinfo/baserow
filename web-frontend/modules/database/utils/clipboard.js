@@ -6,8 +6,7 @@ export const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text)
 }
 
-const isSafariBrowser = () =>
-  /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+const LOCAL_STORAGE_CLIPBOARD_KEY = 'baserow.clipboardData'
 
 /**
  * Values should be an object with mimetypes as key and clipboard content for this type
@@ -15,44 +14,30 @@ const isSafariBrowser = () =>
  * We can have a row saved as tsv string or as json string. Values must be strings.
  * @param {object} values object of mimetypes -> clipboard content.
  */
-export const setRichClipboard = (values) => {
-  // In safari the execCommand doesn't work so we need to use the clipboard API.
-  if (isSafariBrowser()) {
-    navigator.clipboard.writeText(values['text/plain'])
-    // since the clipboard API accept only a few mime types, use the localStorage
-    // to save the other metadata needed to get back the rich data format.
-    localStorage.setItem('baserow.clipboardData', JSON.stringify(values))
-  } else {
-    const listener = (e) => {
-      Object.entries(values).forEach(([type, content]) => {
-        e.clipboardData.setData(type, content)
-      })
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    document.addEventListener('copy', listener)
-    document.execCommand('copy')
-    document.removeEventListener('copy', listener)
-  }
+export const setRichClipboard = (text, jsonData) => {
+  copyToClipboard(text)
+  localStorage.setItem(
+    LOCAL_STORAGE_CLIPBOARD_KEY,
+    JSON.stringify({ text, jsonData })
+  )
 }
 
 export const getRichClipboard = (event) => {
   const textRawData = event.clipboardData.getData('text/plain')
   let jsonRawData
 
-  // In Safari the execCommand doesn't work so use get the metadata from the
-  // localStorage (see setRichClipboard for more info).
-  if (isSafariBrowser()) {
-    let clipboardData = localStorage.getItem('baserow.clipboardData')
-    localStorage.removeItem('baserow.clipboardData')
-    try {
-      clipboardData = JSON.parse(clipboardData)
-      if (clipboardData['text/plain'] === textRawData) {
-        jsonRawData = clipboardData['application/json']
-      }
-    } catch (e) {}
-  } else if (event.clipboardData.types.includes('application/json')) {
-    jsonRawData = event.clipboardData.getData('application/json')
+  let clipboardData = localStorage.getItem(LOCAL_STORAGE_CLIPBOARD_KEY)
+  try {
+    clipboardData = JSON.parse(clipboardData)
+    if (clipboardData.text === textRawData) {
+      jsonRawData = clipboardData.jsonData
+    } else {
+      throw new Error(
+        'Clipboard data is not the same as the local storage data'
+      )
+    }
+  } catch (e) {
+    localStorage.removeItem(LOCAL_STORAGE_CLIPBOARD_KEY)
   }
   return { textRawData: textRawData.trim(), jsonRawData }
 }

@@ -29,11 +29,7 @@ export default {
       const tsv = this.$papa.unparse(textData, {
         delimiter: '\t',
       })
-      const values = {
-        'text/plain': tsv,
-        'application/json': JSON.stringify(jsonData),
-      }
-      setRichClipboard(values)
+      setRichClipboard(tsv, jsonData)
     },
     async extractClipboardData(event) {
       const { textRawData, jsonRawData } = getRichClipboard(event)
@@ -41,17 +37,16 @@ export default {
         delimiter: '\t',
       })
 
-      let jsonData = null
-      if (jsonRawData) {
+      let jsonData = jsonRawData
+      if (jsonData) {
         try {
-          const parsed = JSON.parse(jsonRawData)
           // Check if we have an array of arrays with At least one row with at least
           // one row with a value Otherwise the paste is empty
           if (
-            Array.isArray(parsed) &&
-            parsed.length === textData.length &&
-            parsed.every((row) => Array.isArray(row)) &&
-            parsed.some((row, index) => row.length > 0)
+            Array.isArray(jsonRawData) &&
+            jsonRawData.length === textData.length &&
+            jsonRawData.every((row) => Array.isArray(row)) &&
+            jsonRawData.some((row) => row.length > 0)
           ) {
             jsonData = JSON.parse(jsonRawData)
           }
