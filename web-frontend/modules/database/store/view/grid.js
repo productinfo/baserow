@@ -1710,7 +1710,7 @@ export const actions = {
         const fieldId = `field_${field.id}`
         const textValue = textData[rowIndex][fieldIndex]
         const jsonValue =
-          jsonData !== null ? jsonData[rowIndex][fieldIndex] : undefined
+          jsonData != null ? jsonData[rowIndex][fieldIndex] : undefined
 
         const fieldType = this.$registry.get('field', field.type)
         const preparedValue = fieldType.prepareValueForPaste(

@@ -1,7 +1,6 @@
 import { onClickOutside } from '@baserow/modules/core/utils/dom'
 import baseField from '@baserow/modules/database/mixins/baseField'
 import copyPasteHelper from '@baserow/modules/database/mixins/copyPasteHelper'
-import { isOsSpecificModifierPressed } from '@baserow/modules/core/utils/events'
 
 /**
  * A mixin that can be used by a field grid component. It introduces the props that

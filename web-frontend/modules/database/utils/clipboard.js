@@ -14,11 +14,11 @@ const LOCAL_STORAGE_CLIPBOARD_KEY = 'baserow.clipboardData'
  * We can have a row saved as tsv string or as json string. Values must be strings.
  * @param {object} values object of mimetypes -> clipboard content.
  */
-export const setRichClipboard = (text, jsonData) => {
+export const setRichClipboard = (text, jsonRawData) => {
   copyToClipboard(text)
   localStorage.setItem(
     LOCAL_STORAGE_CLIPBOARD_KEY,
-    JSON.stringify({ text, jsonData })
+    JSON.stringify({ text, jsonRawData })
   )
 }
 
@@ -30,7 +30,7 @@ export const getRichClipboard = (event) => {
   try {
     clipboardData = JSON.parse(clipboardData)
     if (clipboardData.text === textRawData) {
-      jsonRawData = clipboardData.jsonData
+      jsonRawData = clipboardData.jsonRawData
     } else {
       throw new Error(
         'Clipboard data is not the same as the local storage data'

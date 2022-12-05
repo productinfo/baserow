@@ -983,6 +983,8 @@ export default {
         notifyIf(error, 'view')
       } finally {
         this.$store.dispatch('notification/setCopying', false)
+        // prevent Safari from beeping
+        event.preventDefault()
       }
     },
     /**

@@ -19,6 +19,10 @@ export function isPrintableUnicodeCharacterKeyPress(event) {
   return false
 }
 
+/**
+ * This function is a helper which determines whether the pressed key
+ * is the CMD key on Mac or the CTRL key on Windows/Linux.
+ */
 export const isOsSpecificModifierPressed = (event) => {
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   return isMac ? event.metaKey : event.ctrlKey
