@@ -1,6 +1,7 @@
 import { onClickOutside } from '@baserow/modules/core/utils/dom'
 import baseField from '@baserow/modules/database/mixins/baseField'
 import copyPasteHelper from '@baserow/modules/database/mixins/copyPasteHelper'
+import { isOsSpecificModifierPressed } from '@baserow/modules/core/utils/events'
 
 /**
  * A mixin that can be used by a field grid component. It introduces the props that
@@ -115,7 +116,7 @@ export default {
         // If the tab or arrow keys are pressed we want to select the next field. This
         // is however out of the scope of this component so we emit the selectNext
         // event that the GridView can handle.
-        const { key, shiftKey, ctrlKey, metaKey } = event
+        const { key, shiftKey } = event
         const arrowKeysMapping = {
           ArrowLeft: 'selectPrevious',
           ArrowUp: 'selectAbove',
@@ -136,7 +137,11 @@ export default {
         }
 
         // Copy the value to the clipboard if ctrl/cmd + c is pressed.
-        if ((ctrlKey || metaKey) && key === 'c' && this.canCopy(event)) {
+        if (
+          isOsSpecificModifierPressed(event) &&
+          key === 'c' &&
+          this.canCopy(event)
+        ) {
           this.copySelectionToClipboard(
             [this.field],
             [{ [`field_${this.field.id}`]: this.value }]

@@ -7,7 +7,7 @@
   such as CTRL+C/CTRL+V.
 */
 export function isPrintableUnicodeCharacterKeyPress(event) {
-  if (event == null || event.ctrlKey || event.metaKey) {
+  if (event == null || isOsSpecificModifierPressed(event)) {
     return false
   }
   const { key } = event
@@ -17,4 +17,9 @@ export function isPrintableUnicodeCharacterKeyPress(event) {
     return true
   }
   return false
+}
+
+export const isOsSpecificModifierPressed = (event) => {
+  const isMac = navigator.platform.toUpperCase().includes('MAC')
+  return isMac ? event.metaKey : event.ctrlKey
 }
