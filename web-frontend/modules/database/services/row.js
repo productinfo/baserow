@@ -63,8 +63,17 @@ export default (client) => {
 
       return client.post(`/database/rows/table/${tableId}/`, values, config)
     },
-    update(tableId, rowId, values) {
-      return client.patch(`/database/rows/table/${tableId}/${rowId}/`, values)
+    update(tableId, rowId, values, signal = null) {
+      const config = {}
+      if (signal !== null) {
+        config.signal = signal
+      }
+
+      return client.patch(
+        `/database/rows/table/${tableId}/${rowId}/`,
+        values,
+        config
+      )
     },
     batchUpdate(tableId, items) {
       return client.patch(`/database/rows/table/${tableId}/batch/`, { items })

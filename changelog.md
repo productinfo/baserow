@@ -25,6 +25,7 @@ For example:
 ### Refactors
 * Refresh the JWT token when needed instead of periodically. [#1294](https://gitlab.com/bramw/baserow/-/issues/1294)
 * Remove "// Baserow" from title on a publicly shared view if `show_logo` is set to false. [#1378](https://gitlab.com/bramw/baserow/-/issues/1378)
+* Stop overriding all row values when it's created or updated. [#1405](https://gitlab.com/bramw/baserow/-/issues/1405)
 
 ## Released (2022-11-22 1.13.1)
 
