@@ -9,6 +9,7 @@ import {
 
 const PAPA_CONFIG = {
   delimiter: '\t',
+  quotes: true,
 }
 
 export default {
