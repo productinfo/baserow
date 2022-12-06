@@ -983,8 +983,10 @@ export default {
         notifyIf(error, 'view')
       } finally {
         this.$store.dispatch('notification/setCopying', false)
-        // prevent Safari from beeping
-        event.preventDefault()
+        // prevent Safari from beeping if no text is selected
+        if (window.getSelection().toString() === '') {
+          event.preventDefault()
+        }
       }
     },
     /**

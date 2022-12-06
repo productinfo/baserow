@@ -160,7 +160,6 @@ export default {
           [this.field],
           [{ [`field_${this.field.id}`]: this.value }]
         )
-        event.preventDefault()
       }
       document.addEventListener('copy', this.$el.copyEventListener)
 

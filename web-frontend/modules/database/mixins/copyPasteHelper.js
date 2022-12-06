@@ -7,6 +7,10 @@ import {
   setRichClipboard,
 } from '@baserow/modules/database/utils/clipboard'
 
+const PAPA_CONFIG = {
+  delimiter: '\t',
+}
+
 export default {
   methods: {
     copySelectionToClipboard(fields, rows) {
@@ -26,18 +30,17 @@ export default {
         textData.push(text)
         jsonData.push(json)
       }
-      const text = this.$papa.unparse(textData, {
-        delimiter: '\t',
-      })
+      const text = this.$papa.unparse(textData, PAPA_CONFIG)
       setRichClipboard(text, jsonData)
     },
     async extractClipboardData(event) {
       const { textRawData, jsonRawData } = getRichClipboard(event)
-      const { data: textData } = await this.$papa.parsePromise(textRawData, {
-        delimiter: '\t',
-      })
+      const { data: textData } = await this.$papa.parsePromise(
+        textRawData,
+        PAPA_CONFIG
+      )
 
-      let jsonData = jsonRawData
+      let jsonData = null
       if (jsonData) {
         try {
           // Check if we have an array of arrays with At least one row with at least
@@ -48,7 +51,7 @@ export default {
             jsonRawData.every((row) => Array.isArray(row)) &&
             jsonRawData.some((row) => row.length > 0)
           ) {
-            jsonData = JSON.parse(jsonRawData)
+            jsonData = jsonRawData
           }
         } catch (e) {}
       }
