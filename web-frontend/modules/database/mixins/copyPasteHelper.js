@@ -41,19 +41,17 @@ export default {
       )
 
       let jsonData = null
-      if (jsonData) {
-        try {
-          // Check if we have an array of arrays with At least one row with at least
-          // one row with a value Otherwise the paste is empty
-          if (
-            Array.isArray(jsonRawData) &&
-            jsonRawData.length === textData.length &&
-            jsonRawData.every((row) => Array.isArray(row)) &&
-            jsonRawData.some((row) => row.length > 0)
-          ) {
-            jsonData = jsonRawData
-          }
-        } catch (e) {}
+      if (jsonRawData != null) {
+        // Check if we have an array of arrays with At least one row with at least
+        // one row with a value Otherwise the paste is empty
+        if (
+          Array.isArray(jsonRawData) &&
+          jsonRawData.length === textData.length &&
+          jsonRawData.every((row) => Array.isArray(row)) &&
+          jsonRawData.some((row) => row.length > 0)
+        ) {
+          jsonData = jsonRawData
+        }
       }
 
       return [textData, jsonData]
