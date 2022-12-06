@@ -26,10 +26,10 @@ export default {
         textData.push(text)
         jsonData.push(json)
       }
-      const tsv = this.$papa.unparse(textData, {
+      const text = this.$papa.unparse(textData, {
         delimiter: '\t',
       })
-      setRichClipboard(tsv, jsonData)
+      setRichClipboard(text, jsonData)
     },
     async extractClipboardData(event) {
       const { textRawData, jsonRawData } = getRichClipboard(event)
