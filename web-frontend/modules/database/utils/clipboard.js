@@ -19,10 +19,14 @@ const LOCAL_STORAGE_CLIPBOARD_KEY = 'baserow.clipboardData'
  */
 export const setRichClipboard = (text, json) => {
   copyToClipboard(text)
-  localStorage.setItem(
-    LOCAL_STORAGE_CLIPBOARD_KEY,
-    JSON.stringify({ text, json })
-  )
+  try {
+    localStorage.setItem(
+      LOCAL_STORAGE_CLIPBOARD_KEY,
+      JSON.stringify({ text, json })
+    )
+  } catch (e) {
+    // If the local storage is full then we just ignore it.
+  }
 }
 
 /**
