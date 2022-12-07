@@ -1218,13 +1218,7 @@ export const actions = {
    * It only contains the rows and fields selected by the multiple select.
    * If one or more rows are not in the buffer, they are fetched from the backend.
    */
-  async getCurrentSelection(
-    { dispatch, getters, commit },
-    { fields, type = 'text/plain' }
-  ) {
-    if (!getters.isMultiSelectActive) {
-      return
-    }
+  async getCurrentSelection({ dispatch, getters }, { fields }) {
     const [minFieldIndex, maxFieldIndex] =
       getters.getMultiSelectFieldIndexSorted
 

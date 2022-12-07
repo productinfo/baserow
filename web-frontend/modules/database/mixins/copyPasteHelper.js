@@ -4,7 +4,7 @@
 
 import {
   getRichClipboard,
-  setRichClipboard,
+  LOCAL_STORAGE_CLIPBOARD_KEY,
 } from '@baserow/modules/database/utils/clipboard'
 
 const PAPA_CONFIG = {
@@ -14,7 +14,7 @@ const PAPA_CONFIG = {
 
 export default {
   methods: {
-    copySelectionToClipboard(fields, rows) {
+    prepareSelectionForCopy(fields, rows) {
       const textData = []
       const jsonData = []
       for (const row of rows) {
@@ -32,10 +32,43 @@ export default {
         jsonData.push(json)
       }
       const text = this.$papa.unparse(textData, PAPA_CONFIG)
-      setRichClipboard(text, jsonData)
+      try {
+        localStorage.setItem(
+          LOCAL_STORAGE_CLIPBOARD_KEY,
+          JSON.stringify({ text, json: jsonData })
+        )
+        return text
+      } catch (e) {
+        // If the local storage is full then we just ignore it.
+        // @TODO: Should we warn the user?
+        return ''
+      }
+    },
+    async copySelectionToClipboard(selectionPromise) {
+      // Firefox does not have the ClipboardItem type enabled by default, so we
+      // need to check if it is available. Safari instead, needs the
+      // ClipboardItem type to save async data to the clipboard.
+      if (typeof ClipboardItem !== 'undefined') {
+        navigator.clipboard.write([
+          // eslint-disable-next-line no-undef
+          new ClipboardItem({
+            'text/plain': selectionPromise.then(
+              ([fields, rows]) =>
+                new Blob([this.prepareSelectionForCopy(fields, rows)], {
+                  type: 'text/plain',
+                })
+            ),
+          }),
+        ])
+      } else {
+        const text = await selectionPromise.then(([fields, rows]) =>
+          this.prepareSelectionForCopy(fields, rows)
+        )
+        navigator.clipboard.writeText(text)
+      }
     },
     async extractClipboardData(event) {
-      const { textRawData, jsonRawData } = getRichClipboard(event)
+      const { textRawData, jsonRawData } = await getRichClipboard(event)
       const { data: textData } = await this.$papa.parsePromise(
         textRawData,
         PAPA_CONFIG

@@ -6,28 +6,7 @@ export const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text)
 }
 
-const LOCAL_STORAGE_CLIPBOARD_KEY = 'baserow.clipboardData'
-
-/**
- * This methods sets the given text and json data in the clipboard and in the
- * local storage respectively. This is needed because we need the original
- * metadata to be able to restore the original rich format, but the clipboard only
- * allows to store plain text, html or images related mime types.
- * @param {string} text The text being copied in the clipboard.
- * @param {object} json The rich json object with all the metadata needed to
- * restore the original data in the correct format.
- */
-export const setRichClipboard = (text, json) => {
-  copyToClipboard(text)
-  try {
-    localStorage.setItem(
-      LOCAL_STORAGE_CLIPBOARD_KEY,
-      JSON.stringify({ text, json })
-    )
-  } catch (e) {
-    // If the local storage is full then we just ignore it.
-  }
-}
+export const LOCAL_STORAGE_CLIPBOARD_KEY = 'baserow.clipboardData'
 
 /**
  * This method gets the text and json data from the clipboard and from the local
@@ -40,9 +19,15 @@ export const setRichClipboard = (text, json) => {
  * jsonRawData is the rich json object with all the metadata needed to restore
  * the original data in the correct rich format.
  */
-export const getRichClipboard = (event) => {
-  const textRawData = event.clipboardData.getData('text/plain')
+export const getRichClipboard = async (event) => {
+  let textRawData
   let jsonRawData
+
+  if (typeof navigator.clipboard.readtText !== 'undefined') {
+    textRawData = await navigator.clipboard.readText()
+  } else {
+    textRawData = event.clipboardData.getData('text/plain')
+  }
 
   let clipboardData = localStorage.getItem(LOCAL_STORAGE_CLIPBOARD_KEY)
   try {

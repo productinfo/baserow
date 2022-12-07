@@ -153,12 +153,14 @@ export default {
       }
       document.body.addEventListener('keydown', this.$el.keyDownEvent)
 
-      this.$el.copyEventListener = (event) => {
+      this.$el.copyEventListener = async (event) => {
         if (!this.canKeyDown(event) || !this.canCopy(event)) return
 
-        this.copySelectionToClipboard(
-          [this.field],
-          [{ [`field_${this.field.id}`]: this.value }]
+        await this.copySelectionToClipboard(
+          Promise.resolve([
+            [this.field],
+            [{ [`field_${this.field.id}`]: this.value }],
+          ])
         )
       }
       document.addEventListener('copy', this.$el.copyEventListener)
