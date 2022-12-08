@@ -129,7 +129,7 @@ export default {
     async inviteDatabaseMembers(members, role) {
       const roleAssignments = await this.invite(
         members,
-        'auth.User',
+        'core.GroupUser',
         role,
         'database',
         this.database.id
@@ -151,7 +151,7 @@ export default {
     async inviteTableMembers(members, role) {
       const roleAssignments = await this.invite(
         members,
-        'auth.User',
+        'core.GroupUser',
         role,
         'database_table',
         this.table.id
@@ -175,7 +175,7 @@ export default {
 
       // Different subject types store their id in different fields
       const subjectTypeToIdKeyMap = {
-        'auth.User': 'user_id',
+        'core.GroupUser': 'id',
         'baserow_enterprise.Team': 'id',
       }
       const subjectTypeIdKey = subjectTypeToIdKeyMap[subjectType]

@@ -9,7 +9,7 @@ from pyinstrument import Profiler
 
 from baserow.contrib.database.object_scopes import DatabaseObjectScopeType
 from baserow.core.models import GroupUser
-from baserow.core.subjects import UserSubjectType
+from baserow.core.subjects import GroupUserSubjectType
 from baserow_enterprise.exceptions import ScopeNotExist, SubjectNotExist
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role, RoleAssignment
@@ -78,7 +78,7 @@ def test_create_role_assignment_unique_constraint(data_fixture):
 
     RoleAssignment.objects.create(
         subject_id=user.id,
-        subject_type=UserSubjectType().get_content_type(),
+        subject_type=GroupUserSubjectType().get_content_type(),
         role=role,
         group=group,
         scope_id=database.id,
@@ -88,7 +88,7 @@ def test_create_role_assignment_unique_constraint(data_fixture):
     with pytest.raises(IntegrityError):
         RoleAssignment.objects.create(
             subject_id=user.id,
-            subject_type=UserSubjectType().get_content_type(),
+            subject_type=GroupUserSubjectType().get_content_type(),
             role=role,
             group=group,
             scope_id=database.id,

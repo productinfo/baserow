@@ -11,7 +11,7 @@ from rest_framework.status import (
     HTTP_404_NOT_FOUND,
 )
 
-from baserow.core.subjects import UserSubjectType
+from baserow.core.subjects import GroupUserSubjectType
 from baserow_enterprise.role.handler import RoleAssignmentHandler
 from baserow_enterprise.role.models import Role, RoleAssignment
 
@@ -50,7 +50,7 @@ def test_create_role_assignment(
             "scope_id": table.id,
             "scope_type": "database_table",
             "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "role": builder_role.uid,
         },
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
@@ -75,7 +75,7 @@ def test_create_role_assignment(
         "scope_id": table.id,
         "scope_type": "database_table",
         "subject_id": user2.id,
-        "subject_type": UserSubjectType.type,
+        "subject_type": GroupUserSubjectType.type,
         "subject": {
             "email": user2.email,
             "first_name": user2.first_name,
@@ -91,7 +91,7 @@ def test_create_role_assignment(
             "scope_id": group.id,
             "scope_type": "group",
             "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "role": editor_role.uid,
         },
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
@@ -111,7 +111,7 @@ def test_create_role_assignment(
             "scope_id": table.id,
             "scope_type": "database_table",
             "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "role": editor_role.uid,
         },
         **{"HTTP_AUTHORIZATION": f"JWT {token}"},
@@ -132,7 +132,7 @@ def test_create_role_assignment(
                 "scope_id": table.id,
                 "scope_type": "database_table",
                 "subject_id": user2.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": None,
             }
         ),
@@ -165,7 +165,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": 9999,
                 "scope_type": "group",
                 "subject_id": user_2.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": role.uid,
             }
         ),
@@ -183,7 +183,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": group.id,
                 "scope_type": "nonsense",
                 "subject_id": user_2.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": role.uid,
             }
         ),
@@ -201,7 +201,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": group.id,
                 "scope_type": "group",
                 "subject_id": 99999,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": role.uid,
             }
         ),
@@ -237,7 +237,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": group.id,
                 "scope_type": "group",
                 "subject_id": user_2.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": 999999,
             }
         ),
@@ -255,7 +255,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": group_2.id,
                 "scope_type": "group",
                 "subject_id": user_3.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": role.uid,
             }
         ),
@@ -273,7 +273,7 @@ def test_create_role_assignment_invalid_requests(api_client, data_fixture):
                 "scope_id": group.id,
                 "scope_type": "group",
                 "subject_id": user_2.id,
-                "subject_type": UserSubjectType.type,
+                "subject_type": GroupUserSubjectType.type,
                 "role": role.uid,
             }
         ),
@@ -454,7 +454,7 @@ def test_batch_assign_role(data_fixture, api_client):
                     "scope_id": table.id,
                     "scope_type": "database_table",
                     "subject_id": user2.id,
-                    "subject_type": UserSubjectType.type,
+                    "subject_type": GroupUserSubjectType.type,
                     "role": builder_role.uid,
                 },
             ]
@@ -482,7 +482,7 @@ def test_batch_assign_role(data_fixture, api_client):
             "scope_id": table.id,
             "scope_type": "database_table",
             "subject_id": user2.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "subject": {
                 "email": user2.email,
                 "first_name": user2.first_name,
@@ -510,7 +510,7 @@ def test_batch_assign_role_duplicates(data_fixture, api_client):
         "scope_id": table.id,
         "scope_type": "database_table",
         "subject_id": user2.id,
-        "subject_type": UserSubjectType.type,
+        "subject_type": GroupUserSubjectType.type,
         "role": builder_role.uid,
     }
 
@@ -553,14 +553,14 @@ def test_batch_assign_role_is_undoable(api_client, data_fixture):
             "scope_id": group.id,
             "scope_type": "group",
             "subject_id": user_2.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "role": role.uid,
         },
         {
             "scope_id": group.id,
             "scope_type": "group",
             "subject_id": user_3.id,
-            "subject_type": UserSubjectType.type,
+            "subject_type": GroupUserSubjectType.type,
             "role": role.uid,
         },
     ]

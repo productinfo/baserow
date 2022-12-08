@@ -312,10 +312,10 @@ class RoleAssignmentHandler:
 
     def assign_role(
         self,
-        subject,
-        group,
-        role=None,
-        scope=None,
+        subject: Union[GroupUser, Team],
+        group: Group,
+        role: Optional[Role] = None,
+        scope: Optional[Any] = None,
     ) -> Optional[RoleAssignment]:
         """
         Assign a role to a subject in the context of the given group over a specified
@@ -347,12 +347,11 @@ class RoleAssignmentHandler:
 
         content_types = ContentType.objects.get_for_models(scope, subject)
 
-        # Group level permissions are not stored as RoleAssignment records
-        if scope == group and scope.id == group.id and isinstance(subject, User):
-            group_user = group.get_group_user(subject)
+        # Group level permissions are not stored as RoleAssignment records for GroupUser
+        if scope == group and scope.id == group.id and isinstance(subject, GroupUser):
             new_permissions = "MEMBER" if role.uid == "BUILDER" else role.uid
             CoreHandler().force_update_group_user(
-                None, group_user, permissions=new_permissions
+                None, subject, permissions=new_permissions
             )
 
             # We need to fake a RoleAssignment instance here to keep the same
@@ -392,11 +391,10 @@ class RoleAssignmentHandler:
         if scope is None:
             scope = group
 
-        if scope == group and scope.id == group.id and isinstance(subject, User):
-            group_user = group.get_group_user(subject)
+        if scope == group and scope.id == group.id and isinstance(subject, GroupUser):
             new_permissions = self.NO_ACCESS_ROLE
             CoreHandler().force_update_group_user(
-                None, group_user, permissions=new_permissions
+                None, subject, permissions=new_permissions
             )
             return
 

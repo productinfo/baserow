@@ -135,10 +135,12 @@ export default {
       return this.group.users || []
     },
     groupUsersNotInvited() {
-      const userIds = this.userRoleAssignments.map(({ subject }) => subject.id)
+      const groupUserIds = this.userRoleAssignments.map(
+        ({ subject }) => subject.id
+      )
       return this.groupUsers.filter(
-        ({ user_id: userId }) =>
-          !userIds.includes(userId) && userId !== this.userId
+        ({ id: groupUserId, user_id: userId }) =>
+          !groupUserIds.includes(groupUserId) && userId !== this.userId
       )
     },
     teamsNotInvited() {

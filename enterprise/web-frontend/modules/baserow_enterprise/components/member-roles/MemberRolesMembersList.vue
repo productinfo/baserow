@@ -7,17 +7,17 @@
     >
       <!-- User subjects -->
       <div
-        v-if="roleAssignment.subject_type === 'auth.User'"
+        v-if="roleAssignment.subject_type === 'core.GroupUser'"
         class="member-roles-members-list__subject-section"
       >
         <div class="member-roles-members-list__user-initials">
-          {{ roleAssignment.subject.first_name | nameAbbreviation }}
+          {{ roleAssignment.subject.user.first_name | nameAbbreviation }}
         </div>
         <div
-          v-tooltip="roleAssignment.subject.first_name"
+          v-tooltip="roleAssignment.subject.user.first_name"
           class="margin-left-1 member-roles-members-list__user-name"
         >
-          {{ roleAssignment.subject.first_name }}
+          {{ roleAssignment.subject.user.first_name }}
         </div>
       </div>
 
@@ -43,7 +43,7 @@
       <RoleSelector
         :disabled="
           roleAssignment.subject.id === userId &&
-          roleAssignment.subject_type === 'auth.User'
+          roleAssignment.subject_type === 'core.GroupUser'
         "
         :roles="roles"
         :value="getRole(roleAssignment)"

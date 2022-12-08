@@ -57,9 +57,9 @@ class CoreConfig(AppConfig):
 
         from baserow.core.registries import subject_type_registry
 
-        from .subjects import UserSubjectType
+        from .subjects import GroupUserSubjectType
 
-        subject_type_registry.register(UserSubjectType())
+        subject_type_registry.register(GroupUserSubjectType())
 
         from .operations import (
             CreateApplicationsGroupOperationType,

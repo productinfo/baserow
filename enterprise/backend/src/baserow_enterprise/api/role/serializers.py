@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from baserow.api.serializers import NaturalKeyRelatedField
+from baserow.core.models import GroupUser
 from baserow.core.registries import object_scope_type_registry, subject_type_registry
 from baserow_enterprise.exceptions import RoleNotExist, ScopeNotExist, SubjectNotExist
 from baserow_enterprise.models import Role, RoleAssignment, Team
@@ -24,6 +25,21 @@ class SubjectUserSerializer(serializers.ModelSerializer):
             "username": {"read_only": True},
             "first_name": {"read_only": True},
             "email": {"read_only": True},
+        }
+
+
+class SubjectGroupUserSerializer(serializers.ModelSerializer):
+    user = SubjectUserSerializer()
+
+    class Meta:
+        model = GroupUser
+        fields = [
+            "id",
+            "user",
+        ]
+        extra_kwargs = {
+            "id": {"read_only": True},
+            "user": {"read_only": True},
         }
 
 

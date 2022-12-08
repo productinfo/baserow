@@ -80,8 +80,8 @@ export default {
 
       try {
         await RoleAssignmentsService(this.$client).assignRole(
-          newMember.user_id,
-          'auth.User',
+          newMember.id,
+          'core.GroupUser',
           this.column.additionalProps.groupId,
           this.column.additionalProps.groupId,
           'group',
