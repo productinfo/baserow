@@ -6,12 +6,18 @@
           $t(`memberRolesTab.${translationPrefix}.title`, { name: scope.name })
         }}
       </h2>
-      <a
-        :class="{ 'button--loading': loading }"
-        class="button button--ghost"
-        @click="loading ? null : $refs.roleAssignmentModal.show()"
-        >{{ $t(`memberRolesTab.${translationPrefix}.selectMembers`) }}</a
-      >
+      <div>
+        <HelpIcon
+          :tooltip="$t('memberRolesTab.headerTooltip')"
+          class="margin-right-1"
+        ></HelpIcon>
+        <a
+          :class="{ 'button--loading': loading }"
+          class="button button--ghost"
+          @click="loading ? null : $refs.roleAssignmentModal.show()"
+          >{{ $t(`memberRolesTab.${translationPrefix}.selectMembers`) }}</a
+        >
+      </div>
     </div>
     <span
       v-if="$featureFlags.includes('rbacNoRole')"

@@ -141,6 +141,7 @@
         }
     },
     "memberRolesTab": {
+        "headerTooltip": "More granular role assignments always override less granular ones.",
         "database": {
             "title": "{name} database",
             "selectMembers": "Select members",
