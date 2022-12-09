@@ -16,3 +16,5 @@
   are updated for changes to endpoints accessed via api tokens
 - [ ] The UI/UX has been updated
   following [UI Style Guide](https://baserow.io/style-guide)
+- [ ] **Testing instructions** for the reviewer(s) have been included if this resolves a bug.
+  - E.g. a short series of steps on how to replicate the bug and how your fix resolves it.
