@@ -162,6 +162,8 @@ export default {
             [{ [`field_${this.field.id}`]: this.value }],
           ])
         )
+        // prevent Safari from beeping since the window.getSelection() is empty
+        event.preventDefault()
       }
       document.addEventListener('copy', this.$el.copyEventListener)
 
