@@ -187,7 +187,8 @@
         "types": {
             "members": "members",
             "teams": "teams"
-        }
+        },
+        "helpTooltip": "Member role assignments always override team role assignments."
     },
     "oauthSettingsForm": {
         "providerName": "Name",
