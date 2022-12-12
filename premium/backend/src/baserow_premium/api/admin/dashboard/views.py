@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from baserow.api.decorators import accept_timezone
-from baserow.core.models import Application, Group
+from baserow.core.models import Application, Group, Template
 
 from .serializers import AdminDashboardSerializer
 
@@ -52,7 +52,9 @@ class AdminDashboardView(APIView):
 
         handler = AdminDashboardHandler()
         total_users = User.objects.filter(is_active=True).count()
-        total_groups = Group.objects.all().count()
+        total_groups = Group.objects.exclude(
+            id__in=Template.objects.values("group")
+        ).count()
         total_applications = Application.objects.all().count()
         new_users = handler.get_new_user_counts(
             {
