@@ -170,7 +170,8 @@
     },
     "memberRolesMembersList": {
         "remove": "Remove",
-        "teamMembersCount": "{count} team members"
+        "teamMembersCount": "{count} team members",
+        "adminHelpText": "Admins can restrict other admins roles."
     },
     "roleAssignmentModal": {
         "membersTab": "Members",
