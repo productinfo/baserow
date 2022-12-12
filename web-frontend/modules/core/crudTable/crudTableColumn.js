@@ -27,7 +27,8 @@ export default class CrudTableColumn {
     sortable = false,
     stickyLeft = false,
     stickyRight = false,
-    additionalProps = {}
+    additionalProps = {},
+    helpText = null
   ) {
     this.key = key
     this._header = header
@@ -36,6 +37,7 @@ export default class CrudTableColumn {
     this.stickyLeft = stickyLeft
     this.stickyRight = stickyRight
     this.additionalProps = additionalProps
+    this.helpText = helpText
   }
 
   get header() {

@@ -42,7 +42,8 @@
         "nameColumn": "Name",
         "createdColumn": "Created on",
         "subjectsColumn": "Members",
-        "roleColumn": "Default role"
+        "roleColumn": "Default role",
+        "roleHelpText": "Can be overriden with roles on databases and tables."
     },
     "subjectSampleField": {
         "titleAttr": "{subjectCount} members in this team."
@@ -193,6 +194,9 @@
     },
     "membersRoleField": {
         "noAccessHelpText": "This user requires explicit access to resources."
+    },
+    "membersPagePlugin": {
+        "roleHelpText": "Can be overriden with roles on databases and tables."
     },
     "oauthSettingsForm": {
         "providerName": "Name",
