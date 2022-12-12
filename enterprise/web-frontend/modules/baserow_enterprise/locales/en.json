@@ -30,7 +30,8 @@
         "roleTitle": "Default role",
         "inviteMembers": "Add members",
         "membersTitle": "Members",
-        "noSubjectsSelected": "Click '{buttonLabel}' to optionally add team users."
+        "noSubjectsSelected": "Click '{buttonLabel}' to optionally add team users.",
+        "roleHelpText": "User specific roles will always override Team roles."
     },
     "editTeamContext": {
         "edit": "Edit team",
