@@ -10,6 +10,7 @@ For example:
 ## Unreleased
 
 ### New Features
+* Add various help icons to explain RBAC in the UI [#1318](https://gitlab.com/bramw/baserow/-/issues/1318)
 
 ### Bug Fixes
 
