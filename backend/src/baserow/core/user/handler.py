@@ -388,9 +388,21 @@ class UserHandler:
         :param user: The user that has just refreshed his session.
         """
 
-        UserLogEntry.objects.update_or_create(
-            actor=user, action="REFRESHED_TOKEN", defaults={"timestamp": timezone.now()}
+        action = "REFRESHED_TOKEN"
+        now = timezone.now()
+        refreshed_token_entry = (
+            UserLogEntry.objects.filter(actor=user, action=action)
+            .extra(
+                {"date": "date_trunc('hour', timestamp at time zone %s)"},
+                select_params=(str(now.tzinfo),),
+            )
+            .first()
         )
+        if refreshed_token_entry is None:
+            UserLogEntry.objects.create(actor=user, action=action)
+        else:
+            refreshed_token_entry.timestamp = now
+            refreshed_token_entry.save()
 
     def schedule_user_deletion(self, user: AbstractUser):
         """
