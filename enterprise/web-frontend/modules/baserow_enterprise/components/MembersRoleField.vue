@@ -32,6 +32,11 @@
       :tooltip="$t('membersRoleField.noAccessHelpText')"
       class="margin-left-1"
     />
+    <HelpIcon
+      v-if="roleUidSelected === 'ADMIN'"
+      :tooltip="$t('membersRoleField.adminHelpText')"
+      class="margin-left-1"
+    />
   </div>
 </template>
 

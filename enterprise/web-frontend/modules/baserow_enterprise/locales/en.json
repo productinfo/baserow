@@ -195,7 +195,8 @@
         "helpTooltip": "Member role assignments always override team role assignments."
     },
     "membersRoleField": {
-        "noAccessHelpText": "This user requires explicit access to resources."
+        "noAccessHelpText": "This user requires explicit access to resources.",
+        "adminHelpText": "Admins can restrict other admins roles."
     },
     "membersPagePlugin": {
         "roleHelpText": "Can be overriden with roles on databases and tables."
