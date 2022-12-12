@@ -36,9 +36,8 @@ class AssignRoleActionType(ActionType):
         scope_id: int
         scope_type: str
 
-    @classmethod
     def do(
-        cls,
+        self,
         user,
         subject,
         group: Group,
@@ -107,9 +106,9 @@ class AssignRoleActionType(ActionType):
         scope_type = object_scope_type_registry.get_by_model(scope).type
         subject_type = subject_type_registry.get_by_model(subject).type
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 subject.id,
                 subject_type,
                 group.id,
@@ -118,7 +117,7 @@ class AssignRoleActionType(ActionType):
                 scope.id,
                 scope_type,
             ),
-            scope=cls.scope(group.id),
+            scope=self.scope(group.id),
         )
         return role_assignment
 
@@ -126,8 +125,7 @@ class AssignRoleActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
 
         role_assignment_handler = RoleAssignmentHandler()
         group = Group.objects.get(id=params.group_id)
@@ -165,8 +163,7 @@ class AssignRoleActionType(ActionType):
             scope=scope,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
 
         role_assignment_handler = RoleAssignmentHandler()
 

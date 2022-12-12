@@ -24,9 +24,8 @@ class CreateTeamActionType(ActionType):
         group_id: int
         subjects: List[Dict]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         name: str,
         group: Group,
@@ -51,10 +50,10 @@ class CreateTeamActionType(ActionType):
 
         team = TeamHandler().create_team(user, name, group, subjects, default_role)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(team.name, team.id, group.id, subjects),
-            scope=cls.scope(team.group_id),
+            params=self.Params(team.name, team.id, group.id, subjects),
+            scope=self.scope(team.group_id),
         )
         return team
 
@@ -62,18 +61,16 @@ class CreateTeamActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return TeamsActionScopeType.value(group_id)
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
     ):
         TeamHandler().delete_team_by_id(user, params.team_id)
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -96,9 +93,8 @@ class UpdateTeamActionType(ActionType):
         original_default_role_uid: Union[str, None]
         default_role_uid: Union[str, None]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         team: Team,
         name: str,
@@ -131,9 +127,9 @@ class UpdateTeamActionType(ActionType):
 
         team = TeamHandler().update_team(user, team, name, subjects, default_role)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 team.id,
                 original_name,
                 name,
@@ -142,7 +138,7 @@ class UpdateTeamActionType(ActionType):
                 original_default_role_uid,
                 default_role_uid,
             ),
-            scope=cls.scope(team.group_id),
+            scope=self.scope(team.group_id),
         )
 
         return team
@@ -151,8 +147,7 @@ class UpdateTeamActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return TeamsActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         team = TeamHandler().get_team(user, params.team_id)
         original_role = params.original_default_role_uid
         if original_role:
@@ -161,8 +156,7 @@ class UpdateTeamActionType(ActionType):
             user, team, params.original_name, default_role=original_role
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         team = TeamHandler().get_team(user, params.team_id)
         new_role = params.default_role_uid
         if new_role:
@@ -177,8 +171,7 @@ class DeleteTeamActionType(ActionType):
     class Params:
         team_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, team: Team) -> None:
+    def do(self, user: AbstractUser, team: Team) -> None:
         """
         Deletes an existing team instance if the user has access to the
         related group. The `team_deleted` signal is also called. See
@@ -191,22 +184,20 @@ class DeleteTeamActionType(ActionType):
 
         TeamHandler().delete_team(user, team)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(team.id),
-            scope=cls.scope(team.group_id),
+            params=self.Params(team.id),
+            scope=self.scope(team.group_id),
         )
 
     @classmethod
     def scope(cls, group_id: int) -> ActionScopeStr:
         return TeamsActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user, params: Params, action_being_undone: Action):
+    def undo(self, user, params: Params, action_being_undone: Action):
         TeamHandler().restore_team_by_id(user, params.team_id)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         team_for_update = TeamHandler().get_team_for_update(user, params.team_id)
         TeamHandler().delete_team(user, team_for_update)
 
@@ -223,9 +214,8 @@ class CreateTeamSubjectActionType(ActionType):
         ]  # User.email | TeamSubject.subject_id
         subject_subject_type_natural_key: int  # TeamSubject.subject_type natural key
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         subject_lookup: Dict[str, Union[str, int]],
         subject_type: str,
@@ -246,10 +236,10 @@ class CreateTeamSubjectActionType(ActionType):
 
         subject = TeamHandler().create_subject(user, subject_lookup, subject_type, team)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(team.id, subject.id, subject_lookup, subject_type),
-            scope=cls.scope(team.group_id),
+            params=self.Params(team.id, subject.id, subject_lookup, subject_type),
+            scope=self.scope(team.group_id),
         )
         return subject
 
@@ -257,9 +247,8 @@ class CreateTeamSubjectActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return TeamsActionScopeType.value(group_id)
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
@@ -267,9 +256,8 @@ class CreateTeamSubjectActionType(ActionType):
         team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().delete_subject_by_id(user, params.subject_id, team)
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -294,8 +282,7 @@ class DeleteTeamSubjectActionType(ActionType):
         subject_subject_id: int  # TeamSubject.subject_id
         subject_subject_type_natural_key: int  # TeamSubject.subject_type natural key
 
-    @classmethod
-    def do(cls, user: AbstractUser, subject: TeamSubject) -> None:
+    def do(self, user: AbstractUser, subject: TeamSubject) -> None:
         """
         Deletes an existing subject instance if the user has access to the
         related group. The `team_subject_deleted` signal is also called. See
@@ -309,23 +296,22 @@ class DeleteTeamSubjectActionType(ActionType):
         subject_id = subject.id
         TeamHandler().delete_subject(user, subject)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 subject.team_id,
                 subject_id,
                 subject.subject_id,
                 subject.subject_type_natural_key,
             ),
-            scope=cls.scope(subject.team.group_id),
+            scope=self.scope(subject.team.group_id),
         )
 
     @classmethod
     def scope(cls, team_id: int) -> ActionScopeStr:
         return TeamsActionScopeType.value(team_id)
 
-    @classmethod
-    def undo(cls, user, params: Params, action_being_undone: Action):
+    def undo(self, user, params: Params, action_being_undone: Action):
         team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().create_subject(
             user,
@@ -335,7 +321,6 @@ class DeleteTeamSubjectActionType(ActionType):
             params.subject_id,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         team = TeamHandler().get_team(user, params.team_id)
         TeamHandler().delete_subject_by_id(user, params.subject_id, team)

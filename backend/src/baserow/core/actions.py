@@ -39,9 +39,8 @@ class DeleteGroupActionType(ActionType):
     def scope(cls) -> ActionScopeStr:
         return RootActionScopeType.value()
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
@@ -52,9 +51,8 @@ class DeleteGroupActionType(ActionType):
             params.deleted_group_id,
         )
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -70,8 +68,7 @@ class CreateGroupActionType(ActionType):
         group_id: int
         group_name: str
 
-    @classmethod
-    def do(cls, user: AbstractUser, group_name: str) -> GroupUser:
+    def do(self, user: AbstractUser, group_name: str) -> GroupUser:
         """
         Creates a new group for an existing user. See
         baserow.core.handler.CoreHandler.create_group for more details. Undoing this
@@ -86,10 +83,10 @@ class CreateGroupActionType(ActionType):
         # noinspection PyTypeChecker
         group_id: int = group_user.group_id
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(group_id, group_name),
-            scope=cls.scope(),
+            params=self.Params(group_id, group_name),
+            scope=self.scope(),
         )
         return group_user
 
@@ -97,18 +94,16 @@ class CreateGroupActionType(ActionType):
     def scope(cls) -> ActionScopeStr:
         return RootActionScopeType.value()
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
     ):
         CoreHandler().delete_group_by_id(user, params.group_id)
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -127,9 +122,8 @@ class UpdateGroupActionType(ActionType):
         original_group_name: str
         new_group_name: str
 
-    @classmethod
     def do(
-        cls, user: AbstractUser, group: GroupForUpdate, new_group_name: str
+        self, user: AbstractUser, group: GroupForUpdate, new_group_name: str
     ) -> GroupForUpdate:
         """
         Updates the values of a group if the user has admin permissions to the group.
@@ -147,14 +141,14 @@ class UpdateGroupActionType(ActionType):
         original_group_name = group.name
         CoreHandler().update_group(user, group, name=new_group_name)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 group.id,
                 original_group_name=original_group_name,
                 new_group_name=new_group_name,
             ),
-            scope=cls.scope(),
+            scope=self.scope(),
         )
         return group
 
@@ -162,9 +156,8 @@ class UpdateGroupActionType(ActionType):
     def scope(cls) -> ActionScopeStr:
         return RootActionScopeType.value()
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
@@ -176,9 +169,8 @@ class UpdateGroupActionType(ActionType):
             name=params.original_group_name,
         )
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -199,8 +191,7 @@ class OrderGroupsActionType(ActionType):
         original_order: List[int]
         new_order: List[int]
 
-    @classmethod
-    def do(cls, user: AbstractUser, group_ids: List[int]) -> None:
+    def do(self, user: AbstractUser, group_ids: List[int]) -> None:
         """
         Changes the order of groups for a user.
         See baserow.core.handler.CoreHandler.order_groups for more details. Undoing
@@ -215,31 +206,29 @@ class OrderGroupsActionType(ActionType):
 
         CoreHandler().order_groups(user, group_ids)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 original_order,
                 new_order=group_ids,
             ),
-            scope=cls.scope(),
+            scope=self.scope(),
         )
 
     @classmethod
     def scope(cls) -> ActionScopeStr:
         return RootActionScopeType.value()
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_undo: Action,
     ):
         CoreHandler().order_groups(user, params.original_order)
 
-    @classmethod
     def redo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_to_redo: Action,
@@ -256,9 +245,8 @@ class OrderApplicationsActionType(ActionType):
         original_application_ids: List[int]
         new_application_ids: List[int]
 
-    @classmethod
     def do(
-        cls, user: AbstractUser, group: Group, application_ids_in_order: List[int]
+        self, user: AbstractUser, group: Group, application_ids_in_order: List[int]
     ) -> Any:
         """
         Reorders the applications of a given group in the desired order. The index of
@@ -276,24 +264,22 @@ class OrderApplicationsActionType(ActionType):
             CoreHandler().order_applications(user, group, application_ids_in_order)
         )
 
-        params = cls.Params(
+        params = self.Params(
             group_id=group.id,
             original_application_ids=old_ids_in_order,
             new_application_ids=application_ids_in_order,
         )
-        cls.register_action(user, params, cls.scope(group.id))
+        self.register_action(user, params, self.scope(group.id))
 
     @classmethod
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         group = CoreHandler().get_group_for_update(params.group_id)
         CoreHandler().order_applications(user, group, params.original_application_ids)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         group = CoreHandler().get_group_for_update(params.group_id)
         CoreHandler().order_applications(user, group, params.new_application_ids)
 
@@ -305,9 +291,8 @@ class CreateApplicationActionType(ActionType):
     class Params:
         application_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         group: Group,
         application_type: str,
@@ -332,8 +317,8 @@ class CreateApplicationActionType(ActionType):
             user, group, application_type, name=name, init_with_data=init_with_data
         )
 
-        params = cls.Params(application.id)
-        cls.register_action(user, params, cls.scope(group.id))
+        params = self.Params(application.id)
+        self.register_action(user, params, self.scope(group.id))
 
         return application
 
@@ -341,13 +326,11 @@ class CreateApplicationActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         application = Application.objects.get(id=params.application_id)
         CoreHandler().delete_application(user, application)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "application", params.application_id, parent_trash_item_id=None
         )
@@ -360,8 +343,7 @@ class DeleteApplicationActionType(ActionType):
     class Params:
         application_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, application: Application) -> None:
+    def do(self, user: AbstractUser, application: Application) -> None:
         """
         Deletes an existing application instance if the user has access to the
         related group. The `application_deleted` signal is also called.
@@ -374,21 +356,19 @@ class DeleteApplicationActionType(ActionType):
 
         CoreHandler().delete_application(user, application)
 
-        params = cls.Params(application.id)
-        cls.register_action(user, params, cls.scope(application.group.id))
+        params = self.Params(application.id)
+        self.register_action(user, params, self.scope(application.group.id))
 
     @classmethod
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user, params: Params, action_being_undone: Action):
+    def undo(self, user, params: Params, action_being_undone: Action):
         TrashHandler.restore_item(
             user, "application", params.application_id, parent_trash_item_id=None
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         application = CoreHandler().get_application(params.application_id)
         CoreHandler().delete_application(user, application)
 
@@ -402,8 +382,9 @@ class UpdateApplicationActionType(ActionType):
         original_name: str
         new_name: str
 
-    @classmethod
-    def do(cls, user: AbstractUser, application: Application, name: str) -> Application:
+    def do(
+        self, user: AbstractUser, application: Application, name: str
+    ) -> Application:
         """
         Updates an existing application instance.
         See baserow.core.handler.CoreHandler.update_application for further details.
@@ -420,8 +401,8 @@ class UpdateApplicationActionType(ActionType):
 
         application = CoreHandler().update_application(user, application, name)
 
-        params = cls.Params(application.id, original_name, name)
-        cls.register_action(user, params, cls.scope(application.group.id))
+        params = self.Params(application.id, original_name, name)
+        self.register_action(user, params, self.scope(application.group.id))
 
         return application
 
@@ -429,13 +410,11 @@ class UpdateApplicationActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         application = CoreHandler().get_application(params.application_id)
         CoreHandler().update_application(user, application, params.original_name)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         application = CoreHandler().get_application(params.application_id)
         CoreHandler().update_application(user, application, params.new_name)
 
@@ -447,9 +426,8 @@ class DuplicateApplicationActionType(ActionType):
     class Params:
         application_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         application: Application,
         progress_builder: Optional[ChildProgressBuilder] = None,
@@ -472,8 +450,8 @@ class DuplicateApplicationActionType(ActionType):
             progress_builder,
         )
 
-        params = cls.Params(new_application_clone.id)
-        cls.register_action(user, params, cls.scope(application.group.id))
+        params = self.Params(new_application_clone.id)
+        self.register_action(user, params, self.scope(application.group.id))
 
         return new_application_clone
 
@@ -481,13 +459,11 @@ class DuplicateApplicationActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         application = CoreHandler().get_application(params.application_id)
         CoreHandler().delete_application(user, application)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "application", params.application_id, parent_trash_item_id=None
         )
@@ -500,9 +476,8 @@ class InstallTemplateActionType(ActionType):
     class Params:
         installed_applications_ids: List[int]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         group: Group,
         template: Template,
@@ -529,8 +504,8 @@ class InstallTemplateActionType(ActionType):
             progress_builder=progress_builder,
         )
 
-        params = cls.Params([app.id for app in installed_applications])
-        cls.register_action(user, params, cls.scope(group.id))
+        params = self.Params([app.id for app in installed_applications])
+        self.register_action(user, params, self.scope(group.id))
 
         return installed_applications
 
@@ -538,15 +513,13 @@ class InstallTemplateActionType(ActionType):
     def scope(cls, group_id: int) -> ActionScopeStr:
         return GroupActionScopeType.value(group_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         handler = CoreHandler()
         for application_id in params.installed_applications_ids:
             application = CoreHandler().get_application(application_id)
             handler.delete_application(user, application)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         for application_id in params.installed_applications_ids:
             TrashHandler.restore_item(
                 user, "application", application_id, parent_trash_item_id=None

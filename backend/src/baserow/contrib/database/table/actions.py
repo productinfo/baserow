@@ -21,9 +21,8 @@ class CreateTableActionType(ActionType):
     class Params:
         table_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         database: Database,
         name: str,
@@ -58,8 +57,8 @@ class CreateTableActionType(ActionType):
             progress=progress,
         )
 
-        params = cls.Params(table.id)
-        cls.register_action(user, params, cls.scope(database.id))
+        params = self.Params(table.id)
+        self.register_action(user, params, self.scope(database.id))
 
         return table, error_report
 
@@ -67,13 +66,11 @@ class CreateTableActionType(ActionType):
     def scope(cls, database_id) -> ActionScopeStr:
         return ApplicationActionScopeType.value(database_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         table = Table.objects.get(id=params.table_id)
         TableHandler().delete_table(user, table)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "table", params.table_id, parent_trash_item_id=None
         )
@@ -86,8 +83,7 @@ class DeleteTableActionType(ActionType):
     class Params:
         table_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, table: Table):
+    def do(self, user: AbstractUser, table: Table):
         """
         Deletes a table in the database.
         See baserow.contrib.database.table.handler.TableHandler.delete_table
@@ -99,25 +95,23 @@ class DeleteTableActionType(ActionType):
         :raises ValueError: When the provided table is not an instance of Table.
         """
 
-        params = cls.Params(table.id)
+        params = self.Params(table.id)
         database_id = table.database_id
 
         TableHandler().delete_table(user, table)
 
-        cls.register_action(user, params, cls.scope(database_id))
+        self.register_action(user, params, self.scope(database_id))
 
     @classmethod
     def scope(cls, database_id) -> ActionScopeStr:
         return ApplicationActionScopeType.value(database_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         TrashHandler.restore_item(
             user, "table", params.table_id, parent_trash_item_id=None
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TableHandler().delete_table_by_id(user, params.table_id)
 
 
@@ -130,8 +124,7 @@ class OrderTableActionType(ActionType):
         original_tables_order: List[int]
         new_tables_order: List[int]
 
-    @classmethod
-    def do(cls, user: AbstractUser, database: Database, order: List[int]):
+    def do(self, user: AbstractUser, database: Database, order: List[int]):
         """
         Updates the order of the tables in the given database.
         See baserow.contrib.database.table.handler.TableHandler.order_table
@@ -147,18 +140,17 @@ class OrderTableActionType(ActionType):
 
         table_handler = TableHandler()
         original_table_order = table_handler.get_tables_order(database)
-        params = cls.Params(database.id, original_table_order, new_tables_order=order)
+        params = self.Params(database.id, original_table_order, new_tables_order=order)
 
         table_handler.order_tables(user, database, order=order)
 
-        cls.register_action(user, params, cls.scope(database.id))
+        self.register_action(user, params, self.scope(database.id))
 
     @classmethod
     def scope(cls, database_id) -> ActionScopeStr:
         return ApplicationActionScopeType.value(database_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
 
         TableHandler().order_tables(
             user,
@@ -166,8 +158,7 @@ class OrderTableActionType(ActionType):
             order=params.original_tables_order,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TableHandler().order_tables(
             user,
             DatabaseHandler().get_database(params.database_id),
@@ -184,8 +175,7 @@ class UpdateTableActionType(ActionType):
         original_table_name: str
         new_table_name: str
 
-    @classmethod
-    def do(cls, user: AbstractUser, table: Table, name: str) -> Table:
+    def do(self, user: AbstractUser, table: Table, name: str) -> Table:
         """
         Updates the table.
         See baserow.contrib.database.table.handler.TableHandler.update_table
@@ -204,27 +194,25 @@ class UpdateTableActionType(ActionType):
 
         TableHandler().update_table(user, table, name=name)
 
-        params = cls.Params(
+        params = self.Params(
             table.id,
             original_table_name,
             new_table_name=name,
         )
 
-        cls.register_action(user, params, cls.scope(table.database_id))
+        self.register_action(user, params, self.scope(table.database_id))
         return table
 
     @classmethod
     def scope(cls, database_id) -> ActionScopeStr:
         return ApplicationActionScopeType.value(database_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         TableHandler().update_table_by_id(
             user, params.table_id, name=params.original_table_name
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TableHandler().update_table_by_id(
             user, params.table_id, name=params.new_table_name
         )
@@ -237,9 +225,8 @@ class DuplicateTableActionType(ActionType):
     class Params:
         table_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         progress_builder: Optional[ChildProgressBuilder] = None,
@@ -258,8 +245,8 @@ class DuplicateTableActionType(ActionType):
         new_table_clone = TableHandler().duplicate_table(
             user, table, progress_builder=progress_builder
         )
-        cls.register_action(
-            user, cls.Params(new_table_clone.id), cls.scope(table.database_id)
+        self.register_action(
+            user, self.Params(new_table_clone.id), self.scope(table.database_id)
         )
         return new_table_clone
 
@@ -267,13 +254,11 @@ class DuplicateTableActionType(ActionType):
     def scope(cls, database_id) -> ActionScopeStr:
         return ApplicationActionScopeType.value(database_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         table = Table.objects.get(id=params.table_id)
         TableHandler().delete_table(user, table)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "table", params.table_id, parent_trash_item_id=None
         )

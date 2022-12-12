@@ -37,9 +37,8 @@ class CreateViewFilterActionType(ActionType):
         filter_type: str
         filter_value: str
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view: View,
         field: Field,
@@ -65,12 +64,12 @@ class CreateViewFilterActionType(ActionType):
             user, view, field, filter_type, filter_value
         )
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_filter.id, view.id, field.id, filter_type, filter_value
             ),
-            scope=cls.scope(view.id),
+            scope=self.scope(view.id),
         )
         return view_filter
 
@@ -78,14 +77,12 @@ class CreateViewFilterActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_filter = ViewHandler().get_filter(user, params.view_filter_id)
 
         ViewHandler().delete_filter(user, view_filter)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view(params.view_id)
         field = FieldHandler().get_field(params.field_id)
@@ -113,9 +110,8 @@ class UpdateViewFilterActionType(ActionType):
         new_filter_type: str
         new_filter_value: str
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view_filter: ViewFilter,
         field: Optional[Field] = None,
@@ -145,9 +141,9 @@ class UpdateViewFilterActionType(ActionType):
         updated_view_filter = view_handler.update_filter(
             user, view_filter, field, filter_type, filter_value
         )
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_filter.id,
                 original_view_filter_field_id,
                 original_view_filter_type,
@@ -156,7 +152,7 @@ class UpdateViewFilterActionType(ActionType):
                 updated_view_filter.type,
                 updated_view_filter.value,
             ),
-            scope=cls.scope(view_filter.view_id),
+            scope=self.scope(view_filter.view_id),
         )
 
         return updated_view_filter
@@ -165,8 +161,7 @@ class UpdateViewFilterActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         field = FieldHandler().get_field(params.original_field_id)
 
         view_handler = ViewHandler()
@@ -180,8 +175,7 @@ class UpdateViewFilterActionType(ActionType):
             params.original_filter_value,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         field = FieldHandler().get_field(params.new_field_id)
 
         view_handler = ViewHandler()
@@ -207,9 +201,8 @@ class DeleteViewFilterActionType(ActionType):
         filter_type: str
         filter_value: str
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view_filter: ViewFilter,
     ):
@@ -231,24 +224,23 @@ class DeleteViewFilterActionType(ActionType):
 
         ViewHandler().delete_filter(user, view_filter)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_filter_id,
                 view_id,
                 field_id,
                 filter_type,
                 filter_value,
             ),
-            scope=cls.scope(view_filter.view.id),
+            scope=self.scope(view_filter.view.id),
         )
 
     @classmethod
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view(params.view_id)
         field = FieldHandler().get_field(params.field_id)
@@ -262,8 +254,7 @@ class DeleteViewFilterActionType(ActionType):
             params.view_filter_id,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_filter = ViewHandler().get_filter(user, params.view_filter_id)
 
         ViewHandler().delete_filter(user, view_filter)
@@ -279,9 +270,8 @@ class CreateViewSortActionType(ActionType):
         field_id: int
         sort_order: str
 
-    @classmethod
     def do(
-        cls, user: AbstractUser, view: View, field: Field, sort_order: str
+        self, user: AbstractUser, view: View, field: Field, sort_order: str
     ) -> ViewSort:
         """
         Creates a new view sort.
@@ -298,10 +288,10 @@ class CreateViewSortActionType(ActionType):
 
         view_sort = ViewHandler().create_sort(user, view, field, sort_order)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view_sort.id, view.id, field.id, sort_order),
-            scope=cls.scope(view.id),
+            params=self.Params(view_sort.id, view.id, field.id, sort_order),
+            scope=self.scope(view.id),
         )
         return view_sort
 
@@ -309,14 +299,12 @@ class CreateViewSortActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_sort = ViewHandler().get_sort(user, params.view_sort_id)
 
         ViewHandler().delete_sort(user, view_sort)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_handler = ViewHandler()
         field = FieldHandler().get_field(params.field_id)
         view = view_handler.get_view(params.view_id)
@@ -337,9 +325,8 @@ class UpdateViewSortActionType(ActionType):
         new_field_id: int
         new_sort_order: str
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view_sort: ViewSort,
         field: Optional[Field] = None,
@@ -363,16 +350,16 @@ class UpdateViewSortActionType(ActionType):
         handler = ViewHandler()
         updated_view_sort = handler.update_sort(user, view_sort, field, order)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_sort.id,
                 original_view_sort_field_id,
                 original_view_sort_sort_order,
                 updated_view_sort.field.id,
                 updated_view_sort.order,
             ),
-            scope=cls.scope(view_sort.view.id),
+            scope=self.scope(view_sort.view.id),
         )
 
         return updated_view_sort
@@ -381,8 +368,7 @@ class UpdateViewSortActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         field = FieldHandler().get_field(params.original_field_id)
 
         view_handler = ViewHandler()
@@ -390,8 +376,7 @@ class UpdateViewSortActionType(ActionType):
 
         view_handler.update_sort(user, view_sort, field, params.original_sort_order)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         field = FieldHandler().get_field(params.new_field_id)
 
         view_handler = ViewHandler()
@@ -410,8 +395,7 @@ class DeleteViewSortActionType(ActionType):
         field_id: int
         sort_order: str
 
-    @classmethod
-    def do(cls, user: AbstractUser, view_sort: ViewSort):
+    def do(self, user: AbstractUser, view_sort: ViewSort):
         """
         Deletes an existing view sort.
         See baserow.contrib.database.views.handler.ViewHandler.delete_sort
@@ -430,23 +414,22 @@ class DeleteViewSortActionType(ActionType):
 
         ViewHandler().delete_sort(user, view_sort)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_sort_id,
                 view_id,
                 field_id,
                 sort_order,
             ),
-            scope=cls.scope(view_sort.view.id),
+            scope=self.scope(view_sort.view.id),
         )
 
     @classmethod
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view(params.view_id)
         field = FieldHandler().get_field(params.field_id)
@@ -455,8 +438,7 @@ class DeleteViewSortActionType(ActionType):
             user, view, field, params.sort_order, params.view_sort_id
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_sort = ViewHandler().get_sort(user, params.view_sort_id)
         ViewHandler().delete_sort(user, view_sort)
 
@@ -470,9 +452,8 @@ class OrderViewsActionType(ActionType):
         original_order: List[int]
         new_order: List[int]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         order: List[int],
@@ -493,20 +474,18 @@ class OrderViewsActionType(ActionType):
 
         ViewHandler().order_views(user, table, order)
 
-        params = cls.Params(table.id, original_order, order)
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, original_order, order)
+        self.register_action(user, params, self.scope(table.id))
 
     @classmethod
     def scope(cls, table_id: int) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         table = TableHandler().get_table(params.table_id)
         ViewHandler().order_views(user, table, params.original_order)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         table = TableHandler().get_table(params.table_id)
         ViewHandler().order_views(user, table, params.new_order)
 
@@ -520,9 +499,8 @@ class UpdateViewFieldOptionsActionType(ActionType):
         original_field_options: FieldOptionsDict
         new_field_options: FieldOptionsDict
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view: View,
         field_options: FieldOptionsDict,
@@ -560,30 +538,28 @@ class UpdateViewFieldOptionsActionType(ActionType):
                     original_field_options_to_save[field_id][key] = original_value
                     new_field_options_to_save[field_id][key] = new_value
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view.id,
                 dict(original_field_options_to_save),
                 dict(new_field_options_to_save),
             ),
-            scope=cls.scope(view.id),
+            scope=self.scope(view.id),
         )
 
     @classmethod
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view(params.view_id).specific
         view_handler.update_field_options(
             user=user, view=view, field_options=params.original_field_options
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view(params.view_id).specific
         view_handler.update_field_options(
@@ -600,8 +576,7 @@ class RotateViewSlugActionType(ActionType):
         original_slug: str
         new_slug: str
 
-    @classmethod
-    def do(cls, user: AbstractUser, view: View) -> View:
+    def do(self, user: AbstractUser, view: View) -> View:
         """
         Change the slug for the current view.
         See baserow.contrib.database.views.handler.ViewHandler.rotate_slug for more.
@@ -616,10 +591,10 @@ class RotateViewSlugActionType(ActionType):
 
         ViewHandler().rotate_view_slug(user, view)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view.id, original_slug, view.slug),
-            scope=cls.scope(view.id),
+            params=self.Params(view.id, original_slug, view.slug),
+            scope=self.scope(view.id),
         )
         return view
 
@@ -627,14 +602,12 @@ class RotateViewSlugActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view_for_update(params.view_id)
         view_handler.update_view_slug(user, view, params.original_slug)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view_for_update(params.view_id)
         view_handler.update_view_slug(user, view, params.new_slug)
@@ -649,9 +622,8 @@ class UpdateViewActionType(ActionType):
         original_data: Dict[str, Any]
         new_data: Dict[str, Any]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         view: View,
         **data,
@@ -681,10 +653,10 @@ class UpdateViewActionType(ActionType):
 
         new_data = get_prepared_values_for_data(view)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view.id, original_data, new_data),
-            scope=cls.scope(view.id),
+            params=self.Params(view.id, original_data, new_data),
+            scope=self.scope(view.id),
         )
         return view
 
@@ -692,14 +664,12 @@ class UpdateViewActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view_for_update(params.view_id).specific
         view_handler.update_view(user, view, **params.original_data)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view_handler = ViewHandler()
         view = view_handler.get_view_for_update(params.view_id).specific
         view_handler.update_view(user, view, **params.new_data)
@@ -712,8 +682,7 @@ class CreateViewActionType(ActionType):
     class Params:
         view_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, table: Table, type_name: str, **kwargs) -> View:
+    def do(self, user: AbstractUser, table: Table, type_name: str, **kwargs) -> View:
         """
         Creates a new view based on the provided type.
         See baserow.contrib.views.handler.ViewsHandler.create_view for further details.
@@ -733,10 +702,10 @@ class CreateViewActionType(ActionType):
             **kwargs,
         )
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view.id),
-            scope=cls.scope(table.id),
+            params=self.Params(view.id),
+            scope=self.scope(table.id),
         )
 
         return view
@@ -745,12 +714,10 @@ class CreateViewActionType(ActionType):
     def scope(cls, table_id: int) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         ViewHandler().delete_view_by_id(user, params.view_id)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         TrashHandler.restore_item(user, "view", params.view_id)
 
 
@@ -761,8 +728,7 @@ class DuplicateViewActionType(ActionType):
     class Params:
         view_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, original_view: View) -> View:
+    def do(self, user: AbstractUser, original_view: View) -> View:
         """
         Duplicate an existing view.
 
@@ -778,10 +744,10 @@ class DuplicateViewActionType(ActionType):
             original_view,
         )
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view.id),
-            scope=cls.scope(original_view.table.id),
+            params=self.Params(view.id),
+            scope=self.scope(original_view.table.id),
         )
 
         return view
@@ -790,12 +756,10 @@ class DuplicateViewActionType(ActionType):
     def scope(cls, table_id: int) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         ViewHandler().delete_view_by_id(user, params.view_id)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         TrashHandler.restore_item(user, "view", params.view_id)
 
 
@@ -806,8 +770,7 @@ class DeleteViewActionType(ActionType):
     class Params:
         view_id: int
 
-    @classmethod
-    def do(cls, user: AbstractUser, view: View):
+    def do(self, user: AbstractUser, view: View):
         """
         Trashes an existing view instance.
         See baserow.contrib.views.handler.ViewsHandler.delete_view for further details.
@@ -820,22 +783,20 @@ class DeleteViewActionType(ActionType):
 
         ViewHandler().delete_view(user, view)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(view.id),
-            scope=cls.scope(view.table_id),
+            params=self.Params(view.id),
+            scope=self.scope(view.table_id),
         )
 
     @classmethod
     def scope(cls, table_id: int) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         TrashHandler.restore_item(user, "view", params.view_id)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         ViewHandler().delete_view_by_id(user, params.view_id)
 
 
@@ -850,9 +811,8 @@ class CreateDecorationActionType(ActionType):
         value_provider_type_name: str
         value_provider_conf: Dict[str, Any]
 
-    @classmethod
     def do(
-        cls,
+        self,
         view: View,
         decorator_type_name: str,
         value_provider_type_name: str,
@@ -883,16 +843,16 @@ class CreateDecorationActionType(ActionType):
             user=user,
         )
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view.id,
                 decoration.id,
                 decorator_type_name,
                 value_provider_type_name,
                 value_provider_conf,
             ),
-            scope=cls.scope(view.id),
+            scope=self.scope(view.id),
         )
 
         return decoration
@@ -901,13 +861,11 @@ class CreateDecorationActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_to_undo: Action):
+    def undo(self, user: AbstractUser, params: Params, action_to_undo: Action):
         view_decoration = ViewHandler().get_decoration(params.decorator_id)
         ViewHandler().delete_decoration(view_decoration, user=user)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_to_redo: Action):
+    def redo(self, user: AbstractUser, params: Params, action_to_redo: Action):
         view = ViewHandler().get_view(params.view_id)
         ViewHandler().create_decoration(
             view,
@@ -934,9 +892,8 @@ class UpdateDecorationActionType(ActionType):
         new_value_provider_conf: Dict[str, Any]
         new_order: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         view_decoration: ViewDecoration,
         user: AbstractUser,
         decorator_type_name: str = None,
@@ -978,9 +935,9 @@ class UpdateDecorationActionType(ActionType):
             order=order,
         )
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 view_decoration.id,
                 original_decoration_type_name,
                 original_value_provider_type_name,
@@ -991,7 +948,7 @@ class UpdateDecorationActionType(ActionType):
                 value_provider_conf,
                 order,
             ),
-            scope=cls.scope(view_decoration.view_id),
+            scope=self.scope(view_decoration.view_id),
         )
 
         return view_decoration_updated
@@ -1000,8 +957,7 @@ class UpdateDecorationActionType(ActionType):
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         view_decoration = ViewHandler().get_decoration(params.decorator_id)
         ViewHandler().update_decoration(
             view_decoration,
@@ -1012,8 +968,7 @@ class UpdateDecorationActionType(ActionType):
             order=params.original_order,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         view_decoration = ViewHandler().get_decoration(params.decorator_id)
         ViewHandler().update_decoration(
             view_decoration,
@@ -1037,8 +992,7 @@ class DeleteDecorationActionType(ActionType):
         original_value_provider_conf: str
         original_order: int
 
-    @classmethod
-    def do(cls, view_decoration: ViewDecoration, user: AbstractUser):
+    def do(self, view_decoration: ViewDecoration, user: AbstractUser):
         """
         Deletes an existing view decoration.
         See baserow.contrib.decorations.handler.DecorationsHandler.delete_decoration
@@ -1054,9 +1008,9 @@ class DeleteDecorationActionType(ActionType):
 
         ViewHandler().delete_decoration(view_decoration, user=user)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 original_view_decoration.view_id,
                 original_view_decoration.id,
                 original_view_decoration.type,
@@ -1064,15 +1018,14 @@ class DeleteDecorationActionType(ActionType):
                 original_view_decoration.value_provider_conf,
                 original_view_decoration.order,
             ),
-            scope=cls.scope(view_decoration.view_id),
+            scope=self.scope(view_decoration.view_id),
         )
 
     @classmethod
     def scope(cls, view_id: int) -> ActionScopeStr:
         return ViewActionScopeType.value(view_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Any, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Any, action_being_undone: Action):
         view = ViewHandler().get_view(params.view_id)
         ViewHandler().create_decoration(
             view=view,
@@ -1084,7 +1037,6 @@ class DeleteDecorationActionType(ActionType):
             order=params.original_order,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Any, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Any, action_being_redone: Action):
         view_decoration = ViewHandler().get_decoration(params.original_decorator_id)
         ViewHandler().delete_decoration(view_decoration, user=user)

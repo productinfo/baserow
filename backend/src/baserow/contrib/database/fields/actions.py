@@ -14,12 +14,16 @@ from baserow.contrib.database.fields.registries import field_type_registry
 from baserow.contrib.database.table.models import Table
 from baserow.contrib.database.table.scopes import TableActionScopeType
 from baserow.core.action.models import Action
-from baserow.core.action.registries import ActionScopeStr, ActionType
+from baserow.core.action.registries import (
+    ActionScopeStr,
+    ActionType,
+    CustomCleanupActionTypeMixin,
+)
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.utils import ChildProgressBuilder
 
 
-class UpdateFieldActionType(ActionType):
+class UpdateFieldActionType(ActionType, CustomCleanupActionTypeMixin):
     type = "update_field"
 
     @dataclasses.dataclass
@@ -35,9 +39,8 @@ class UpdateFieldActionType(ActionType):
 
         backup_data: Optional[Dict[str, Any]]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         field: SpecificFieldForUpdate,
         new_type_name: Optional[str] = None,
@@ -62,15 +65,15 @@ class UpdateFieldActionType(ActionType):
         from_field_type_name = from_field_type.type
         to_field_type_name = new_type_name or from_field_type_name
 
-        original_exported_values = cls._get_prepared_field_attrs(
+        original_exported_values = self._get_prepared_field_attrs(
             field, kwargs, to_field_type_name
         )
 
         # We initially create the action with blank params so we have an action id
         # to use when naming a possible backup field/table.
-        action = cls.register_action(user, {}, cls.scope(field.table_id))
+        action = self.register_action(user, {}, self.scope(field.table_id))
 
-        optional_backup_data = cls._backup_field_if_required(
+        optional_backup_data = self._backup_field_if_required(
             field, kwargs, action, to_field_type_name, False
         )
 
@@ -82,7 +85,7 @@ class UpdateFieldActionType(ActionType):
             **kwargs,
         )
 
-        action.params = cls.Params(
+        action.params = self.Params(
             field_id=field.id,
             database_table_name=field.table.get_database_table_name(),
             previous_field_type=from_field_type_name,
@@ -97,38 +100,34 @@ class UpdateFieldActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
     def undo(
-        cls,
+        self,
         user: AbstractUser,
         params: Params,
         action_being_undone: Action,
     ):
-        cls._backup_field_then_update_back_to_previous_backup(
+        self._backup_field_then_update_back_to_previous_backup(
             user,
             action_being_undone,
             params,
             for_undo=True,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
-        cls._backup_field_then_update_back_to_previous_backup(
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
+        self._backup_field_then_update_back_to_previous_backup(
             user,
             action_being_redone,
             params,
             for_undo=False,
         )
 
-    @classmethod
-    def clean_up_any_extra_action_data(cls, action_being_cleaned_up: Action):
-        params = cls.Params(**action_being_cleaned_up.params)
+    def clean_up_any_extra_action_data(self, action_being_cleaned_up: Action):
+        params = self.Params(**action_being_cleaned_up.params)
         if params.backup_data is not None:
             FieldDataBackupHandler.clean_up_backup_data(params.backup_data)
 
-    @classmethod
     def _backup_field_if_required(
-        cls,
+        self,
         original_field: Field,
         allowed_new_field_attrs: Dict[str, Any],
         action: Action,
@@ -141,12 +140,12 @@ class UpdateFieldActionType(ActionType):
         the backed up data.
         """
 
-        if cls._should_backup_field(
+        if self._should_backup_field(
             original_field, to_field_type_name, allowed_new_field_attrs
         ):
             backup_data = FieldDataBackupHandler.backup_field_data(
                 original_field,
-                identifier_to_backup_into=cls._get_backup_identifier(
+                identifier_to_backup_into=self._get_backup_identifier(
                     action, original_field.id, for_undo=for_undo
                 ),
             )
@@ -154,9 +153,8 @@ class UpdateFieldActionType(ActionType):
             backup_data = None
         return backup_data
 
-    @classmethod
     def _should_backup_field(
-        cls,
+        self,
         original_field: Field,
         to_field_type_name: str,
         allowed_new_field_attrs: Dict[str, Any],
@@ -184,9 +182,8 @@ class UpdateFieldActionType(ActionType):
             and not only_name_changed
         )
 
-    @classmethod
     def _get_prepared_field_attrs(
-        cls, field: Field, field_attrs_being_updated: Set[str], to_field_type_name: str
+        self, field: Field, field_attrs_being_updated: Set[str], to_field_type_name: str
     ):
         """
         Prepare values to be saved depending on whether the field type has changed
@@ -216,9 +213,8 @@ class UpdateFieldActionType(ActionType):
                 original_exported_values.pop("name")
         return original_exported_values
 
-    @classmethod
     def _get_backup_identifier(
-        cls, action: Action, field_id: int, for_undo: bool
+        self, action: Action, field_id: int, for_undo: bool
     ) -> str:
         """
         Returns a column/table name unique to this action and field which can be
@@ -233,9 +229,8 @@ class UpdateFieldActionType(ActionType):
         else:
             return base_name
 
-    @classmethod
     def _backup_field_then_update_back_to_previous_backup(
-        cls,
+        self,
         user: AbstractUser,
         action: Action,
         params: Params,
@@ -248,13 +243,13 @@ class UpdateFieldActionType(ActionType):
         field = handler.get_specific_field_for_update(params.field_id)
 
         updated_field_attrs = set(new_field_attributes.keys())
-        previous_field_params = cls._get_prepared_field_attrs(
+        previous_field_params = self._get_prepared_field_attrs(
             field, updated_field_attrs, to_field_type_name
         )
         from_field_type = field_type_registry.get_by_model(field)
         from_field_type_name = from_field_type.type
 
-        optional_backup_data = cls._backup_field_if_required(
+        optional_backup_data = self._backup_field_if_required(
             field, new_field_attributes, action, to_field_type_name, for_undo
         )
 
@@ -300,9 +295,8 @@ class CreateFieldActionType(ActionType):
     class Params:
         field_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         type_name: str,
@@ -347,8 +341,8 @@ class CreateFieldActionType(ActionType):
             field = result
             updated_fields = None
 
-        cls.register_action(
-            user=user, params=cls.Params(field_id=field.id), scope=cls.scope(table.id)
+        self.register_action(
+            user=user, params=self.Params(field_id=field.id), scope=self.scope(table.id)
         )
 
         return (field, updated_fields) if return_updated_fields else field
@@ -357,13 +351,11 @@ class CreateFieldActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         field = FieldHandler().get_field(params.field_id)
         FieldHandler().delete_field(user, field)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler().restore_item(user, "field", params.field_id)
 
 
@@ -374,9 +366,8 @@ class DeleteFieldActionType(ActionType):
     class Params:
         field_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         field: Field,
     ) -> List[Field]:
@@ -394,12 +385,12 @@ class DeleteFieldActionType(ActionType):
 
         result = FieldHandler().delete_field(user, field)
 
-        cls.register_action(
+        self.register_action(
             user=user,
-            params=cls.Params(
+            params=self.Params(
                 field.id,
             ),
-            scope=cls.scope(field.table_id),
+            scope=self.scope(field.table_id),
         )
 
         return result
@@ -408,12 +399,10 @@ class DeleteFieldActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         TrashHandler().restore_item(user, "field", params.field_id)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         field = FieldHandler().get_field(params.field_id)
         FieldHandler().delete_field(
             user,
@@ -428,9 +417,8 @@ class DuplicateFieldActionType(ActionType):
     class Params:
         field_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         field: Field,
         duplicate_data: bool = False,
@@ -452,8 +440,8 @@ class DuplicateFieldActionType(ActionType):
         new_field_clone, updated_fields = FieldHandler().duplicate_field(
             user, field, duplicate_data, progress_builder=progress_builder
         )
-        cls.register_action(
-            user, cls.Params(new_field_clone.id), cls.scope(field.table_id)
+        self.register_action(
+            user, self.Params(new_field_clone.id), self.scope(field.table_id)
         )
         return new_field_clone, updated_fields
 
@@ -461,12 +449,10 @@ class DuplicateFieldActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         FieldHandler().delete_field(user, FieldHandler().get_field(params.field_id))
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "field", params.field_id, parent_trash_item_id=None
         )

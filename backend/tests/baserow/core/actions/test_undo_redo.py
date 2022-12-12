@@ -20,6 +20,7 @@ from baserow.core.action.models import Action
 from baserow.core.action.registries import (
     ActionScopeStr,
     ActionType,
+    CustomCleanupActionTypeMixin,
     action_type_registry,
 )
 from baserow.core.action.scopes import GroupActionScopeType, RootActionScopeType
@@ -923,27 +924,25 @@ def _create_an_action_with_custom_cleanup(data_fixture):
 def _create_an_action_with_custom_cleanup_which_raises(
     mutable_action_registry, data_fixture, cleanup_exception_message
 ) -> Action:
-    class ActionWithCustomCleanupThatAlwaysRaises(ActionType):
+    class ActionWithCustomCleanupThatAlwaysRaises(
+        ActionType, CustomCleanupActionTypeMixin
+    ):
         type = "action_with_custom_cleanup_that_always_raises"
 
-        @classmethod
-        def clean_up_any_extra_action_data(cls, action_being_cleaned_up: Action):
+        def clean_up_any_extra_action_data(self, action_being_cleaned_up: Action):
             raise Exception(cleanup_exception_message)
 
-        @classmethod
-        def do(cls, user) -> Action:
-            return cls.register_action(user, cls.Params(), cls.scope())
+        def do(self, user) -> Action:
+            return self.register_action(user, self.Params(), self.scope())
 
         @classmethod
         def scope(cls, *args, **kwargs) -> ActionScopeStr:
             return RootActionScopeType.value()
 
-        @classmethod
-        def undo(cls, user: AbstractUser, params: Any, action_being_undone: Action):
+        def undo(self, user: AbstractUser, params: Any, action_being_undone: Action):
             pass
 
-        @classmethod
-        def redo(cls, user: AbstractUser, params: Any, action_being_redone: Action):
+        def redo(self, user: AbstractUser, params: Any, action_being_redone: Action):
             pass
 
     mutable_action_registry.register(ActionWithCustomCleanupThatAlwaysRaises())

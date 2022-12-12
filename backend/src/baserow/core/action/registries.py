@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from typing import Any, NewType, Optional
+from typing import Any, NewType, Optional, Type
 
 from django.contrib.auth.models import AbstractUser
 
@@ -95,18 +95,17 @@ class ActionType(Instance, abc.ABC):
         """
         Override this dataclass with one specific for this ActionType. Store in this
         dataclass any data required when undoing or redoing. This dataclass will be
-        converted to JSON and stored when calling cls.register_action. Then upon
+        converted to JSON and stored when calling self.register_action. Then upon
         undo/redo it will be deserialized and passed into the undo/redo functions
         below for you to use.
         """
 
         pass
 
-    @classmethod
     @abc.abstractmethod
-    def do(cls, *args, **kwargs) -> Any:
+    def do(self, *args, **kwargs) -> Any:
         """
-        Should return perform the desired action and call cls.register_action with
+        Should return perform the desired action and call self.register_action with
         params containing what is required to undo/redo in the methods below. Please
         change the signature to be what parameters you specifically need for this
         type.
@@ -125,39 +124,36 @@ class ActionType(Instance, abc.ABC):
 
         pass
 
-    @classmethod
     @abc.abstractmethod
-    def undo(cls, user: AbstractUser, params: Any, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Any, action_being_undone: Action):
         """
         Should undo the action done by the `do` method above, this should never call
         another ActionType's.do method as that would register a new action which we
         do not want to do as the result of an undo.
 
         :param user: The user performing the undo.
-        :param params: The deserialized cls.Params dataclass from the `do` method.
+        :param params: The deserialized self.Params dataclass from the `do` method.
         :param action_being_undone: The action that is being undone.
         """
 
         pass
 
-    @classmethod
     @abc.abstractmethod
-    def redo(cls, user: AbstractUser, params: Any, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Any, action_being_redone: Action):
         """
         Should redo the action undone by the `undo` method above, this should never call
         another ActionType's.do method as that would register a new action which we
         do not want to do as the result of an redo.
 
         :param user: The user performing the redo.
-        :param params: The deserialized cls.Params dataclass from the `do` method.
+        :param params: The deserialized self.Params dataclass from the `do` method.
         :param action_being_redone: The action that is being redone.
         """
 
         pass
 
-    @classmethod
     def register_action(
-        cls,
+        self,
         user: AbstractUser,
         params: Any,
         scope: ActionScopeStr,
@@ -175,18 +171,24 @@ class ActionType(Instance, abc.ABC):
         session = get_untrusted_client_session_id(user)
         action_group = get_client_undo_redo_action_group_id(user)
 
-        action = Action.objects.create(
+        self.registered_action = Action.objects.create(
             user=user,
-            type=cls.type,
+            type=self.type,
             params=params,
             scope=scope,
             session=session,
             action_group=action_group,
         )
-        return action
 
-    @classmethod
-    def clean_up_any_extra_action_data(cls, action_being_cleaned_up: Action):
+        return self.registered_action
+
+    @property
+    def has_custom_cleanup(self) -> bool:
+        return hasattr(self, "clean_up_any_extra_action_data")
+
+
+class CustomCleanupActionTypeMixin(abc.ABC):
+    def clean_up_any_extra_action_data(self, action_being_cleaned_up: Action):
         """
         Should cleanup any extra data associated with the action as it has expired.
 
@@ -194,14 +196,6 @@ class ActionType(Instance, abc.ABC):
         """
 
         pass
-
-    @classmethod
-    def has_custom_cleanup(cls) -> bool:
-        # noinspection PyUnresolvedReferences
-        return (
-            cls.clean_up_any_extra_action_data.__func__
-            != ActionType.clean_up_any_extra_action_data.__func__
-        )
 
 
 class ActionTypeRegistry(Registry[ActionType]):

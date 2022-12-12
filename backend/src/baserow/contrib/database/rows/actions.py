@@ -27,9 +27,8 @@ class CreateRowActionType(ActionType):
         table_id: int
         row_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         values: Optional[Dict[str, Any]] = None,
@@ -66,8 +65,8 @@ class CreateRowActionType(ActionType):
             user_field_names=user_field_names,
         )
 
-        params = cls.Params(table.id, row.id)
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, row.id)
+        self.register_action(user, params, self.scope(table.id))
 
         return row
 
@@ -75,14 +74,12 @@ class CreateRowActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         RowHandler().delete_row_by_id(
             user, TableHandler().get_table(params.table_id), params.row_id
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user, "row", params.row_id, parent_trash_item_id=params.table_id
         )
@@ -97,9 +94,8 @@ class CreateRowsActionType(ActionType):
         row_ids: List[int]
         trashed_rows_entry_id: Optional[int] = None
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         rows_values: List[Dict[str, Any]],
@@ -127,8 +123,8 @@ class CreateRowsActionType(ActionType):
             user, table, rows_values, before_row=before_row, model=model
         )
 
-        params = cls.Params(table.id, [row.id for row in rows])
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, [row.id for row in rows])
+        self.register_action(user, params, self.scope(table.id))
 
         return rows
 
@@ -136,16 +132,14 @@ class CreateRowsActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         trashed_rows_trash_entry = RowHandler().delete_rows(
             user, TableHandler().get_table(params.table_id), params.row_ids
         )
         params.trashed_rows_entry_id = trashed_rows_trash_entry.id
         action_being_undone.params = params
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user,
             "rows",
@@ -163,9 +157,8 @@ class ImportRowsActionType(ActionType):
         row_ids: List[int]
         trashed_rows_entry_id: Optional[int] = None
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         data=List[List[Any]],
@@ -194,10 +187,10 @@ class ImportRowsActionType(ActionType):
 
         # Use table signal here instead of row signal because we can import a
         # big amount of data.
-        table_updated.send(cls, table=table, user=user, force_table_refresh=True)
+        table_updated.send(self, table=table, user=user, force_table_refresh=True)
 
-        params = cls.Params(table.id, [row.id for row in created_rows])
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, [row.id for row in created_rows])
+        self.register_action(user, params, self.scope(table.id))
 
         return created_rows, error_report
 
@@ -205,16 +198,14 @@ class ImportRowsActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         trashed_rows_trash_entry = RowHandler().delete_rows(
             user, TableHandler().get_table(params.table_id), params.row_ids
         )
         params.trashed_rows_entry_id = trashed_rows_trash_entry.id
         action_being_undone.params = params
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         TrashHandler.restore_item(
             user,
             "rows",
@@ -231,9 +222,8 @@ class DeleteRowActionType(ActionType):
         table_id: int
         row_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         row_id: int,
@@ -255,21 +245,19 @@ class DeleteRowActionType(ActionType):
 
         RowHandler().delete_row_by_id(user, table, row_id, model=model)
 
-        params = cls.Params(table.id, row_id)
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, row_id)
+        self.register_action(user, params, self.scope(table.id))
 
     @classmethod
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         TrashHandler.restore_item(
             user, "row", params.row_id, parent_trash_item_id=params.table_id
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         RowHandler().delete_row_by_id(
             user, TableHandler().get_table(params.table_id), params.row_id
         )
@@ -284,9 +272,8 @@ class DeleteRowsActionType(ActionType):
         row_ids: List[int]
         trashed_rows_entry_id: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         row_ids: List[int],
@@ -308,15 +295,14 @@ class DeleteRowsActionType(ActionType):
 
         trashed_rows_entry = RowHandler().delete_rows(user, table, row_ids, model=model)
 
-        params = cls.Params(table.id, row_ids, trashed_rows_entry.id)
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, row_ids, trashed_rows_entry.id)
+        self.register_action(user, params, self.scope(table.id))
 
     @classmethod
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         TrashHandler.restore_item(
             user,
             "rows",
@@ -324,8 +310,7 @@ class DeleteRowsActionType(ActionType):
             parent_trash_item_id=params.table_id,
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         trashed_rows_entry = RowHandler().delete_rows(
             user, TableHandler().get_table(params.table_id), params.row_ids
         )
@@ -410,9 +395,8 @@ class MoveRowActionType(ActionType):
         row_id: int
         rows_displacement: int
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         row_id: int,
@@ -458,8 +442,8 @@ class MoveRowActionType(ActionType):
         if rows_displacement == 0:
             return updated_row
 
-        params = cls.Params(table.id, row.id, rows_displacement)
-        cls.register_action(user, params, cls.scope(table.id))
+        params = self.Params(table.id, row.id, rows_displacement)
+        self.register_action(user, params, self.scope(table.id))
 
         return updated_row
 
@@ -467,8 +451,7 @@ class MoveRowActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         table = TableHandler().get_table(params.table_id)
         model = table.get_model()
 
@@ -481,8 +464,7 @@ class MoveRowActionType(ActionType):
 
         row_handler.move_row(user, table, row, before_row=before_row, model=model)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         table = TableHandler().get_table(params.table_id)
         model = table.get_model()
 
@@ -506,9 +488,8 @@ class UpdateRowActionType(ActionType):
         original_row_values: Dict[str, Any]
         new_row_values: Dict[str, Any]
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         row_id: int,
@@ -558,13 +539,13 @@ class UpdateRowActionType(ActionType):
 
         new_row_values = row_handler.get_internal_values_for_fields(row, field_keys)
 
-        params = cls.Params(
+        params = self.Params(
             table.id,
             row.id,
             original_row_values,
             new_row_values,
         )
-        cls.register_action(user, params, cls.scope(table.id))
+        self.register_action(user, params, self.scope(table.id))
 
         return updated_row
 
@@ -572,15 +553,13 @@ class UpdateRowActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         table = TableHandler().get_table(params.table_id)
         RowHandler().update_row_by_id(
             user, table, row_id=params.row_id, values=params.original_row_values
         )
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         table = TableHandler().get_table(params.table_id)
         RowHandler().update_row_by_id(
             user, table, row_id=params.row_id, values=params.new_row_values
@@ -596,9 +575,8 @@ class UpdateRowsActionType(ActionType):
         original_rows_values: List
         new_rows: List
 
-    @classmethod
     def do(
-        cls,
+        self,
         user: AbstractUser,
         table: Table,
         rows: List,
@@ -643,9 +621,9 @@ class UpdateRowsActionType(ActionType):
             user, table, rows, model=model, rows_to_update=original_rows
         )
 
-        params = cls.Params(table.id, original_rows_values, new_rows)
+        params = self.Params(table.id, original_rows_values, new_rows)
 
-        cls.register_action(user, params, cls.scope(table.id))
+        self.register_action(user, params, self.scope(table.id))
 
         return updated_rows
 
@@ -653,12 +631,10 @@ class UpdateRowsActionType(ActionType):
     def scope(cls, table_id) -> ActionScopeStr:
         return TableActionScopeType.value(table_id)
 
-    @classmethod
-    def undo(cls, user: AbstractUser, params: Params, action_being_undone: Action):
+    def undo(self, user: AbstractUser, params: Params, action_being_undone: Action):
         table = TableHandler().get_table(params.table_id)
         RowHandler().update_rows(user, table, params.original_rows_values)
 
-    @classmethod
-    def redo(cls, user: AbstractUser, params: Params, action_being_redone: Action):
+    def redo(self, user: AbstractUser, params: Params, action_being_redone: Action):
         table = TableHandler().get_table(params.table_id)
         RowHandler().update_rows(user, table, params.new_rows)

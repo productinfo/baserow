@@ -13,14 +13,14 @@ e.g. `action_type_registry.get_by_type(DeleteGroupAction).do(user, group_to_dele
    which can be used to register `ActionType`'s
 2. An `ActionType` must implement `do`/`undo`/`redo` methods.
     1. `do` Performs the action when a user requests it to happen, it must also save
-       a `Action` model using `cls.register_action`
+       a `Action` model using `self.register_action`
     2. `undo` Must undo the action done by `do`. It must not save any `Action`
        models.
     3. `redo` Must redo the action after it has been undone by `undo`. It must not save
        any `Action` models.
 3. An `ActionType` must implement a `Params` dataclass which it will store any
    parameters it needs to `undo` or `redo` the action in. An instance of this dataclass
-   must be provided to `cls.register_action` in the `do` method, and it will be
+   must be provided to `self.register_action` in the `do` method, and it will be
    serialized to JSON and stored in the `Action` table. When `redo` or `undo` is called
    this `dataclass` will be created again from the json in the `Action` row and provided
    to the function.
@@ -54,7 +54,7 @@ need three pieces of information:
    particular category. This is literally just a text column on the `Action` model with
    values like `root` or `table10` or `group20`. An actions category describes in which
    logical part of Baserow the action was performed. The `ActionType` implementation
-   decides what to set its category to when calling `cls.register_action`. When an
+   decides what to set its category to when calling `self.register_action`. When an
    undo/redo occurs the web-frontend sends the categories the user is currently looking
    at. For example if I have table 20 open, with group 6 in the side bar and I press
    undo/redo the category sent will be:
