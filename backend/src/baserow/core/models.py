@@ -372,6 +372,7 @@ class UserLogEntry(models.Model):
     class Meta:
         get_latest_by = "timestamp"
         ordering = ["-timestamp"]
+        indexes = [models.Index(fields=["-timestamp", "action", "actor"])]
 
 
 class TrashEntry(models.Model):
