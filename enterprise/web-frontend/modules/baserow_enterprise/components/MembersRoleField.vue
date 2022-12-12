@@ -27,6 +27,11 @@
       role-value-column="role_uid"
       @update-role="roleUpdate($event)"
     ></EditRoleContext>
+    <HelpIcon
+      v-if="roleUidSelected === 'NO_ACCESS'"
+      :tooltip="$t('membersRoleField.noAccessHelpText')"
+      class="margin-left-1"
+    />
   </div>
 </template>
 
@@ -58,6 +63,9 @@ export default {
     },
     roles() {
       return this.group ? this.group._.roles : []
+    },
+    roleUidSelected() {
+      return this.row[this.column.key]
     },
     ...mapGetters({ userId: 'auth/getUserId' }),
   },

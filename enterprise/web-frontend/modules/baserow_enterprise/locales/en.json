@@ -191,6 +191,9 @@
         },
         "helpTooltip": "Member role assignments always override team role assignments."
     },
+    "membersRoleField": {
+        "noAccessHelpText": "This user requires explicit access to resources."
+    },
     "oauthSettingsForm": {
         "providerName": "Name",
         "providerNamePlaceholder": "Custom provider name",
