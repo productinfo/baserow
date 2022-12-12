@@ -8,7 +8,7 @@
       </h2>
       <div>
         <HelpIcon
-          :tooltip="$t('memberRolesTab.headerTooltip')"
+          :tooltip="$t(`memberRolesTab.${translationPrefix}.headerTooltip`)"
           class="margin-right-1"
         ></HelpIcon>
         <a
