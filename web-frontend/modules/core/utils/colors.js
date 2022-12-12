@@ -16,12 +16,13 @@ export const colors = [
   'dark-gray',
 ]
 
+/**
+ * Returns a random color from the colors array.
+ * @param {Array} excludeColors - Array of colors to exclude from the random
+ * selection. If undefined or equal to the colors array, no colors will be
+ * excluded. Returns a random color from the colors array.
+ */
 export const randomColor = (excludeColors = undefined) => {
-  /**
-   * @param {Array} excludeColors - Array of colors to exclude from the random
-   * selection. If undefined or equal to the colors array, no colors will be
-   * excluded. Returns a random color from the colors array.
-   */
   let palette = colors
   excludeColors = excludeColors || []
   if (excludeColors.length > 0 && excludeColors.length < colors.length) {
