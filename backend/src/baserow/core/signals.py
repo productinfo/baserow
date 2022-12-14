@@ -25,3 +25,5 @@ application_created = Signal()
 application_updated = Signal()
 application_deleted = Signal()
 applications_reordered = Signal()
+
+auditable_event = Signal()

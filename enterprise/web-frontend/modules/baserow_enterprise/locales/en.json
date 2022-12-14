@@ -55,7 +55,8 @@
         "teamsTabTitle": "Teams"
     },
     "adminType": {
-        "Authentication": "Authentication"
+        "Authentication": "Authentication",
+        "AuditLog": "Audit log"
     },
     "authProviders": {
         "title": "Authentication Providers",

@@ -140,6 +140,7 @@ class BaserowEnterpriseConfig(AppConfig):
 
         # The signals must always be imported last because they use the registries
         # which need to be filled first.
+        import baserow_enterprise.audit_log.signals  # noqa: F
         import baserow_enterprise.ws.signals  # noqa: F
 
 

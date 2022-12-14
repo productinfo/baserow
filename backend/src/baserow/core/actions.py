@@ -6,8 +6,10 @@ from django.contrib.auth.models import AbstractUser
 from baserow.core.action.models import Action
 from baserow.core.action.registries import ActionScopeStr, ActionType
 from baserow.core.action.scopes import GroupActionScopeType, RootActionScopeType
+from baserow.core.events import AuditableEvent
 from baserow.core.handler import CoreHandler, GroupForUpdate
 from baserow.core.models import Application, Group, GroupUser, Template
+from baserow.core.signals import auditable_event
 from baserow.core.trash.handler import TrashHandler
 from baserow.core.utils import ChildProgressBuilder
 
@@ -19,7 +21,7 @@ class DeleteGroupActionType(ActionType):
     class Params:
         deleted_group_id: int
 
-    def do(self, user: AbstractUser, group: GroupForUpdate):
+    def do(cls, user: AbstractUser, group: GroupForUpdate):
         """
         Deletes an existing group and related applications if the user has admin
         permissions for the group. See baserow.core.handler.CoreHandler.delete_group
@@ -33,7 +35,18 @@ class DeleteGroupActionType(ActionType):
 
         CoreHandler().delete_group(user, group)
 
-        self.register_action(user, self.Params(group.id), scope=self.scope())
+        action = cls.register_action(user, cls.Params(group.id), scope=cls.scope())
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                action=action,
+                target=group,
+            ),
+        )
 
     @classmethod
     def scope(cls) -> ActionScopeStr:
@@ -86,11 +99,25 @@ class CreateGroupActionType(ActionType):
         # noinspection PyTypeChecker
         group_id: int = group_user.group_id
 
-        cls.register_action(
+        action = cls.register_action(
             user=user,
             params=cls.Params(group_id, group_name),
             scope=cls.scope(),
         )
+
+        group = group_user.group
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                action=action,
+                target=group,
+            ),
+        )
+
         return group_user
 
     @classmethod
@@ -147,7 +174,7 @@ class UpdateGroupActionType(ActionType):
         original_group_name = group.name
         CoreHandler().update_group(user, group, name=new_group_name)
 
-        cls.register_action(
+        action = cls.register_action(
             user=user,
             params=cls.Params(
                 group.id,
@@ -155,6 +182,19 @@ class UpdateGroupActionType(ActionType):
                 new_group_name=new_group_name,
             ),
             scope=cls.scope(),
+        )
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                action=action,
+                target=group,
+                from_state={"name": original_group_name},
+                to_state={"name": new_group_name},
+            ),
         )
         return group
 
@@ -215,13 +255,25 @@ class OrderGroupsActionType(ActionType):
 
         CoreHandler().order_groups(user, group_ids)
 
-        cls.register_action(
+        action = cls.register_action(
             user=user,
             params=cls.Params(
                 original_order,
                 new_order=group_ids,
             ),
             scope=cls.scope(),
+        )
+
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                action=action,
+                from_state={"order": original_order},
+                to_state={"order": group_ids},
+            ),
         )
 
     @classmethod
@@ -281,7 +333,20 @@ class OrderApplicationsActionType(ActionType):
             original_application_ids=old_ids_in_order,
             new_application_ids=application_ids_in_order,
         )
-        cls.register_action(user, params, cls.scope(group.id))
+        action = cls.register_action(user, params, cls.scope(group.id))
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                action=action,
+                target=group,
+                from_state={"order": old_ids_in_order},
+                to_state={"order": application_ids_in_order},
+            ),
+        )
 
     @classmethod
     def scope(cls, group_id: int) -> ActionScopeStr:
@@ -333,7 +398,20 @@ class CreateApplicationActionType(ActionType):
         )
 
         params = cls.Params(application.id)
-        cls.register_action(user, params, cls.scope(group.id))
+        action = cls.register_action(user, params, cls.scope(group.id))
+
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                application=application,
+                action=action,
+                target=application,
+            ),
+        )
 
         return application
 
@@ -375,7 +453,19 @@ class DeleteApplicationActionType(ActionType):
         CoreHandler().delete_application(user, application)
 
         params = cls.Params(application.id)
-        cls.register_action(user, params, cls.scope(application.group.id))
+        action = cls.register_action(user, params, cls.scope(application.group.id))
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=application.group,
+                application=application,
+                action=action,
+                target=application,
+            ),
+        )
 
     @classmethod
     def scope(cls, group_id: int) -> ActionScopeStr:
@@ -421,7 +511,22 @@ class UpdateApplicationActionType(ActionType):
         application = CoreHandler().update_application(user, application, name)
 
         params = cls.Params(application.id, original_name, name)
-        cls.register_action(user, params, cls.scope(application.group.id))
+        group = application.group
+        action = cls.register_action(user, params, cls.scope(group.id))
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                application=application,
+                action=action,
+                target=application,
+                from_state={"name": original_name},
+                to_state={"name": name},
+            ),
+        )
 
         return application
 
@@ -473,8 +578,21 @@ class DuplicateApplicationActionType(ActionType):
         )
 
         params = cls.Params(new_application_clone.id)
-        cls.register_action(user, params, cls.scope(application.group.id))
-
+        group = application.group
+        action = cls.register_action(user, params, cls.scope(group.id))
+        auditable_event.send(
+            cls,
+            event=AuditableEvent(
+                event_type=cls.type,
+                timestamp=action.created_on,
+                user=user,
+                group=group,
+                application=new_application_clone,
+                action=action,
+                context=application,
+                target=new_application_clone,
+            ),
+        )
         return new_application_clone
 
     @classmethod
@@ -530,7 +648,27 @@ class InstallTemplateActionType(ActionType):
         )
 
         params = cls.Params([app.id for app in installed_applications])
-        cls.register_action(user, params, cls.scope(group.id))
+        action = cls.register_action(user, params, cls.scope(group.id))
+
+        event = AuditableEvent(
+            event_type=cls.type,
+            timestamp=action.created_on,
+            user=user,
+            group=group,
+            action=action,
+            context=template,
+            target=group,
+        )
+        if len(installed_applications) == 1:
+            event.application = installed_applications[0]
+            event.target = installed_applications[0]
+        else:
+            event.additional_data = {
+                "installed_applications": [str(app) for app in installed_applications],
+                "count": len(installed_applications),
+            }
+
+        auditable_event.send(cls, event=event)
 
         return installed_applications
 

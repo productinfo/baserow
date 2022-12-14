@@ -33,3 +33,27 @@ export class AuthProvidersType extends EnterpriseAdminType {
     return 100
   }
 }
+
+
+export class AuditLogType extends EnterpriseAdminType {
+  static getType() {
+    return 'audit-log'
+  }
+
+  getIconClass() {
+    return 'history'
+  }
+
+  getName() {
+    const { i18n } = this.app
+    return i18n.t('adminType.AuditLog')
+  }
+
+  getRouteName() {
+    return 'admin-audit-log'
+  }
+
+  getOrder() {
+    return 100
+  }
+}

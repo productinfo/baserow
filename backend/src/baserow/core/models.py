@@ -320,6 +320,9 @@ class Application(
         queryset = Application.objects.filter(group=group)
         return cls.get_highest_order_of_queryset(queryset) + 1
 
+    def __str__(self):
+        return f"<{self.specific_class.__name__} id={self.id}, name={self.name}>"
+
 
 class TemplateCategory(models.Model):
     name = models.CharField(max_length=32)

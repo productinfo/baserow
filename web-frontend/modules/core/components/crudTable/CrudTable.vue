@@ -170,6 +170,12 @@ export default {
       required: true,
       type: String,
     },
+    defaultColumnSorts: {
+      required: false,
+      type: Array,
+      default: () => [],
+      validator: (prop) => isArray(prop),
+    },
   },
   data() {
     return {
@@ -178,7 +184,7 @@ export default {
       totalPages: null,
       searchQuery: false,
       rows: [],
-      columnSorts: [],
+      columnSorts: this.defaultColumnSorts,
     }
   },
   async fetch() {
