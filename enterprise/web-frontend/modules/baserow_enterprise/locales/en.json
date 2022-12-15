@@ -193,7 +193,7 @@
             "members": "members",
             "teams": "teams"
         },
-        "helpTooltip": "Member role assignments always override team role assignments."
+        "helpTooltip": "Member role assignments override team role assignments."
     },
     "membersRoleField": {
         "noAccessHelpText": "This user requires explicit access to resources.",
