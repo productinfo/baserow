@@ -148,14 +148,14 @@
             "selectMembers": "Select members",
             "everyoneHasAccess": "Everyone at {name} workspace can access this database.",
             "onlyYouHaveAccess": "Only you can access this database.",
-            "headerTooltip": "Database roles will always override group roles."
+            "headerTooltip": "Database roles will override group roles."
         },
         "table": {
             "title": "{name} table",
             "selectMembers": "Select members",
             "everyoneHasAccess": "Everyone at {name} workspace can access this table.",
             "onlyYouHaveAccess": "Only you can access this table.",
-            "headerTooltip": "Table roles will always override group and database roles."
+            "headerTooltip": "Table roles will override group and database roles."
         }
     },
     "memberRolesShareToggle": {
