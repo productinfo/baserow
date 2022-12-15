@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils.functional import lazy
+from django.contrib.auth.models import User
 
 from baserow.contrib.database.fields.field_filters import (
     FILTER_TYPE_AND,
@@ -51,6 +52,8 @@ class View(
     PolymorphicContentTypeMixin,
     models.Model,
 ):
+    OWNERSHIP_TYPE_COLLABORATIVE = "collaborative"
+
     table = models.ForeignKey("database.Table", on_delete=models.CASCADE)
     order = models.PositiveIntegerField()
     name = models.CharField(max_length=255)
@@ -91,6 +94,10 @@ class View(
     show_logo = models.BooleanField(
         default=True,
         help_text="Indicates whether the logo should be shown in the public view.",
+    )
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    ownership_type = models.CharField(
+        max_length=255, default=OWNERSHIP_TYPE_COLLABORATIVE
     )
 
     @property

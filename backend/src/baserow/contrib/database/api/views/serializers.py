@@ -322,6 +322,10 @@ class CreateViewSerializer(serializers.ModelSerializer):
     type = serializers.ChoiceField(
         choices=lazy(view_type_registry.get_types, list)(), required=True
     )
+    # TODO:
+    # ownership_type = serializers.ChoiceField(
+    #     choices=lazy()
+    # )
 
     class Meta:
         model = View
