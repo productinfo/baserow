@@ -58,6 +58,7 @@
   border: none;
   border-collapse: collapse;
   border-spacing: 0;
+  table-layout: fixed;
 }
 
 .data-table__table-cell {
@@ -111,9 +112,14 @@
   position: relative;
   display: flex;
   align-items: center;
-  white-space: nowrap;
   min-width: 0;
   padding: 0 10px;
+
+  :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .data-table__table-cell:first-child & {
     padding-left: 0;
