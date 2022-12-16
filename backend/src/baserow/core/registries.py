@@ -1,4 +1,5 @@
 import abc
+
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 from xmlrpc.client import Boolean
@@ -498,6 +499,12 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
     context.
     """
 
+    @cached_property
+    def content_type(self):
+        from django.contrib.contenttypes.models import ContentType
+
+        return ContentType.objects.get_for_model(self.model_class)
+
     def get_parent_scope(self) -> Optional["ObjectScopeType"]:
         """
         Returns the parent scope of the current scope.
@@ -518,6 +525,9 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
         """
 
         return None
+
+    def parent(self, context: ContextObject):
+        return self.get_parent(context)
 
     def get_parents(self, context: ContextObject) -> List[ContextObject]:
         """
@@ -605,13 +615,13 @@ class ObjectScopeTypeRegistry(
             if at_scope_type.type == context_scope_type.type:
                 return context
             else:
-                parent_scope = context_scope_type.get_parent(context)
+                parent_scope = context_scope_type.parent(context)
                 if parent_scope is None:
                     return None
                 else:
                     return self.get_parent(parent_scope, at_scope_type=at_scope_type)
         else:
-            return context_scope_type.get_parent(context)
+            return context_scope_type.parent(context)
 
     def scope_includes_context(
         self,
@@ -640,7 +650,7 @@ class ObjectScopeTypeRegistry(
             return scope.id == context.id
         else:
             return self.scope_includes_context(
-                scope, context_scope_type.get_parent(context), scope_type=scope_type
+                scope, context_scope_type.parent(context), scope_type=scope_type
             )
 
     def scope_type_includes_scope_type(

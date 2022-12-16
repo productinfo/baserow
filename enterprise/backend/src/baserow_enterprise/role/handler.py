@@ -1,3 +1,5 @@
+from collections import defaultdict
+from functools import cached_property
 from typing import Any, List, Optional, Tuple, TypedDict, Union
 
 from django.contrib.auth import get_user_model
@@ -15,7 +17,12 @@ from baserow_enterprise.models import RoleAssignment
 from baserow_enterprise.role.models import Role
 from baserow_enterprise.teams.models import Team, TeamSubject
 
-from .constants import NO_ACCESS_ROLE, NO_ROLE_LOW_PRIORITY_ROLE, SUBJECT_PRIORITY
+from .constants import (
+    NO_ACCESS_ROLE,
+    NO_ROLE_LOW_PRIORITY_ROLE,
+    SUBJECT_PRIORITY,
+    ROLE_ASSIGNABLE_OBJECT_MAP,
+)
 
 User = get_user_model()
 
@@ -187,7 +194,7 @@ class RoleAssignmentHandler:
         actor_subject_type = subject_type_registry.get_by_model(actor)
 
         content_types = ContentType.objects.get_for_models(
-            actor_subject_type.model_class, Team, Group
+            *[s.model_class for s in subject_type_registry.get_all()], Group
         )
 
         subjects_q = Q(
@@ -213,7 +220,10 @@ class RoleAssignmentHandler:
                 scope_type=ContentType.objects.get_for_model(scope_type.model_class),
                 then=Value(scope_type.level),
             )
-            for scope_type in object_scope_type_registry.get_all()
+            for scope_type in [
+                object_scope_type_registry.get(name)
+                for name in ROLE_ASSIGNABLE_OBJECT_MAP
+            ]
             if scope_type.type != CoreObjectScopeType.type
         ]
 
@@ -253,23 +263,24 @@ class RoleAssignmentHandler:
             .select_related("subject_type")
         )
 
-        roles_by_scope = {group: []}
+        group_scope_param = (group.id, content_types[Group].id)
+        roles_by_scope = {group_scope_param: []}
         priorities_by_scope = {}
 
         for role_assignment in role_assignments:
-            scope = role_assignment.scope
+            scope_param = (role_assignment.scope_id, role_assignment.scope_type_id)
             role = self.get_role_by_id(role_assignment.role_id)
             priority = role_assignment.role_priority
 
             # We don't use defaultdict here to be sure we have the right key order
-            if scope not in roles_by_scope:
-                roles_by_scope[scope] = []
+            if scope_param not in roles_by_scope:
+                roles_by_scope[scope_param] = []
 
-            existing_priority = priorities_by_scope.setdefault(scope, priority)
+            existing_priority = priorities_by_scope.setdefault(scope_param, priority)
             if priority < existing_priority:
-                roles_by_scope[scope] = [role]
+                roles_by_scope[scope_param] = [role]
             elif existing_priority == priority:
-                roles_by_scope[scope].append(role)
+                roles_by_scope[scope_param].append(role)
 
         # Get the group level role by reading the GroupUser permissions property for
         # User actors.
@@ -279,13 +290,17 @@ class RoleAssignmentHandler:
             )
             if group_level_role.uid == NO_ROLE_LOW_PRIORITY_ROLE:
                 # Low priority role -> Use team role or NO_ACCESS if no team role
-                if not roles_by_scope.get(group):
+                if not roles_by_scope.get(group_scope_param):
                     roles_by_scope[group] = [self.get_role_by_uid(NO_ACCESS_ROLE)]
             else:
                 # Otherwise user role wins
-                roles_by_scope[group] = [group_level_role]
+                roles_by_scope[group_scope_param] = [group_level_role]
 
-        return list(roles_by_scope.items())
+        roles_by_scope = [
+            (self.get_scope(*key), value) for (key, value) in roles_by_scope.items()
+        ]
+
+        return roles_by_scope
 
     def get_computed_roles(
         self, group: Group, actor: AbstractUser, context: Any
@@ -435,19 +450,34 @@ class RoleAssignmentHandler:
         content_type = subject_type_registry.get(subject_type).get_content_type()
         return content_type.get_object_for_this_type(id=subject_id)
 
-    def get_scope(self, scope_id: int, scope_type: str):
+    def get_scope(self, scope_id, content_type_id) -> Any:
         """
         Helper method that returns the actual scope object given the scope ID and
         the scope type.
 
         :param scope_id: The scope id.
-        :param scope_type: The scope type. This type must be registered in the
-            `object_scope_registry`.
+        :param content_type_id: The content_type id
         """
 
-        scope_type = object_scope_type_registry.get(scope_type)
-        content_type = ContentType.objects.get_for_model(scope_type.model_class)
+        content_type = ContentType.objects.get_for_id(content_type_id)
         return content_type.get_object_for_this_type(id=scope_id)
+
+    '''def get_scopes(self, scope_params) -> Any:
+        """
+        Helper method that returns the actual scope object given the scope ID and
+        the scope type.
+
+        :param scope_id: The scope id.
+        :param content_type_id: The content_type id
+        """
+
+        scope_by_content_type_id = defaultdict(list)
+        for scope_id, content_type_id in scope_params.items():
+            scope_by_content_type_id[content_type.id]
+
+
+        content_type = ContentType.objects.get_for_id(content_type_id)
+        return content_type.get_object_for_this_type(id=scope_id)'''
 
     def assign_role_batch(
         self,

@@ -106,7 +106,10 @@ class AssignRoleActionType(ActionType):
 
         role_assignment_handler = RoleAssignmentHandler()
         group = Group.objects.get(id=params.group_id)
-        scope = role_assignment_handler.get_scope(params.scope_id, params.scope_type)
+        scope_type = object_scope_type_registry.get_by_model(params.scope_type)
+        scope = role_assignment_handler.get_scope(
+            params.scope_id, scope_type.content_type.id
+        )
 
         LicenseHandler.raise_if_user_doesnt_have_feature(RBAC, user, group)
 
@@ -141,10 +144,12 @@ class AssignRoleActionType(ActionType):
         role_assignment_handler = RoleAssignmentHandler()
 
         group = Group.objects.get(id=params.group_id)
-        scope = role_assignment_handler.get_scope(params.scope_id, params.scope_type)
+        scope_type = object_scope_type_registry.get_by_model(params.scope_type)
+        scope = role_assignment_handler.get_scope(
+            params.scope_id, scope_type.content_type.id
+        )
 
         LicenseHandler.raise_if_user_doesnt_have_feature(RBAC, user, group)
-        scope_type = object_scope_type_registry.get_by_model(scope)
 
         CoreHandler().check_permissions(
             user,

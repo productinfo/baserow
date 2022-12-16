@@ -105,6 +105,7 @@ class RolePermissionManagerType(PermissionManagerType):
         roles_by_scope: List[Tuple[Any, List[Role]]],
         operation_type: OperationType,
         use_object_scope: bool = False,
+        cache=None,
     ) -> Tuple[bool, Set[Any]]:
         """
         Compute the default policy and exceptions for an operation given the
@@ -134,6 +135,14 @@ class RolePermissionManagerType(PermissionManagerType):
         )
         exceptions = set()
 
+        cache = cache if cache is not None else {}
+
+        def get_exception_for_scope(scope_type, scope):
+            key = (scope_type.type, scope.id)
+            if key not in cache:
+                cache[key] = list(scope_type.get_all_context_objects_in_scope(scope))
+            return cache[key]
+
         for (scope, roles) in roles_by_scope[1:]:
 
             allowed_operations = set()
@@ -151,10 +160,12 @@ class RolePermissionManagerType(PermissionManagerType):
                 scope_type, base_scope_type
             ):
 
-                context_exceptions = list(
+                # context_exceptions = get_exception_for_scope(base_scope_type, scope)
+                """context_exceptions = list(
                     base_scope_type.get_all_context_objects_in_scope(scope)
-                )
+                )"""
 
+                context_exceptions = (base_scope_type, scope)
                 # Remove or add exceptions to the exception list according to the
                 # default policy for the group
                 if operation_type.type not in allowed_operations:
@@ -221,10 +232,12 @@ class RolePermissionManagerType(PermissionManagerType):
 
         result = defaultdict(lambda: {"default": False, "exceptions": []})
 
+        cache = {}
+
         for operation_type in operation_type_registry.get_all():
 
             default, exceptions = self.get_operation_policy(
-                roles_by_scope, operation_type
+                roles_by_scope, operation_type, cache=cache
             )
 
             if default or exceptions:
