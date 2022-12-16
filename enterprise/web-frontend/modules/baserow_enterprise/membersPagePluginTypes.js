@@ -68,7 +68,8 @@ export class EnterpriseMembersPagePluginType extends MembersPagePluginType {
           false,
           {
             groupId: group.id,
-          }
+          },
+          10
         )
       )
     }

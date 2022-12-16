@@ -125,6 +125,12 @@ export default {
           true
         ),
         new CrudTableColumn(
+          'subject_sample',
+          this.$t('teamsTable.subjectsColumn'),
+          SubjectSampleField,
+          true
+        ),
+        new CrudTableColumn(
           'default_role',
           this.$t('teamsTable.roleColumn'),
           TeamRoleField,
@@ -134,13 +140,8 @@ export default {
           {
             roles: this.roles,
             groupId: this.group.id,
-          }
-        ),
-        new CrudTableColumn(
-          'subject_sample',
-          this.$t('teamsTable.subjectsColumn'),
-          SubjectSampleField,
-          true
+          },
+          10
         ),
       ]
 
@@ -157,7 +158,7 @@ export default {
       )
       if (canUpdate || canDelete) {
         columns.push(
-          new CrudTableColumn(null, null, MoreField, false, false, true)
+          new CrudTableColumn(null, null, MoreField, false, false, true, {}, 10)
         )
       }
 

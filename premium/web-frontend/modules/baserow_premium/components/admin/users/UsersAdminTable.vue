@@ -45,18 +45,30 @@ export default {
         () => this.$t('usersAdminTable.username'),
         UsernameField,
         true,
-        true
+        true,
+        false,
+        {},
+        20
       ),
       new CrudTableColumn(
         'name',
         () => this.$t('usersAdminTable.name'),
         SimpleField,
-        true
+        true,
+        false,
+        false,
+        {},
+        20
       ),
       new CrudTableColumn(
         'groups',
         () => this.$t('usersAdminTable.groups'),
-        UserGroupsField
+        UserGroupsField,
+        false,
+        false,
+        false,
+        {},
+        20
       ),
       new CrudTableColumn(
         'last_login',
@@ -76,7 +88,7 @@ export default {
         ActiveField,
         true
       ),
-      new CrudTableColumn('more', '', MoreField, false, false, true),
+      new CrudTableColumn('more', '', MoreField, false, false, true, {}, 10),
     ]
     this.service = UserAdminService(this.$client)
     return {

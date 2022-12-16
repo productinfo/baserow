@@ -132,7 +132,7 @@ export default {
             groupId: this.group.id,
           }
         ),
-        new CrudTableColumn(null, null, MoreField, false, false, true),
+        new CrudTableColumn(null, null, MoreField, false, false, true, {}, 10),
       ]
       for (const plugin of this.membersPagePlugins) {
         if (!plugin.isDeactivated(this.group.id)) {

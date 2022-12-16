@@ -54,15 +54,23 @@ export default {
         'application_count',
         () => this.$t('groupsAdminTable.applications'),
         SimpleField,
-        true
+        true,
+        false,
+        false,
+        {},
+        10
       ),
       new CrudTableColumn(
         'created_on',
         () => this.$t('groupsAdminTable.created'),
         LocalDateField,
-        true
+        true,
+        false,
+        false,
+        {},
+        10
       ),
-      new CrudTableColumn('more', '', MoreField, false, false, true),
+      new CrudTableColumn('more', '', MoreField, false, false, true, {}, 10),
     ]
     this.service = GroupsAdminService(this.$client)
     return {
