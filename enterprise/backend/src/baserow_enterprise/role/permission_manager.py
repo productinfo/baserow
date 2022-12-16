@@ -170,14 +170,19 @@ class RolePermissionManagerType(PermissionManagerType):
                 # default policy for the group
                 if operation_type.type not in allowed_operations:
                     if default:
-                        exceptions |= set(context_exceptions)
+                        exceptions.add(context_exceptions)
+                        # exceptions |= set(context_exceptions)
                     else:
-                        exceptions = exceptions.difference(context_exceptions)
+                        exceptions.remove(context_exceptions)
+                        # exceptions = exceptions.difference(context_exceptions)
                 else:
                     if default:
-                        exceptions = exceptions.difference(context_exceptions)
+                        exceptions.remove(context_exceptions)
+                        # exceptions = exceptions.difference(context_exceptions)
                     else:
-                        exceptions |= set(context_exceptions)
+                        exceptions.add(context_exceptions)
+                        # exceptions |= set(context_exceptions)
+
             # Second case
             # The scope of the role assignment is included by the role of the operation
             # And we are doing a read operation
@@ -196,12 +201,17 @@ class RolePermissionManagerType(PermissionManagerType):
                 found_object = object_scope_type_registry.get_parent(
                     scope, at_scope_type=base_scope_type
                 )
+                context_exceptions = (base_scope_type, found_object)
 
                 if default:
                     if found_object in exceptions:
-                        exceptions.remove(found_object)
+                        # exceptions.remove(found_object)
+                        exceptions.remove(context_exceptions)
                 else:
-                    exceptions.add(found_object)
+                    # exceptions.add(found_object)
+                    exceptions.add(context_exceptions)
+
+        print(exceptions)
 
         return default, exceptions
 
