@@ -115,6 +115,7 @@ def test_create_grid_view(send_mock, data_fixture):
     assert grid.name == "Test grid"
     assert grid.order == 1
     assert grid.table == table
+    assert grid.created_by == user
     assert grid.filter_type == "AND"
     assert not grid.filters_disabled
 

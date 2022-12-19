@@ -95,6 +95,31 @@ def test_list_views(api_client, data_fixture):
 
 
 @pytest.mark.django_db
+def test_list_views_ownership_type(api_client, data_fixture):
+    """
+    By default only collaborative views should be returned.
+    """
+    
+    user, token = data_fixture.create_user_and_token(
+        email="test@test.nl", password="password", first_name="Test1"
+    )
+    table_1 = data_fixture.create_database_table(user=user)
+    view_1 = data_fixture.create_grid_view(table=table_1, order=1, ownership_type="collaborative")
+    view_2 = data_fixture.create_grid_view(table=table_1, order=3, ownership_type="another_type")
+    
+    response = api_client.get(
+        reverse("api:database:views:list", kwargs={"table_id": table_1.id}),
+        **{"HTTP_AUTHORIZATION": f"JWT {token}"},
+    )
+
+    assert response.status_code == HTTP_200_OK
+    response_json = response.json()
+    assert len(response_json) == 1
+    assert response_json[0]["id"] == view_1.id
+    assert response_json[0]["ownership_type"] == "collaborative"
+
+
+@pytest.mark.django_db
 def test_list_views_with_limit(api_client, data_fixture):
     user, token = data_fixture.create_user_and_token(
         email="test@test.nl", password="password", first_name="Test1"

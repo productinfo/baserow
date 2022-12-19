@@ -265,26 +265,7 @@ class ViewsView(APIView):
             allow_if_template=True,
         )
 
-        views = View.objects.filter(table=table).select_related("content_type", "table")
-
-        if query_params["type"]:
-            view_type = view_type_registry.get(query_params["type"])
-            content_type = ContentType.objects.get_for_model(view_type.model_class)
-            views = views.filter(content_type=content_type)
-
-        if filters:
-            views = views.prefetch_related("viewfilter_set")
-
-        if sortings:
-            views = views.prefetch_related("viewsort_set")
-
-        if decorations:
-            views = views.prefetch_related("viewdecoration_set")
-
-        if query_params["limit"]:
-            views = views[: query_params["limit"]]
-
-        views = specific_iterator(views)
+        views = ViewHandler().list_views(table, query_params["type"], filters, sortings, decorations, query_params["limit"])
 
         data = [
             view_type_registry.get_serializer(

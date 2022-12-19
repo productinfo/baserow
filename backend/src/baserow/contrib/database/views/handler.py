@@ -11,10 +11,12 @@ from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models as django_models
 from django.db.models import Count, F
 from django.db.models.query import QuerySet
+from django.contrib.contenttypes.models import ContentType
 
 import jwt
 from redis.exceptions import LockNotOwnedError
 
+from baserow.core.db import specific_iterator
 from baserow.core.models import Group
 from baserow.contrib.database.api.utils import get_include_exclude_field_ids
 from baserow.contrib.database.fields.exceptions import FieldNotInTable
@@ -117,6 +119,37 @@ ending_number_regex = re.compile(r"(.+) (\d+)$")
 
 class ViewHandler:
     PUBLIC_VIEW_TOKEN_ALGORITHM = "HS256"  # nosec
+
+    def _apply_view_ownership_filters(self, queryset):
+        # TODO: docs, types
+        return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)
+
+    def list_views(self, table, _type, filters, sortings, decorations, limit):
+        # TODO: docs, types
+
+        views = View.objects.filter(table=table)
+        views = self._apply_view_ownership_filters(views)
+        views = views.select_related("content_type", "table")
+
+        if _type:
+            view_type = view_type_registry.get(_type)
+            content_type = ContentType.objects.get_for_model(view_type.model_class)
+            views = views.filter(content_type=content_type)
+
+        if filters:
+            views = views.prefetch_related("viewfilter_set")
+
+        if sortings:
+            views = views.prefetch_related("viewsort_set")
+
+        if decorations:
+            views = views.prefetch_related("viewdecoration_set")
+
+        if limit:
+            views = views[: limit]
+
+        views = specific_iterator(views)
+        return views
 
     def get_view(
         self,
@@ -222,7 +255,7 @@ class ViewHandler:
         CoreHandler().check_permissions(
             user, CreateViewOperationType.type, group=group, context=table
         )
-        self._check_ownership_type(user, group, kwargs.get("ownership_type", ""))
+        self._check_ownership_type(user, group, kwargs.get("ownership_type", OWNERSHIP_TYPE_COLLABORATIVE))
 
         # Figure out which model to use for the given view type.
         view_type = view_type_registry.get(type_name)
@@ -241,7 +274,7 @@ class ViewHandler:
         last_order = model_class.get_last_order(table)
 
         instance = model_class.objects.create(
-            table=table, order=last_order, **view_values
+            table=table, order=last_order, created_by=user, **view_values
         )
 
         view_type.view_created(view=instance)
