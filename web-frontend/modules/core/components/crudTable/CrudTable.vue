@@ -5,10 +5,15 @@
         <slot name="title"></slot>
       </h1>
       <div class="data-table__actions">
-        <CrudTableSearch :loading="loading" @search-changed="doSearch" />
+        <CrudTableSearch
+          v-if="enableSearch"
+          :loading="loading"
+          @search-changed="doSearch"
+        />
         <slot name="header-right-side"></slot>
       </div>
     </header>
+    <slot name="header-filters"></slot>
     <div class="data-table__body">
       <table class="data-table__table">
         <thead>
@@ -55,6 +60,7 @@
               :class="{
                 'data-table__table-cell--sticky-left': col.stickyLeft,
                 'data-table__table-cell--sticky-right': col.stickyRight,
+                [`data-table__table-cell--${col.key}`]: true,
               }"
               @contextmenu="$emit('row-context', { col, row, event: $event })"
             >
@@ -90,6 +96,7 @@ import CrudTableSearch from '@baserow/modules/core/components/crudTable/CrudTabl
 import Paginator from '@baserow/modules/core/components/Paginator'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import { isArray } from 'lodash'
+import isObject from 'lodash/isObject'
 
 /**
  * This component is a generic wrapper for a basic crud service which displays its
@@ -170,6 +177,23 @@ export default {
       required: true,
       type: String,
     },
+    defaultColumnSorts: {
+      required: false,
+      type: Array,
+      default: () => [],
+      validator: (prop) => isArray(prop),
+    },
+    filters: {
+      required: false,
+      type: Object,
+      default: () => ({}),
+      validator: (prop) => isObject(prop),
+    },
+    enableSearch: {
+      required: false,
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -178,7 +202,7 @@ export default {
       totalPages: null,
       searchQuery: false,
       rows: [],
-      columnSorts: [],
+      columnSorts: this.defaultColumnSorts,
     }
   },
   async fetch() {
@@ -188,6 +212,9 @@ export default {
   watch: {
     rows() {
       this.$emit('rows-update', this.rows)
+    },
+    filters() {
+      this.fetch()
     },
   },
   methods: {
@@ -237,13 +264,13 @@ export default {
      */
     async fetch(page = null) {
       this.loading = true
-
       try {
         const { data } = await this.service.fetch(
           this.service.options.baseUrl,
           page,
           this.searchQuery,
           this.columnSorts,
+          this.filters,
           this.service.options
         )
 

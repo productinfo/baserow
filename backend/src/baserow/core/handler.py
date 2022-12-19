@@ -439,10 +439,13 @@ class CoreHandler:
             user, UpdateGroupOperationType.type, group=group, context=group
         )
 
+        from_name = group.name
         group.name = name
         group.save()
 
-        group_updated.send(self, group=group, user=user)
+        group_updated.send(
+            self, group=group, user=user, before_update={"name": from_name}
+        )
 
         return group
 

@@ -1,0 +1,7 @@
+.audit-log__filters {
+    display: grid;
+    grid-template-columns: 200px 200px 200px 140px 140px;
+    grid-gap: 20px;
+    padding: 16px 42px 48px;
+    z-index: 4;
+}
