@@ -265,7 +265,7 @@ class ViewsView(APIView):
             allow_if_template=True,
         )
 
-        views = ViewHandler().list_views(table, query_params["type"], filters, sortings, decorations, query_params["limit"])
+        views = ViewHandler().list_views(request.user, table, query_params["type"], filters, sortings, decorations, query_params["limit"])
 
         data = [
             view_type_registry.get_serializer(

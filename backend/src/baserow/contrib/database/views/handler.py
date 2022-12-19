@@ -120,15 +120,15 @@ ending_number_regex = re.compile(r"(.+) (\d+)$")
 class ViewHandler:
     PUBLIC_VIEW_TOKEN_ALGORITHM = "HS256"  # nosec
 
-    def _apply_view_ownership_filters(self, queryset):
+    def _apply_view_ownership_filters(self, user: AbstractUser, group: Group, queryset: QuerySet) -> QuerySet:
         # TODO: docs, types
         return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)
 
-    def list_views(self, table, _type, filters, sortings, decorations, limit):
+    def list_views(self, user, table, _type, filters, sortings, decorations, limit):
         # TODO: docs, types
 
         views = View.objects.filter(table=table)
-        views = self._apply_view_ownership_filters(views)
+        views = self._apply_view_ownership_filters(user, table.database.group, views)
         views = views.select_related("content_type", "table")
 
         if _type:

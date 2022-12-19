@@ -152,3 +152,22 @@ def premium_check_ownership_type(self, user: AbstractUser, group: Group, ownersh
     else:
         if ownership_type != OWNERSHIP_TYPE_COLLABORATIVE:
             raise ViewOwnershipTypeNotSupported()
+
+def premium_apply_view_ownership_filters(self, user: AbstractUser, group: Group, queryset: QuerySet) -> QuerySet:
+    """
+    A premium version of ViewHandler()._apply_view_ownership_filters.
+
+    """
+    # TODO: docs, types
+    # TODO: personal -> OWNERSHIP_TYPE_PERSONAL
+    
+    premium = LicenseHandler.user_has_feature(PREMIUM, user, group)
+    
+    print("I am premium")
+    print(premium)
+
+    if premium:
+        # TODO: take created_by into account
+        return queryset.filter(Q(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE) | Q(ownership_type="personal"))
+    else:
+        return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)
