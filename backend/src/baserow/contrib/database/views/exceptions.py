@@ -173,3 +173,7 @@ class NoAuthorizationToPubliclySharedView(Exception):
     Raised when someone tries to access a view without a valid authorization
     token.
     """
+
+
+class ViewOwnershipTypeNotSupported(Exception):
+    """Raised when the view ownership type is not supported."""

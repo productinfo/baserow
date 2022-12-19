@@ -73,8 +73,15 @@ from .exceptions import (
     ViewSortFieldAlreadyExist,
     ViewSortFieldNotSupported,
     ViewSortNotSupported,
+    ViewOwnershipTypeNotSupported,
 )
-from .models import View, ViewDecoration, ViewFilter, ViewSort
+from .models import (
+    View,
+    ViewDecoration,
+    ViewFilter,
+    ViewSort,
+    OWNERSHIP_TYPE_COLLABORATIVE,
+)
 from .registries import (
     decorator_type_registry,
     decorator_value_provider_type_registry,
@@ -97,6 +104,7 @@ from .signals import (
     view_sort_updated,
     view_updated,
     views_reordered,
+    before_view_created,
 )
 from .validators import value_is_empty_for_required_form_field
 
@@ -184,6 +192,18 @@ class ViewHandler:
 
         return self.get_view(view_id, view_model, base_queryset)
 
+    def _check_ownership_type(self, user: AbstractUser, ownership_type: str) -> None:
+        """
+        Checks whether the provided ownership type is supported for the user.
+
+        :param user: The user on whose behalf the operation is performed.
+        :param ownership_type: View's ownership type.
+        :raises ViewOwnershipTypeNotSupported: When not allowed.
+        """
+
+        if ownership_type != OWNERSHIP_TYPE_COLLABORATIVE:
+            raise ViewOwnershipTypeNotSupported()
+
     def create_view(
         self, user: AbstractUser, table: Table, type_name: str, **kwargs
     ) -> View:
@@ -201,6 +221,7 @@ class ViewHandler:
         CoreHandler().check_permissions(
             user, CreateViewOperationType.type, group=group, context=table
         )
+        self._check_ownership_type(user, kwargs.get("ownership_type", ""))
 
         # Figure out which model to use for the given view type.
         view_type = view_type_registry.get(type_name)
@@ -208,8 +229,10 @@ class ViewHandler:
 
         model_class = view_type.model_class
         view_values = view_type.prepare_values(kwargs, table, user)
+
         allowed_fields = [
             "name",
+            "ownership_type",
             "filter_type",
             "filters_disabled",
         ] + view_type.allowed_fields

@@ -13,6 +13,7 @@ from baserow.contrib.database.views.models import (
     ViewDecoration,
     ViewFilter,
     ViewSort,
+    OWNERSHIP_TYPE_COLLABORATIVE,
 )
 from baserow.contrib.database.views.registries import (
     decorator_type_registry,
@@ -322,14 +323,11 @@ class CreateViewSerializer(serializers.ModelSerializer):
     type = serializers.ChoiceField(
         choices=lazy(view_type_registry.get_types, list)(), required=True
     )
-    # TODO:
-    # ownership_type = serializers.ChoiceField(
-    #     choices=lazy()
-    # )
+    ownership_type = serializers.CharField(default=OWNERSHIP_TYPE_COLLABORATIVE)
 
     class Meta:
         model = View
-        fields = ("name", "type", "filter_type", "filters_disabled")
+        fields = ("name", "type", "ownership_type", "filter_type", "filters_disabled")
 
 
 class UpdateViewSerializer(serializers.ModelSerializer):

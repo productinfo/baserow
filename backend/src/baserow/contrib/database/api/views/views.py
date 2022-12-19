@@ -85,6 +85,7 @@ from baserow.contrib.database.views.exceptions import (
     ViewSortFieldAlreadyExist,
     ViewSortFieldNotSupported,
     ViewSortNotSupported,
+    ViewOwnershipTypeNotSupported,
 )
 from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.views.models import (
@@ -131,6 +132,7 @@ from .errors import (
     ERROR_VIEW_SORT_FIELD_ALREADY_EXISTS,
     ERROR_VIEW_SORT_FIELD_NOT_SUPPORTED,
     ERROR_VIEW_SORT_NOT_SUPPORTED,
+    ERROR_VIEW_OWNERSHIP_TYPE_NOT_SUPPORTED,
 )
 from .serializers import (
     CreateViewDecorationSerializer,
@@ -354,6 +356,7 @@ class ViewsView(APIView):
         {
             TableDoesNotExist: ERROR_TABLE_DOES_NOT_EXIST,
             UserNotInGroup: ERROR_USER_NOT_IN_GROUP,
+            ViewOwnershipTypeNotSupported: ERROR_VIEW_OWNERSHIP_TYPE_NOT_SUPPORTED,
         }
     )
     @allowed_includes("filters", "sortings", "decorations")

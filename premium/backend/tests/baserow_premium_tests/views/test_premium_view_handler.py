@@ -2,6 +2,12 @@ import pytest
 from baserow_premium.views.handler import get_rows_grouped_by_single_select_field
 
 from baserow.contrib.database.views.models import View
+import pytest
+from unittest.mock import patch
+from baserow.contrib.database.views.handler import ViewHandler
+from baserow.contrib.database.views.models import (
+    GridView,
+)
 
 
 @pytest.mark.django_db
@@ -232,3 +238,22 @@ def test_get_rows_grouped_by_single_select_field_with_empty_table(
     assert len(rows) == 1
     assert rows["null"]["count"] == 0
     assert len(rows["null"]["results"]) == 0
+
+
+@pytest.mark.django_db
+@patch("baserow.contrib.database.views.signals.view_created.send")
+def test_create_view_personal_ownership_type(send_mock, data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    handler = ViewHandler()
+
+    view = handler.create_view(
+        user=user,
+        table=table,
+        type_name="grid",
+        name="Test grid",
+        ownership_type="personal",
+    )
+
+    grid = GridView.objects.all().first()
+    assert grid.ownership_type == "personal"

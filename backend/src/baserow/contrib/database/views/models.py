@@ -40,6 +40,9 @@ FORM_VIEW_SUBMIT_ACTION_CHOICES = (
     (FORM_VIEW_SUBMIT_ACTION_REDIRECT, "Redirect"),
 )
 
+OWNERSHIP_TYPE_COLLABORATIVE = "collaborative"
+VIEW_OWNERSHIP_TYPES = [OWNERSHIP_TYPE_COLLABORATIVE]
+
 
 def get_default_view_content_type():
     return ContentType.objects.get_for_model(View)
@@ -52,7 +55,6 @@ class View(
     PolymorphicContentTypeMixin,
     models.Model,
 ):
-    OWNERSHIP_TYPE_COLLABORATIVE = "collaborative"
 
     table = models.ForeignKey("database.Table", on_delete=models.CASCADE)
     order = models.PositiveIntegerField()

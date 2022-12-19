@@ -26,6 +26,7 @@ from baserow.contrib.database.views.exceptions import (
     ViewSortFieldNotSupported,
     ViewSortNotSupported,
     ViewTypeDoesNotExist,
+    ViewOwnershipTypeNotSupported,
 )
 from baserow.contrib.database.views.handler import PublicViewRows, ViewHandler
 from baserow.contrib.database.views.models import (
@@ -34,6 +35,7 @@ from baserow.contrib.database.views.models import (
     View,
     ViewFilter,
     ViewSort,
+    OWNERSHIP_TYPE_COLLABORATIVE,
 )
 from baserow.contrib.database.views.registries import (
     view_aggregation_type_registry,
@@ -2199,3 +2201,33 @@ def test_can_submit_form_view_handler_with_zero_number_required(data_fixture):
     handler.submit_form_view(form=form, values={f"field_{number_field.id}": 0})
     with pytest.raises(ValidationError):
         handler.submit_form_view(form=form, values={f"field_{number_field.id}": False})
+
+
+@pytest.mark.django_db
+@patch("baserow.contrib.database.views.signals.view_created.send")
+def test_create_view_ownership_type(send_mock, data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    handler = ViewHandler()
+
+    # OWNERSHIP_TYPE_COLLABORATIVE
+
+    view = handler.create_view(
+        user=user,
+        table=table,
+        type_name="grid",
+        name="Test grid",
+        ownership_type=OWNERSHIP_TYPE_COLLABORATIVE,
+    )
+
+    grid = GridView.objects.first()
+    assert grid.ownership_type == OWNERSHIP_TYPE_COLLABORATIVE
+
+    with pytest.raises(ViewOwnershipTypeNotSupported):
+        handler.create_view(
+            user=user,
+            table=table,
+            type_name="grid",
+            name="grid",
+            ownership_type="personal",
+        )
