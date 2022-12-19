@@ -55,7 +55,28 @@
         "teamsTabTitle": "Teams"
     },
     "adminType": {
+        "AuditLog": "Audit log",
         "Authentication": "Authentication"
+    },
+    "auditLog": {
+        "title": "Audit log",
+        "filterUserTitle": "User",
+        "filterUser": "Select User",
+        "filterGroupTitle": "Group",
+        "filterGroup": "Select Group",
+        "filterEventTypeTitle": "Event Type",
+        "filterEventType": "Select Event Type",
+        "filterFromDateTitle": "From Date",
+        "filterFromDate": "From Date",
+        "filterToDateTitle": "To Date",
+        "filterToDate": "To Date",
+        "user": "User",
+        "group": "Group",
+        "eventType": "Event Type",
+        "description": "Description",
+        "timestamp": "Timestamp",
+        "ip_address": "IP Address",
+        "exportToCsv": "Export to CSV"
     },
     "authProviders": {
         "title": "Authentication Providers",

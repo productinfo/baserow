@@ -142,6 +142,12 @@ class BaserowEnterpriseConfig(AppConfig):
         # which need to be filled first.
         import baserow_enterprise.ws.signals  # noqa: F
 
+        # register audit log types. This automatically connect all the related signals
+        # to be able to log the actions in the audit log.
+        from baserow_enterprise.audit_log.signals import register_audit_log_types
+
+        register_audit_log_types()
+
 
 @transaction.atomic
 def sync_default_roles_after_migrate(sender, **kwargs):
