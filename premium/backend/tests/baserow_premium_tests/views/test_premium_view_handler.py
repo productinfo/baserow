@@ -8,6 +8,7 @@ from baserow.contrib.database.views.handler import ViewHandler
 from baserow.contrib.database.views.models import (
     GridView,
 )
+from django.test.utils import override_settings
 
 
 @pytest.mark.django_db
@@ -242,10 +243,15 @@ def test_get_rows_grouped_by_single_select_field_with_empty_table(
 
 @pytest.mark.django_db
 @patch("baserow.contrib.database.views.signals.view_created.send")
-def test_create_view_personal_ownership_type(send_mock, data_fixture):
-    user = data_fixture.create_user()
-    table = data_fixture.create_database_table(user=user)
+def test_create_view_personal_ownership_type(send_mock, data_fixture, premium_data_fixture, alternative_per_group_license_service):
+    group = data_fixture.create_group(name="Group 1")
+    user = premium_data_fixture.create_user(group=group)
+    database = data_fixture.create_database_application(group=group)
+    table = data_fixture.create_database_table(user=user, database=database)
     handler = ViewHandler()
+    alternative_per_group_license_service.restrict_user_premium_to(
+        user, group.id
+    )
 
     view = handler.create_view(
         user=user,

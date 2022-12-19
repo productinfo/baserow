@@ -15,6 +15,7 @@ from django.db.models.query import QuerySet
 import jwt
 from redis.exceptions import LockNotOwnedError
 
+from baserow.core.models import Group
 from baserow.contrib.database.api.utils import get_include_exclude_field_ids
 from baserow.contrib.database.fields.exceptions import FieldNotInTable
 from baserow.contrib.database.fields.field_filters import FILTER_TYPE_AND, FilterBuilder
@@ -192,7 +193,7 @@ class ViewHandler:
 
         return self.get_view(view_id, view_model, base_queryset)
 
-    def _check_ownership_type(self, user: AbstractUser, ownership_type: str) -> None:
+    def _check_ownership_type(self, user: AbstractUser, group: Group, ownership_type: str) -> None:
         """
         Checks whether the provided ownership type is supported for the user.
 
@@ -221,7 +222,7 @@ class ViewHandler:
         CoreHandler().check_permissions(
             user, CreateViewOperationType.type, group=group, context=table
         )
-        self._check_ownership_type(user, kwargs.get("ownership_type", ""))
+        self._check_ownership_type(user, group, kwargs.get("ownership_type", ""))
 
         # Figure out which model to use for the given view type.
         view_type = view_type_registry.get(type_name)

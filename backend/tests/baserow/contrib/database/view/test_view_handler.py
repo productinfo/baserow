@@ -2206,6 +2206,10 @@ def test_can_submit_form_view_handler_with_zero_number_required(data_fixture):
 @pytest.mark.django_db
 @patch("baserow.contrib.database.views.signals.view_created.send")
 def test_create_view_ownership_type(send_mock, data_fixture):
+    """
+    By default, only OWNERSHIP_TYPE_COLLABORATIVE type is allowed.
+    """
+
     user = data_fixture.create_user()
     table = data_fixture.create_database_table(user=user)
     handler = ViewHandler()
@@ -2231,3 +2235,25 @@ def test_create_view_ownership_type(send_mock, data_fixture):
             name="grid",
             ownership_type="personal",
         )
+
+
+@pytest.mark.django_db
+@patch("baserow.contrib.database.views.signals.view_updated.send")
+def test_update_view_ownership_type(send_mock, data_fixture):
+    """
+    Updating view.ownership_type is currently not allowed.
+    """
+
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    form = data_fixture.create_form_view(table=table)
+    handler = ViewHandler()
+
+    handler.update_view(
+        user=user,
+        view=form,
+        ownership_type="new_ownership_type"
+    )
+
+    form.refresh_from_db()
+    assert form.ownership_type == OWNERSHIP_TYPE_COLLABORATIVE

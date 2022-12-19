@@ -54,6 +54,12 @@ class LicensePlugin:
         :return: True if the feature is enabled globally for all users.
         """
 
+        print("instance has feature()")
+        print(any(
+            feature in license_type.features
+            for license_type in self.get_active_instance_wide_licenses(user=None)
+        ))
+
         return any(
             feature in license_type.features
             for license_type in self.get_active_instance_wide_licenses(user=None)
@@ -69,6 +75,9 @@ class LicensePlugin:
         :param group: The group to get group wide features for.
         :return: True if the feature is enabled globally for all users.
         """
+
+        print("active group licenses")
+        print(list(self.get_active_group_licenses(group)))
 
         return self.instance_has_feature(feature) or any(
             feature in license_type.features

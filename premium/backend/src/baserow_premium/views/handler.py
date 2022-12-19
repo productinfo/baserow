@@ -1,12 +1,17 @@
 from collections import defaultdict
 from typing import Dict, Optional, Union
 
+from django.contrib.auth.models import AbstractUser
 from django.db.models import Count, Q, QuerySet
 
+from baserow.core.models import Group
 from baserow.contrib.database.fields.models import SingleSelectField
 from baserow.contrib.database.table.models import GeneratedTableModel
 from baserow.contrib.database.views.handler import ViewHandler
-from baserow.contrib.database.views.models import View
+from baserow.contrib.database.views.models import View, OWNERSHIP_TYPE_COLLABORATIVE
+from baserow.contrib.database.views.exceptions import ViewOwnershipTypeNotSupported
+from baserow_premium.license.handler import LicenseHandler
+from baserow_premium.license.features import PREMIUM
 
 
 def get_rows_grouped_by_single_select_field(
@@ -126,3 +131,24 @@ def get_rows_grouped_by_single_select_field(
         rows[key]["count"] = value
 
     return rows
+
+
+def premium_check_ownership_type(self, user: AbstractUser, group: Group, ownership_type: str) -> None:
+    """
+    A premium version of ViewHandler._check_ownership_type.
+
+    Checks whether the provided ownership type is supported for the user.
+
+    :param user: The user on whose behalf the operation is performed.
+    :param ownership_type: View's ownership type.
+    :raises ViewOwnershipTypeNotSupported: When not allowed.
+    """
+
+    premium = LicenseHandler.user_has_feature(PREMIUM, user, group)
+
+    if premium:
+        if ownership_type not in [OWNERSHIP_TYPE_COLLABORATIVE, "personal"]:
+            raise ViewOwnershipTypeNotSupported()
+    else:
+        if ownership_type != OWNERSHIP_TYPE_COLLABORATIVE:
+            raise ViewOwnershipTypeNotSupported()
