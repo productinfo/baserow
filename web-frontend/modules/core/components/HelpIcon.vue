@@ -1,5 +1,5 @@
 <template>
-  <i v-tooltip="tooltip" class="help_icon fas fa-question-circle"> </i>
+  <i v-tooltip="tooltip" class="help_icon fas" :class="iconClass"> </i>
 </template>
 
 <script>
@@ -10,6 +10,16 @@ export default {
       type: String,
       required: false,
       default: null,
+    },
+    isWarning: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+  },
+  computed: {
+    iconClass() {
+      return this.isWarning ? 'fa-exclamation-circle' : 'fa-question-circle'
     },
   },
 }

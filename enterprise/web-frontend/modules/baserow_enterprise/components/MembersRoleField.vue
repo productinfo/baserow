@@ -36,6 +36,7 @@
       v-if="roleUidSelected === 'ADMIN'"
       :tooltip="$t('membersRoleField.adminHelpText')"
       class="margin-left-1"
+      is-warning
     />
   </div>
 </template>
