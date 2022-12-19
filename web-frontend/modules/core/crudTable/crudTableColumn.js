@@ -25,7 +25,7 @@ export default class CrudTableColumn {
     stickyLeft = false,
     stickyRight = false,
     additionalProps = {},
-    widthPerc = ''
+    widthPerc = '',
     helpText = null
   ) {
     this.key = key
