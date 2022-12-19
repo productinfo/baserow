@@ -3,6 +3,7 @@ from typing import Any, Dict
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from baserow.api.sessions import get_user_remote_addr_ip
 
 from baserow.core.models import Group
 from .models import AuditLogEntry
@@ -36,7 +37,7 @@ class AuditLogHandler:
             group_id=group.id,
             group_name=group.name,
             data=data,
-            ip_address="127.0.0.1",
+            ip_address=get_user_remote_addr_ip(user),
         )
 
     @classmethod
