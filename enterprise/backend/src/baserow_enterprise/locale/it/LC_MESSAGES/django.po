@@ -1,0 +1,48 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-12-19 14:45+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: audit_log/signals/core/group.py:21
+msgid "Group created"
+msgstr ""
+
+#: audit_log/signals/core/group.py:25
+#, python-format
+msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/group.py:47
+msgid "Group updated"
+msgstr "Gruppo modificato"
+
+#: audit_log/signals/core/group.py:51
+#, python-format
+msgid ""
+"%(user_email)s updated the group's name from \"%(from_name)s\" to "
+"\"%(to_name)s\" (%(group_id)s)."
+msgstr ""
+
+#: audit_log/signals/core/group.py:74
+msgid "Group deleted"
+msgstr ""
+
+#: audit_log/signals/core/group.py:78
+#, python-format
+msgid "%(user_email)s deleted the group \"%(group_name)s\" (%(group_id)s)."
+msgstr ""

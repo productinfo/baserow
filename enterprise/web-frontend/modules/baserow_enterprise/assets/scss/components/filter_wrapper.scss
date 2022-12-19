@@ -1,0 +1,9 @@
+.filter-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.filter-wrapper__title {
+    font-weight: 700;
+}
