@@ -12,10 +12,7 @@
  * column which is this object and the specific row returned by the service. Finally
  * any listeners defined on the CrudTable itself will be passed through to all
  * instances of this cellComponent.
- * @param {string} minWidth A valid min parameter to the css minmax(HERE,) function
- * used to construct CrudTable's css grid column templates.
- * @param {string} maxWidth A valid max parameter to the css minmax(,HERE) function to
- * construct CrudTable's css grid column templates.
+ * @param {int} widthPerc The width which the table cell header should be limited to.
  * @param {boolean} sortable Whether this column is sortable.
  * @param {object} additionalProps Any additional props to pass to the cellComponent.
  */
@@ -28,6 +25,7 @@ export default class CrudTableColumn {
     stickyLeft = false,
     stickyRight = false,
     additionalProps = {},
+    widthPerc = ''
     helpText = null
   ) {
     this.key = key
@@ -37,6 +35,7 @@ export default class CrudTableColumn {
     this.stickyLeft = stickyLeft
     this.stickyRight = stickyRight
     this.additionalProps = additionalProps
+    this.widthPerc = widthPerc
     this.helpText = helpText
   }
 
