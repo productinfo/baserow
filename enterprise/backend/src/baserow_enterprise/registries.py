@@ -38,11 +38,14 @@ class AuditLogType(abc.ABC, Instance):
         pass
 
     @abc.abstractmethod
-    def get_type_description(self) -> str:
+    def get_type_description(self, audit_log_entry) -> str:
         """
         This method is used to get the (translatable) description of the type. The
         description is used to display the type in the audit log. It returns a
         string.
+
+        :param audit_log_entry: The audit log entry that is related to the
+            event.
         """
 
         pass

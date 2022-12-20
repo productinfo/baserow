@@ -1112,10 +1112,13 @@ class CoreHandler:
             context=application,
         )
 
+        before_update = {"name": application.name}
         application.name = name
         application.save()
 
-        application_updated.send(self, application=application, user=user)
+        application_updated.send(
+            self, application=application, user=user, before_update=before_update
+        )
 
         return application
 

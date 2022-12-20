@@ -18,7 +18,7 @@ class AuditLogEntry(models.Model):
 
     def get_type_description(self):
         event_type = audit_log_type_registry.get(self.event_type)
-        return event_type.get_type_description()
+        return event_type.get_type_description(self)
 
     def get_event_description(self):
         event_type = audit_log_type_registry.get(self.event_type)

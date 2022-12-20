@@ -4,6 +4,16 @@ from baserow.core import signals
 from baserow_enterprise.registries import AuditLogType
 from baserow_enterprise.audit_log.handler import AuditLogHandler
 
+# group_created = Signal()
+# group_updated = Signal()
+# group_deleted = Signal()
+# group_restored = Signal()
+
+# group_user_added = Signal()
+# group_user_updated = Signal()
+# group_user_deleted = Signal()
+# groups_reordered = Signal()
+
 
 class GroupCreatedAuditLogType(AuditLogType):
     type = "group_created"
@@ -17,7 +27,7 @@ class GroupCreatedAuditLogType(AuditLogType):
             data={"name": group.name},
         )
 
-    def get_type_description(self):
+    def get_type_description(self, audit_log_entry) -> str:
         return _("Group created")
 
     def get_event_description(self, audit_log_entry) -> str:
@@ -43,7 +53,7 @@ class GroupUpdatedAuditLogType(AuditLogType):
             data=data,
         )
 
-    def get_type_description(self):
+    def get_type_description(self, audit_log_entry) -> str:
         return _("Group updated")
 
     def get_event_description(self, audit_log_entry) -> str:
@@ -70,7 +80,7 @@ class GroupDeletedAuditLogType(AuditLogType):
             data={"name": group.name},
         )
 
-    def get_type_description(self):
+    def get_type_description(self, audit_log_entry) -> str:
         return _("Group deleted")
 
     def get_event_description(self, audit_log_entry) -> str:
