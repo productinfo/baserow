@@ -20,7 +20,7 @@ print_manual_instructions(){
 
 DOCKER_COMPOSE="docker-compose"
 
-if docker compose --version &> /dev/null; then
+if docker compose version &> /dev/null; then
   DOCKER_COMPOSE="docker compose"
 fi
 
