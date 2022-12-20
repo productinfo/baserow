@@ -15,7 +15,7 @@
         class="button"
         :class="{ disabled: !inviteEnabled }"
         @click="inviteEnabled ? $emit('invite', roleSelected) : null"
-      >{{
+        >{{
           $t('selectSubjectsListFooter.invite', {
             count,
             type: subjectTypeLabel,

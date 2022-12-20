@@ -48,9 +48,9 @@
         />
         <RoleSelector
           :disabled="
-          roleAssignment.subject.id === userId &&
-          roleAssignment.subject_type === 'auth.User'
-        "
+            roleAssignment.subject.id === userId &&
+            roleAssignment.subject_type === 'auth.User'
+          "
           :roles="getAvailableRoles(roles)"
           :value="getRole(roleAssignment)"
           :allow-removing-role="true"
