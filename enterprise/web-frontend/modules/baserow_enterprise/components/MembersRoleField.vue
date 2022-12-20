@@ -47,6 +47,7 @@ import { clone } from '@baserow/modules/core/utils/object'
 import { notifyIf } from '@baserow/modules/core/utils/error'
 import RoleAssignmentsService from '@baserow_enterprise/services/roleAssignments'
 import EditRoleContext from '@baserow/modules/core/components/settings/members/EditRoleContext'
+import { filterRoles } from '@baserow_enterprise/utils/roles'
 
 export default {
   name: 'MembersRoleField',
@@ -68,7 +69,12 @@ export default {
       )
     },
     roles() {
-      return this.group ? this.group._.roles : []
+      return this.group
+        ? filterRoles(this.group._.roles, {
+            scopeType: 'group',
+            subjectType: 'auth.User',
+          })
+        : []
     },
     roleUidSelected() {
       return this.row[this.column.key]

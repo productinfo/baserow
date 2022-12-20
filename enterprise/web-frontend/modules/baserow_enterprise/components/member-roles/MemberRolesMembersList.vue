@@ -48,10 +48,10 @@
         />
         <RoleSelector
           :disabled="
-            roleAssignment.subject.id === userId &&
-            roleAssignment.subject_type === 'auth.User'
-          "
-          :roles="roles"
+          roleAssignment.subject.id === userId &&
+          roleAssignment.subject_type === 'auth.User'
+        "
+          :roles="getAvailableRoles(roles)"
           :value="getRole(roleAssignment)"
           :allow-removing-role="true"
           @delete="$emit('role-updated', roleAssignment, null)"
@@ -65,6 +65,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import RoleSelector from '@baserow_enterprise/components/member-roles/RoleSelector'
+import { filterRoles } from '@baserow_enterprise/utils/roles'
 
 export default {
   name: 'MemberRolesMembersList',
@@ -99,7 +100,7 @@ export default {
       return this.$store.getters['group/get'](this.groupId)
     },
     roles() {
-      return this.group ? this.group._.roles : []
+      return this.group._.roles
     },
     roleAssignmentsSorted() {
       return [...this.roleAssignments].sort((a, b) =>
@@ -113,6 +114,12 @@ export default {
     },
     getCount(teamId) {
       return this.teams.find(({ id }) => id === teamId).subject_count
+    },
+    getAvailableRoles(roleAssignment) {
+      return filterRoles(this.roles, {
+        scopeType: this.scopeType,
+        subjectType: roleAssignment.subject_type,
+      })
     },
   },
 }
