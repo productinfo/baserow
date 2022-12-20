@@ -1,3 +1,4 @@
+from typing import List
 from django.utils.translation import gettext as _
 
 from baserow.core import signals
@@ -11,9 +12,9 @@ class ApplicationCreatedAuditLogType(AuditLogType):
 
     def receiver(self, sender, application, user, **kwargs):
         AuditLogHandler.log_event(
+            event_type=self.type,
             user=user,
             group=application.group,
-            event_type=self.type,
             data={
                 "id": application.id,
                 "name": application.name,
@@ -43,9 +44,9 @@ class ApplicationDeletedAuditLogType(AuditLogType):
 
     def receiver(self, sender, application, user, **kwargs):
         AuditLogHandler.log_event(
+            event_type=self.type,
             user=user,
             group=application.group,
-            event_type=self.type,
             data={
                 "id": application.id,
                 "name": application.name,
@@ -76,9 +77,9 @@ class ApplicationUpdatedAuditLogType(AuditLogType):
     def receiver(self, sender, application, user, before_update, **kwargs):
         diff = AuditLogHandler.get_data_diff(before_update, application)
         AuditLogHandler.log_event(
+            event_type=self.type,
             user=user,
             group=application.group,
-            event_type=self.type,
             data={
                 "id": application.id,
                 "type": application.specific_class.__name__,
@@ -100,4 +101,30 @@ class ApplicationUpdatedAuditLogType(AuditLogType):
             "from_name": audit_log_entry.data["from"]["name"],
             "to_name": audit_log_entry.data["to"]["name"],
             "app_id": audit_log_entry.data["id"],
+        }
+
+
+class ApplicationReorderedAuditLogType(AuditLogType):
+    type = "applications_reordered"
+    signal = signals.applications_reordered
+
+    def receiver(self, sender, group, order: List[int], user, **kwargs):
+        AuditLogHandler.log_event(
+            event_type=self.type,
+            user=user,
+            group=group,
+            data={"order": order},
+        )
+
+    def get_type_description(self, audit_log_entry) -> str:
+        return _("Applications reordered")
+
+    def get_event_description(self, audit_log_entry) -> str:
+        return _(
+            "%(user_email)s reordered application with ids order %(order)s in group."
+        ) % {
+            "user_email": audit_log_entry.user_email,
+            "group_id": audit_log_entry.group_id,
+            "group_name": audit_log_entry.group_name,
+            "order": audit_log_entry.data["order"],
         }

@@ -25,6 +25,7 @@ from baserow.core.models import Group, GroupUser, Template, UserLogEntry, UserPr
 from baserow.core.registries import plugin_registry
 from baserow.core.signals import (
     before_user_deleted,
+    user_created,
     user_deleted,
     user_permanently_deleted,
     user_restored,
@@ -213,6 +214,9 @@ class UserHandler:
             auth_provider = PasswordProviderHandler.get()
         auth_provider.user_signed_in(user)
 
+        user_created.send(
+            self, group=group_user.group, auth_provider=auth_provider, user=user
+        )
         return user
 
     def update_user(
@@ -424,7 +428,7 @@ class UserHandler:
     def cancel_user_deletion(self, user: AbstractUser):
         """
         Cancels a previously scheduled user account deletion. This action send an email
-        to the user to confirm the cancelation.
+        to the user to confirm the cancellation.
 
         :param user: The user currently in pending deletion.
         """
@@ -505,4 +509,6 @@ class UserHandler:
             with translation.override(language):
                 email = AccountDeleted(username, to=[email])
                 email.send()
-            user_permanently_deleted.send(self, user_id=id, group_ids=group_ids)
+            user_permanently_deleted.send(
+                self, user_id=id, group_ids=group_ids, user_email=email
+            )

@@ -76,7 +76,8 @@
         "description": "Description",
         "timestamp": "Timestamp",
         "ip_address": "IP Address",
-        "exportToCsv": "Export to CSV"
+        "exportToCsv": "Export to CSV",
+        "exportModalTitle": "Export to CSV"
     },
     "authProviders": {
         "title": "Authentication Providers",

@@ -1,47 +1,7 @@
 <template>
-  <Modal @hidden="stopPollIfRunning()">
-    <div v-if="loadingViews" class="loading-overlay"></div>
-    <h2 class="box__title">Export {{ table.name }}</h2>
+  <Modal>
+    <h2 class="box__title">{{  $t('auditLog.exportModalTitle') }}</h2>
     <Error :error="error"></Error>
-    <form @submit.prevent="submit">
-      <div class="row">
-        <div class="col col-12">
-          <FormElement class="control">
-            <label class="control__label">{{
-              $t('exportTableForm.viewLabel')
-            }}</label>
-            <div class="control__elements">
-              <ExportTableDropdown
-                v-model="values.view_id"
-                :views="viewsWithExporterTypes"
-                :loading="loading"
-                @input="values.exporter_type = firstExporterType"
-              ></ExportTableDropdown>
-            </div>
-          </FormElement>
-          <ExporterTypeChoices
-            v-model="values.exporter_type"
-            :exporter-types="exporterTypes"
-            :loading="loading"
-            :database="database"
-          ></ExporterTypeChoices>
-          <div v-if="$v.values.exporter_type.$error" class="error">
-            {{ $t('exportTableForm.typeError') }}
-          </div>
-        </div>
-      </div>
-      <component
-        :is="exporterComponent"
-        :loading="loading"
-        @values-changed="$emit('values-changed', values)"
-      />
-      <ExportTableLoadingBar
-        :job="job"
-        :loading="loading"
-        :disabled="!isValid"
-        :filename="filename"
-      ></ExportTableLoadingBar>
-  </form>
   </Modal>
 </template>
 
@@ -57,28 +17,14 @@ import ExportTableForm from '@baserow/modules/database/components/export/ExportT
 import ExportTableLoadingBar from '@baserow/modules/database/components/export/ExportTableLoadingBar'
 
 export default {
-  name: 'ExportTableModal',
+  name: 'ExportAuditLogModal',
   components: { ExportTableForm, ExportTableLoadingBar },
   mixins: [modal, error],
   props: {
-    database: {
-      type: Object,
-      required: true,
-    },
-    table: {
-      type: Object,
-      required: true,
-    },
-    view: {
-      type: Object,
-      required: false,
-      default: null,
-    },
+   
   },
   data() {
     return {
-      views: [],
-      loadingViews: false,
       loading: false,
       job: null,
       pollInterval: null,
@@ -103,34 +49,13 @@ export default {
       const show = modal.methods.show.call(this, ...args)
       this.job = null
       this.loading = false
-      await this.fetchViews()
-      this.$nextTick(() => {
-        this.valuesChanged()
-      })
       return show
     },
     hide(...args) {
       this.stopPollIfRunning()
       return modal.methods.hide.call(this, ...args)
     },
-    async fetchViews() {
-      if (this.table._.selected) {
-        this.views = this.selectedTableViews
-        return
-      }
-
-      this.loadingViews = true
-      try {
-        const { data: viewsData } = await ViewService(this.$client).fetchAll(
-          this.table.id
-        )
-        viewsData.forEach((v) => populateView(v, this.$registry))
-        this.views = viewsData
-      } catch (error) {
-        this.handleError(error, 'views')
-      }
-      this.loadingViews = false
-    },
+    
     async submitted(values) {
       if (!this.$refs.form.isFormValid()) {
         return

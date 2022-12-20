@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -13,10 +13,10 @@ class AuditLogHandler:
     @classmethod
     def log_event(
         cls,
-        user: AbstractUser,
-        group: Group,
         event_type: str,
-        data: Dict[str, Any],
+        user: Optional[AbstractUser] = None,
+        group: Optional[Group] = None,
+        data: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates a new audit log entry for the given user, group and event type. The
@@ -29,13 +29,23 @@ class AuditLogHandler:
             entry.
         """
 
+        user_id, user_email = None, None
+        if user is not None:
+            user_id = user.id
+            user_email = user.email
+
+        group_id, group_name = None, None
+        if group is not None:
+            group_id = group.id
+            group_name = group.name
+
         AuditLogEntry.objects.create(
             event_type=event_type,
             timestamp=timezone.now(),
-            user_id=user.id,
-            user_email=user.email,
-            group_id=group.id,
-            group_name=group.name,
+            user_id=user_id,
+            user_email=user_email,
+            group_id=group_id,
+            group_name=group_name,
             data=data,
             ip_address=get_user_remote_addr_ip(user),
         )

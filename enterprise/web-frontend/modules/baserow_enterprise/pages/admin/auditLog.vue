@@ -12,7 +12,7 @@
       {{ $t('auditLog.title') }}
     </template>
     <template #header-right-side>
-      <button class="button button--large" >
+      <button class="button button--large" @click.preventDefault="$refs.exportModal.show()">
         {{ $t('auditLog.exportToCsv') }}
       </button>
     </template>
@@ -66,6 +66,7 @@
     <template #menus="slotProps">
     </template>
   </CrudTable>
+  <ExportAuditLogModal ref="exportModal"></ExportAuditLogModal>
 </div>
 </template>
 
@@ -80,10 +81,11 @@ import SimpleField from '@baserow/modules/core/components/crudTable/fields/Simpl
 import LocalDateField from '@baserow/modules/core/components/crudTable/fields/LocalDateField'
 import CrudTableColumn from '@baserow/modules/core/crudTable/crudTableColumn'
 import LongTextField from '@baserow_enterprise/components/crudTable/fields/LongTextField'
+import ExportAuditLogModal from '@baserow_enterprise/components/admin/modals/ExportAuditLogModal'
 
 export default {
   name: 'AuditLogAdminTable',
-  components: { CrudTable, PaginatedDropdown, DateFilter, FilterWrapper},
+  components: { CrudTable, PaginatedDropdown, DateFilter, FilterWrapper, ExportAuditLogModal},
   layout: 'app',
   middleware: 'staff',
   data() {
@@ -92,28 +94,28 @@ export default {
         'user',
         () => this.$t('auditLog.user'),
         SimpleField,
-        false,
+        true,
         false
       ),
       new CrudTableColumn(
         'group',
         () => this.$t('auditLog.group'),
         SimpleField,
-        false,
+        true,
         false
       ),
       new CrudTableColumn(
         'type',
         () => this.$t('auditLog.eventType'),
         SimpleField,
-        false,
+        true,
         false
       ),
       new CrudTableColumn(
         'description',
         () => this.$t('auditLog.description'),
         LongTextField,
-        false,
+        true,
         false,
         false,
         {},
@@ -123,14 +125,14 @@ export default {
         'timestamp',
         () => this.$t('auditLog.timestamp'),
         LocalDateField,
-        false,
+        true,
         false
       ),
       new CrudTableColumn(
         'ip_address',
         () => this.$t('auditLog.ip_address'),
         SimpleField,
-        false,
+        true,
         false
       ),
     ]

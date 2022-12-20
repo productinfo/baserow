@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-12-19 14:45+0000\n"
+"POT-Creation-Date: 2022-12-20 14:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,31 +18,161 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: audit_log/signals/core/group.py:21
-msgid "Group created"
+#: audit_log/signals/core/application.py:26
+#, python-format
+msgid "%(app_type)s created"
+msgstr ""
+
+#: audit_log/signals/core/application.py:32
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s created the %(app_type)s \"%(app_name)s\" (%(app_id)s)."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/application.py:58
+#, python-format
+msgid "%(app_type)s deleted"
+msgstr "%(app_type)s eliminato"
+
+#: audit_log/signals/core/application.py:64
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s deleted the %(app_type)s \"%(app_name)s\" (%(app_id)s)."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/application.py:91
+#, python-format
+msgid "%(app_type)s updated"
+msgstr "%(app_type)s aggiornato"
+
+#: audit_log/signals/core/application.py:97
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid ""
+"%(user_email)s updated the %(app_type)s from name \"%(from_name)s\" to name "
+"\"%(to_name)s\" (%(app_id)s)."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/application.py:120
+msgid "Applications reordered"
+msgstr "Applicazioni riordinate"
+
+#: audit_log/signals/core/application.py:124
+#, python-format
+msgid "%(user_email)s reordered application with ids order %(order)s in group."
 msgstr ""
 
 #: audit_log/signals/core/group.py:25
-#, python-format
-msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "Group created"
+msgstr "Gruppo creato"
+
+#: audit_log/signals/core/group.py:28
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s created the group \"%(group_name)s\"."
 msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
 
-#: audit_log/signals/core/group.py:47
+#: audit_log/signals/core/group.py:48
 msgid "Group updated"
 msgstr "Gruppo modificato"
 
-#: audit_log/signals/core/group.py:51
-#, python-format
+#: audit_log/signals/core/group.py:52
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
 msgid ""
 "%(user_email)s updated the group's name from \"%(from_name)s\" to "
-"\"%(to_name)s\" (%(group_id)s)."
-msgstr ""
+"\"%(to_name)s\"."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
 
-#: audit_log/signals/core/group.py:74
+#: audit_log/signals/core/group.py:73
 msgid "Group deleted"
+msgstr "Gruppo eliminato"
+
+#: audit_log/signals/core/group.py:76
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s deleted the group \"%(group_name)s\"."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/group.py:94
+#, fuzzy
+#| msgid "Group updated"
+msgid "Group restored"
+msgstr "Gruppo modificato"
+
+#: audit_log/signals/core/group.py:98
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s restored the group \"%(group_name)s\" (%(group_id)s)."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/group.py:118
+#, fuzzy
+#| msgid "Group updated"
+msgid "Group user added"
+msgstr "Gruppo modificato"
+
+#: audit_log/signals/core/group.py:122
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid ""
+"%(user_email)s has been added to the group \"%(group_name)s\" via invitation."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/group.py:142
+#, fuzzy
+#| msgid "Group updated"
+msgid "Group user deleted"
+msgstr "Gruppo modificato"
+
+#: audit_log/signals/core/group.py:145
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s has been deleted from the group \"%(group_name)s\"."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/group.py:164
+#, fuzzy
+#| msgid "Group updated"
+msgid "Groups reordered"
+msgstr "Gruppo modificato"
+
+#: audit_log/signals/core/group.py:167
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s reordered groups with ids order %(group_ids)s."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/user.py:29
+msgid "User created"
+msgstr "Utente creato"
+
+#: audit_log/signals/core/user.py:33
+#, fuzzy, python-format
+#| msgid "%(user_email)s created the group \"%(group_name)s\" (%(group_id)s)."
+msgid ""
+"%(user_email)s has been created and added to the group \"%(group_name)s\"."
+msgstr "%(user_email)s ha create il gruppo \"%(group_name)s\" (%(group_id)s)."
+
+#: audit_log/signals/core/user.py:56
+msgid "User scheduled for deletion"
 msgstr ""
 
-#: audit_log/signals/core/group.py:78
+#: audit_log/signals/core/user.py:59
 #, python-format
-msgid "%(user_email)s deleted the group \"%(group_name)s\" (%(group_id)s)."
+msgid "%(user_email)s %(user_id)s has been scheduled for deletion."
+msgstr ""
+
+#: audit_log/signals/core/user.py:80 audit_log/signals/core/user.py:104
+msgid "User deletion cancelled"
+msgstr "Cancellazione utente programmata"
+
+#: audit_log/signals/core/user.py:83
+#, python-format
+msgid "%(user_email)s (%(user_id)s) cancelled the scheduled deletion."
+msgstr ""
+
+#: audit_log/signals/core/user.py:107
+#, python-format
+msgid "%(user_email)s (%(user_id)s) has been permanently deleted."
 msgstr ""
