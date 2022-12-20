@@ -121,7 +121,15 @@ class ViewHandler:
     PUBLIC_VIEW_TOKEN_ALGORITHM = "HS256"  # nosec
 
     def _apply_view_ownership_filters(self, user: AbstractUser, group: Group, queryset: QuerySet) -> QuerySet:
-        # TODO: docs, types
+        """
+        Applies basic ownership type filter to a view queryset.
+
+        :user: The user on whose behalf the views are queried.
+        :group: The group where the views are queried.
+        :queryset: The queryset to which to apply the filter.
+        :return: Queryset with applied ownership type filter.
+        """
+        
         return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)
 
     def list_views(self, user, table, _type, filters, sortings, decorations, limit):

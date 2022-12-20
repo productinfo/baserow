@@ -157,17 +157,18 @@ def premium_apply_view_ownership_filters(self, user: AbstractUser, group: Group,
     """
     A premium version of ViewHandler()._apply_view_ownership_filters.
 
+    Applies basic ownership type filter to a view queryset.
+
+    :user: The user on whose behalf the views are queried.
+    :group: The group where the views are queried.
+    :queryset: The queryset to which to apply the filter.
+    :return: Queryset with applied ownership type filter.
     """
-    # TODO: docs, types
-    # TODO: personal -> OWNERSHIP_TYPE_PERSONAL
-    
+
     premium = LicenseHandler.user_has_feature(PREMIUM, user, group)
     
-    print("I am premium")
-    print(premium)
-
     if premium:
         # TODO: take created_by into account
-        return queryset.filter(Q(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE) | Q(ownership_type="personal"))
+        return queryset.filter(Q(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE) | (Q(ownership_type="personal") & Q(created_by=user)))
     else:
         return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)

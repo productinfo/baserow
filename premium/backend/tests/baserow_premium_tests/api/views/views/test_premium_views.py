@@ -16,7 +16,7 @@ def test_list_views_ownership_type(api_client, data_fixture, alternative_per_gro
     user, token = data_fixture.create_user_and_token(
         group=group, email="test@test.nl", password="password", first_name="Test1"
     )
-    user2, token = data_fixture.create_user_and_token(
+    user2, token2 = data_fixture.create_user_and_token(
         group=group, email="test2@test.nl", password="password", first_name="Test2"
     )
     table_1 = data_fixture.create_database_table(user=user, database=database)
