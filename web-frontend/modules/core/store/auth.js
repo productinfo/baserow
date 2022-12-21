@@ -28,12 +28,21 @@ export const mutations = {
   /* eslint-disable camelcase */
   SET_USER_DATA(
     state,
-    { access_token, refresh_token, user, tokenUpdatedAt, ...additional }
+    {
+      access_token,
+      refresh_token,
+      user,
+      permissions,
+      tokenUpdatedAt,
+      ...additional
+    }
   ) {
     state.token = access_token
     state.refreshToken = refresh_token
     state.tokenUpdatedAt = tokenUpdatedAt || new Date().getTime()
     state.tokenPayload = jwtDecode(state.token)
+    // Global permissions annotated on the User.
+    state.permissions = permissions
     /* eslint-enable camelcase */
     state.user = user
     // Additional entries in the response payload could have been added via the
@@ -238,6 +247,9 @@ export const getters = {
   },
   getUserObject(state) {
     return state.user
+  },
+  getGlobalUserPermissions(state) {
+    return state.permissions
   },
   getName(state) {
     return state.user ? state.user.first_name : ''
