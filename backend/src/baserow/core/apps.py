@@ -25,6 +25,7 @@ class CoreConfig(AppConfig):
             CorePermissionManagerType,
             GroupMemberOnlyPermissionManagerType,
             StaffOnlyPermissionManagerType,
+            StaffOnlySettingOperationPermissionManagerType,
         )
         from baserow.core.registries import (
             object_scope_type_registry,
@@ -37,6 +38,9 @@ class CoreConfig(AppConfig):
         permission_manager_type_registry.register(BasicPermissionManagerType())
         permission_manager_type_registry.register(
             GroupMemberOnlyPermissionManagerType()
+        )
+        permission_manager_type_registry.register(
+            StaffOnlySettingOperationPermissionManagerType()
         )
 
         from .object_scopes import (
