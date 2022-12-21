@@ -1245,8 +1245,8 @@ def test_get_permission_object_performance(
     with CaptureQueriesContext(connection) as captured:
         permission_manager.get_permissions_object(user, group=group)
 
-    """for q in captured.captured_queries:
-        print(q)"""
+    for q in captured.captured_queries:
+        print(q)
     print(len(captured.captured_queries))
 
     print("----------- get_permission_object perfs ---------------")

@@ -567,35 +567,6 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
             f"Must be implemented by the specific type <{self.type}>"
         )
 
-    def get_objects_of_scope_type(self, scope_type, scopes):
-        # Simple case: the scope type is the same as this one.
-        if scope_type.type == self.type:
-            return {scope: [scope] for scope in scopes}
-
-        else:
-            # Otherwise it's a parent scope.
-            if self.select_related:
-                base_queryset = self.model_class.objects.select_related(
-                    *self.select_related
-                )
-            else:
-                base_queryset = self.model_class.objects
-
-            result = {s: [] for s in scopes}
-
-            queryset_filter = self.get_filter_for_scope_type(scope_type, scopes)
-
-            if queryset_filter is None:
-                return result
-
-            for obj in base_queryset.filter(queryset_filter):
-                parent_scope = object_scope_type_registry.get_parent(
-                    obj, at_scope_type=scope_type
-                )
-                result[parent_scope].append(obj)
-
-            return result
-
     def get_objects_in_scopes(self, scopes):
 
         scope_by_types = defaultdict(set)
@@ -605,10 +576,33 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
         result = {s: [] for s in scopes}
 
         for scope_type, scopes in scope_by_types.items():
-            for scope, contexts in self.get_objects_of_scope_type(
-                scope_type, scopes
-            ).items():
-                result[scope] = contexts
+            if scope_type.type == self.type:
+                # Simple case: the scope type is the same as this one.
+                for scope in scopes:
+                    result[scope] = [scope]
+            else:
+                # Otherwise it's a parent scope. Let's query the database
+                # to get all the object and then group them by scope
+
+                if self.select_related:
+                    base_queryset = self.model_class.objects.select_related(
+                        *self.select_related
+                    ).only("id", *[s + "_id" for s in self.select_related])
+                else:
+                    base_queryset = self.model_class.objects
+
+                queryset_filter = self.get_filter_for_scope_type(scope_type, scopes)
+
+                if queryset_filter is None:
+                    continue
+
+                for obj in base_queryset.filter(queryset_filter):
+                    parent_scope = object_scope_type_registry.get_parent(
+                        obj, at_scope_type=scope_type
+                    )
+                    result[parent_scope].append(obj)
+
+                return result
 
         return result
 
