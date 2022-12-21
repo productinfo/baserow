@@ -402,11 +402,9 @@ class CoreHandler:
         :return: The newly created GroupUser object
         """
 
-        group = Group.objects.create(name=name)
+        CoreHandler().check_permissions(user, CreateGroupOperationType.type)
 
-        CoreHandler().check_permissions(
-            user, CreateGroupOperationType.type, group=group
-        )
+        group = Group.objects.create(name=name)
 
         last_order = GroupUser.get_last_order(user)
         group_user = GroupUser.objects.create(
