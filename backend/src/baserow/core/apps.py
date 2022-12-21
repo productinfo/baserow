@@ -179,6 +179,11 @@ class CoreConfig(AppConfig):
         job_type_registry.register(CreateSnapshotJobType())
         job_type_registry.register(RestoreSnapshotJobType())
 
+        from baserow.api.user.registries import user_data_registry
+        from baserow.api.user.user_data_types import GlobalPermissionsDataType
+
+        user_data_registry.register(GlobalPermissionsDataType())
+
         from baserow.core.auth_provider.auth_provider_types import (
             PasswordAuthProviderType,
         )
