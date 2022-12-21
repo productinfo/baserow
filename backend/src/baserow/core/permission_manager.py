@@ -1,5 +1,8 @@
+from typing import TYPE_CHECKING, List, Union
+
 from rest_framework.exceptions import NotAuthenticated
 
+from baserow.core.handler import CoreHandler
 from baserow.core.models import GroupUser
 
 from .exceptions import (
@@ -24,6 +27,9 @@ from .operations import (
 )
 from .registries import PermissionManagerType
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractUser
+
 
 class CorePermissionManagerType(PermissionManagerType):
     """
@@ -33,7 +39,6 @@ class CorePermissionManagerType(PermissionManagerType):
     type = "core"
 
     ALWAYS_ALLOWED_OPERATIONS = [
-        CreateGroupOperationType.type,
         ListGroupsOperationType.type,
     ]
 
@@ -54,6 +59,7 @@ class StaffOnlyPermissionManagerType(PermissionManagerType):
     """
 
     type = "staff"
+
     STAFF_ONLY_OPERATIONS = [UpdateSettingsOperationType.type]
 
     def check_permissions(
@@ -182,4 +188,57 @@ class BasicPermissionManagerType(PermissionManagerType):
         return {
             "admin_only_operations": self.ADMIN_ONLY_OPERATIONS,
             "is_admin": "ADMIN" in group_user.permissions,
+        }
+
+
+class StaffOnlySettingOperationPermissionManagerType(PermissionManagerType):
+    """
+    A permission manager which uses Settings as a way to restrict non-staff
+    from performing a specific operations.
+    """
+
+    type = "setting_operation"
+
+    # Maps `CoreOperationType` to `Setting` boolean field.
+    STAFF_ONLY_SETTING_OPERATION_MAP = {
+        CreateGroupOperationType.type: "allow_global_group_creation"
+    }
+
+    def get_permitted_operations_for_settings(self, actor: "AbstractUser") -> List[str]:
+        # The list which will track the operations this `actor` is permitted.
+        permitted_operations = []
+        # Fetch the instance's Settings.
+        settings = CoreHandler().get_settings()
+        # Loop over each operation which currently has a Settings page setting.
+        for (
+            staff_operation_type,
+            setting_key,
+        ) in self.STAFF_ONLY_SETTING_OPERATION_MAP.items():
+            # An operation is permitted if:
+            # 1) The actor is staff, OR
+            # 2) That the setting that maps to the operation is truthy.
+            if actor.is_staff or getattr(settings, setting_key, False):
+                permitted_operations.append(staff_operation_type)
+        return permitted_operations
+
+    def check_permissions(
+        self, actor, operation, group=None, context=None, include_trash=False
+    ) -> Union[None, bool]:
+
+        if hasattr(actor, "is_authenticated"):
+            user = actor
+            if not user.is_authenticated:
+                raise NotAuthenticated()
+
+            # Test if the operation is one that's relevant to this manager
+            # Saves us from unnecessarily fetching the instance Settings.
+            if operation in self.STAFF_ONLY_SETTING_OPERATION_MAP:
+                permitted_operations = self.get_permitted_operations_for_settings(actor)
+                return operation in permitted_operations
+
+    def get_permissions_object(self, actor, group=None):
+        return {
+            "staff_only_setting_operations": self.get_permitted_operations_for_settings(
+                actor
+            )
         }
