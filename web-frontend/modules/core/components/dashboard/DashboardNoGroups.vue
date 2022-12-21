@@ -8,7 +8,11 @@
       {{ $t('dashboard.noGroupText') }}
     </p>
     <div class="placeholder__action">
-      <a class="button button--large" @click="$emit('create-clicked')">
+      <a
+        v-if="$hasPermission('create_group')"
+        class="button button--large"
+        @click="$emit('create-clicked')"
+      >
         <i class="fas fa-plus"></i>
         {{ $t('dashboard.createGroup') }}
       </a>
