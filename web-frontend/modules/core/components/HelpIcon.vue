@@ -1,5 +1,5 @@
 <template>
-  <i v-tooltip="tooltip" class="help_icon fas" :class="iconClass"> </i>
+  <i v-tooltip="tooltip" class="help-icon fas" :class="iconClass"> </i>
 </template>
 
 <script>
