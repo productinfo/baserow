@@ -23,7 +23,7 @@ export const getRichClipboard = async (event) => {
   let textRawData
   let jsonRawData
 
-  if (typeof navigator.clipboard.readtText !== 'undefined') {
+  if (typeof navigator.clipboard?.readtText !== 'undefined') {
     textRawData = await navigator.clipboard.readText()
   } else {
     textRawData = event.clipboardData.getData('text/plain')
@@ -43,4 +43,24 @@ export const getRichClipboard = async (event) => {
     localStorage.removeItem(LOCAL_STORAGE_CLIPBOARD_KEY)
   }
   return { textRawData: textRawData.trim(), jsonRawData }
+}
+
+/**
+ * DEPRECATED: Kept for backward compatibility where the clipboard API is not available.
+ * Values should be an object with mime types as key and clipboard content for this type
+ * as value. This allow add the same data with multiple representation to the clipboard.
+ * We can have a row saved as tsv string or as json string. Values must be strings.
+ * @param {object} values object of mime types -> clipboard content.
+ */
+export const setRichClipboard = (values) => {
+  const listener = (e) => {
+    Object.entries(values).forEach(([type, content]) => {
+      e.clipboardData.setData(type, content)
+    })
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  document.addEventListener('copy', listener)
+  document.execCommand('copy')
+  document.removeEventListener('copy', listener)
 }

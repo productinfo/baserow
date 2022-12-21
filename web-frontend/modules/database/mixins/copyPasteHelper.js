@@ -4,12 +4,12 @@
 
 import {
   getRichClipboard,
+  setRichClipboard,
   LOCAL_STORAGE_CLIPBOARD_KEY,
 } from '@baserow/modules/database/utils/clipboard'
 
 const PAPA_CONFIG = {
   delimiter: '\t',
-  quotes: true,
 }
 
 export default {
@@ -64,7 +64,11 @@ export default {
         const text = await selectionPromise.then(([fields, rows]) =>
           this.prepareSelectionForCopy(fields, rows)
         )
-        navigator.clipboard.writeText(text)
+        if (typeof navigator.clipboard?.writeText !== 'undefined') {
+          navigator.clipboard.writeText(text)
+        } else {
+          setRichClipboard({ 'text/plain': text })
+        }
       }
     },
     async extractClipboardData(event) {
