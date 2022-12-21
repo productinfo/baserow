@@ -91,3 +91,19 @@ export class BasicPermissionManagerType extends PermissionManagerType {
     return false
   }
 }
+
+export class StaffOnlySettingOperationPermissionManagerType extends PermissionManagerType {
+  static getType() {
+    return 'setting_operation'
+  }
+
+  hasPermission(permissions, operation, context) {
+    // TODO: what is happening here...?
+    //  Getting varying `permissions` values.
+    try {
+      return permissions.staff_only_setting_operations.includes(operation)
+    } catch {
+      return permissions.includes(operation)
+    }
+  }
+}
