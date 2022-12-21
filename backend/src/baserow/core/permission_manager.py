@@ -113,7 +113,10 @@ class GroupMemberOnlyPermissionManagerType(PermissionManagerType):
 
     def get_permissions_object(self, actor, group=None):
         # Check if the user is a member of this group
-        if GroupUser.objects.filter(user_id=actor.id, group_id=group.id).exists():
+        if (
+            group
+            and GroupUser.objects.filter(user_id=actor.id, group_id=group.id).exists()
+        ):
             return None
         return False
 
