@@ -6,21 +6,22 @@ export default function ({ app }, inject) {
    * @param {string} operation
    * @param {object} context
    * @param {number} groupId
-   * @returns True ift he operation is permitted, false otherwise.
+   * @returns True if the operation is permitted, false otherwise.
    */
   const hasPermission = (operation, context, groupId = null) => {
     const { store, $registry } = app
 
-    const group = store.getters['group/get'](groupId)
-    if (
+    let perms = []
+    if (groupId == null) {
+      perms = store.getters['auth/getGlobalUserPermissions']
+    } else {
+      const group = store.getters['group/get'](groupId)
       // If the group is not found, you don't have permissions to it.
-      group === undefined ||
-      !group._.permissionsLoaded
-    ) {
-      return false
+      if (group === undefined || !group._.permissionsLoaded) {
+        return false
+      }
+      perms = group._.permissions
     }
-
-    const perms = group._.permissions
 
     // Check all permission managers whether one accepts or refuses the operation
     for (const perm of perms) {
