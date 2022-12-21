@@ -1,5 +1,5 @@
 import abc
-
+from collections import defaultdict
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 from xmlrpc.client import Boolean
@@ -499,6 +499,8 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
     context.
     """
 
+    select_related = None
+
     @cached_property
     def content_type(self):
         from django.contrib.contenttypes.models import ContentType
@@ -558,9 +560,57 @@ class ObjectScopeType(Instance, ModelInstanceMixin):
         :return: An iterable containing the context objects for the given scope.
         """
 
+        return self.get_objects_in_scopes([scope])[scope]
+
+    def get_filter_for_scope_type(self, scope_type, scopes):
         raise NotImplementedError(
             f"Must be implemented by the specific type <{self.type}>"
         )
+
+    def get_objects_of_scope_type(self, scope_type, scopes):
+        # Simple case: the scope type is the same as this one.
+        if scope_type.type == self.type:
+            return {scope: [scope] for scope in scopes}
+
+        else:
+            # Otherwise it's a parent scope.
+            if self.select_related:
+                base_queryset = self.model_class.objects.select_related(
+                    *self.select_related
+                )
+            else:
+                base_queryset = self.model_class.objects
+
+            result = {s: [] for s in scopes}
+
+            queryset_filter = self.get_filter_for_scope_type(scope_type, scopes)
+
+            if queryset_filter is None:
+                return result
+
+            for obj in base_queryset.filter(queryset_filter):
+                parent_scope = object_scope_type_registry.get_parent(
+                    obj, at_scope_type=scope_type
+                )
+                result[parent_scope].append(obj)
+
+            return result
+
+    def get_objects_in_scopes(self, scopes):
+
+        scope_by_types = defaultdict(set)
+        for s in scopes:
+            scope_by_types[object_scope_type_registry.get_by_model(s)].add(s)
+
+        result = {s: [] for s in scopes}
+
+        for scope_type, scopes in scope_by_types.items():
+            for scope, contexts in self.get_objects_of_scope_type(
+                scope_type, scopes
+            ).items():
+                result[scope] = contexts
+
+        return result
 
     def contains(self, context: ContextObject):
         """

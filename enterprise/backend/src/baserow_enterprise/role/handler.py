@@ -1,5 +1,3 @@
-from collections import defaultdict
-from functools import cached_property
 from typing import Any, List, Optional, Tuple, TypedDict, Union
 
 from django.contrib.auth import get_user_model
@@ -20,8 +18,8 @@ from baserow_enterprise.teams.models import Team, TeamSubject
 from .constants import (
     NO_ACCESS_ROLE,
     NO_ROLE_LOW_PRIORITY_ROLE,
-    SUBJECT_PRIORITY,
     ROLE_ASSIGNABLE_OBJECT_MAP,
+    SUBJECT_PRIORITY,
 )
 
 User = get_user_model()
@@ -291,7 +289,9 @@ class RoleAssignmentHandler:
             if group_level_role.uid == NO_ROLE_LOW_PRIORITY_ROLE:
                 # Low priority role -> Use team role or NO_ACCESS if no team role
                 if not roles_by_scope.get(group_scope_param):
-                    roles_by_scope[group] = [self.get_role_by_uid(NO_ACCESS_ROLE)]
+                    roles_by_scope[group_scope_param] = [
+                        self.get_role_by_uid(NO_ACCESS_ROLE)
+                    ]
             else:
                 # Otherwise user role wins
                 roles_by_scope[group_scope_param] = [group_level_role]

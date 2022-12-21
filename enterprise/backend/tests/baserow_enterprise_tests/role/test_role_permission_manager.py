@@ -1,9 +1,8 @@
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 
 import pytest
-
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 
 from baserow.contrib.database.fields.operations import (
     ReadFieldOperationType,
@@ -890,8 +889,10 @@ def test_get_permissions_object_with_teams(
 
     perms = perm_manager.get_permissions_object(user, group=group_1)
 
-    assert all([not perm["default"] for perm in perms])
-    assert all([not perm["exceptions"] for perm in perms])
+    print(perms)
+
+    assert all([not perm["default"] for perm in perms.values()])
+    assert all([not perm["exceptions"] for perm in perms.values()])
 
     # The user role should take the precedence
     RoleAssignmentHandler().assign_role(user, group_1, role=role_builder)
@@ -1236,16 +1237,16 @@ def test_get_permission_object_performance(
     with CaptureQueriesContext(connection) as captured:
         permission_manager.get_permissions_object(user, group=group)
 
-    for q in captured.captured_queries:
-        print(q)
+    """for q in captured.captured_queries:
+        print(q)"""
     print(len(captured.captured_queries))
 
     print("----------- second call queries ---------------")
     with CaptureQueriesContext(connection) as captured:
         permission_manager.get_permissions_object(user, group=group)
 
-    for q in captured.captured_queries:
-        print(q)
+    """for q in captured.captured_queries:
+        print(q)"""
     print(len(captured.captured_queries))
 
     print("----------- get_permission_object perfs ---------------")
