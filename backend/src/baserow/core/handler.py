@@ -146,6 +146,7 @@ class CoreHandler:
                 "allow_new_signups",
                 "allow_signups_via_group_invitations",
                 "allow_reset_password",
+                "allow_global_group_creation",
                 "account_deletion_grace_delay",
             ],
             settings_instance,
