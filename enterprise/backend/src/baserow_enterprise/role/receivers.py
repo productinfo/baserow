@@ -13,7 +13,10 @@ from baserow_enterprise.signals import (
     role_assignment_created,
     role_assignment_deleted,
     role_assignment_updated,
+    team_deleted,
+    team_restored,
 )
+from baserow_enterprise.teams.models import Team
 from baserow_premium.license.handler import LicenseHandler
 
 User = get_user_model()
@@ -33,6 +36,12 @@ def send_permissions_updated_when_group_user_updated(
     sender, group_user: GroupUser, **kwargs
 ):
     permissions_updated.send(sender, subject=group_user.user, group=group_user.group)
+
+
+@receiver(team_deleted)
+@receiver(team_restored)
+def send_permissions_updated_when_team_was_deleted(sender, team: Team, **kwargs):
+    permissions_updated.send(sender, subject=team, group=team.group)
 
 
 @receiver(permissions_updated)
