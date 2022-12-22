@@ -29,12 +29,8 @@ class UserCreatedAuditLogType(AuditLogType):
         return _("User created")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _(
-            '%(user_email)s has been created and added to the group "%(group_name)s".'
-        ) % {
-            "user_email": audit_log_entry.user_email,
+        return _('User has been created and added to the group "%(group_name)s".') % {
             "group_name": audit_log_entry.group_name,
-            "group_id": audit_log_entry.group_id,
         }
 
 
@@ -56,10 +52,7 @@ class UserDeletedAuditLogType(AuditLogType):
         return _("User scheduled for deletion")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _("%(user_email)s %(user_id)s has been scheduled for deletion.") % {
-            "user_id": audit_log_entry.data["deleted_user_id"],
-            "user_email": audit_log_entry.data["deleted_user_email"],
-        }
+        return _("User has been scheduled for deletion.")
 
 
 class UserRestoredAuditLogType(AuditLogType):
@@ -80,10 +73,7 @@ class UserRestoredAuditLogType(AuditLogType):
         return _("User deletion cancelled")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _("%(user_email)s (%(user_id)s) cancelled the scheduled deletion.") % {
-            "user_id": audit_log_entry.data["deleted_user_id"],
-            "user_email": audit_log_entry.data["deleted_user_email"],
-        }
+        return _("User cancelled the scheduled deletion.")
 
 
 class UserPermanentlyDeletedAuditLogType(AuditLogType):
@@ -104,7 +94,4 @@ class UserPermanentlyDeletedAuditLogType(AuditLogType):
         return _("User deletion cancelled")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _("%(user_email)s (%(user_id)s) has been permanently deleted.") % {
-            "user_id": audit_log_entry.data["user_id"],
-            "user_email": audit_log_entry.data["user_email"],
-        }
+        return _("User has been permanently deleted.")

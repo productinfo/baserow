@@ -1,6 +1,20 @@
 from django.utils import translation
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAdminUser
+from baserow.api.decorators import map_exceptions, validate_body
+from baserow.api.jobs.errors import ERROR_MAX_JOB_COUNT_EXCEEDED
+from baserow.api.jobs.serializers import JobSerializer
+from baserow.api.schemas import CLIENT_SESSION_ID_SCHEMA_PARAMETER, get_error_schema
+from baserow.core.jobs.exceptions import MaxJobCountExceeded
+from baserow.core.jobs.handler import JobHandler
+from baserow.core.jobs.registries import job_type_registry
+from django.db import transaction
+
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from baserow_enterprise.audit_log.job_types import AuditLogExportJobType
 
 from baserow_premium.api.admin.views import AdminListingView
 from baserow_enterprise.audit_log.models import AuditLogEntry
@@ -11,7 +25,12 @@ from .serializers import (
     AuditLogUserSerializer,
     AuditLogGroupSerializer,
     AuditLogEventTypeSerializer,
+    AuditLogExportJobRequestSerializer,
 )
+
+AuditLogExportJobSerializerClass = job_type_registry.get(
+    AuditLogExportJobType.type
+).get_serializer_class(base_class=JobSerializer)
 
 
 class AdminAuditLogView(AdminListingView):
@@ -135,3 +154,33 @@ class AdminAuditLogEventTypeFilterView(AdminListingView):
 
         with translation.override(request.user.profile.language):
             return super().get(request)
+
+
+class AsyncAuditLogExportView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    @extend_schema(
+        parameters=[CLIENT_SESSION_ID_SCHEMA_PARAMETER],
+        tags=["Audit log export"],
+        operation_id="export_audit_log",
+        description=("Creates a job to export the filtered audit log to a CSV file."),
+        request=AuditLogExportJobRequestSerializer,
+        responses={
+            202: AuditLogExportJobSerializerClass,
+            400: get_error_schema(
+                ["ERROR_REQUEST_BODY_VALIDATION", "ERROR_MAX_JOB_COUNT_EXCEEDED"]
+            ),
+        },
+    )
+    @transaction.atomic
+    @map_exceptions({MaxJobCountExceeded: ERROR_MAX_JOB_COUNT_EXCEEDED})
+    @validate_body(AuditLogExportJobRequestSerializer)
+    def post(self, request, data):
+        """Creates a job to export the filtered audit log entries to a CSV file."""
+
+        csv_export_job = JobHandler().create_and_start_job(
+            request.user, "audit_log_export", **data
+        )
+
+        serializer = job_type_registry.get_serializer(csv_export_job, JobSerializer)
+        return Response(serializer.data)

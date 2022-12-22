@@ -1,4 +1,5 @@
 import baseService from '@baserow/modules/core/crudTable/baseService'
+import jobService from '@baserow/modules/core/services/job'
 
 export default (client) => {
   return Object.assign(baseService(client, '/admin/audit-log/'), {
@@ -17,5 +18,11 @@ export default (client) => {
       const eventTypePaginatedService = baseService(client, eventTypesUrl)
       return eventTypePaginatedService.fetch(eventTypesUrl, page, search, [], [])
     },
+    startExportCsvJob(data) {
+      return client.post('/admin/audit-log/export/', data)
+    },
+    getJobInfo(jobId) {
+      return jobService(client).get(jobId)
+    }
   })
 }

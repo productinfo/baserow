@@ -1,4 +1,12 @@
 from rest_framework import serializers
+from baserow.api.jobs.serializers import JobSerializer
+from baserow.contrib.database.api.export.serializers import (
+    SUPPORTED_CSV_COLUMN_SEPARATORS,
+    SUPPORTED_EXPORT_CHARSETS,
+    DisplayChoiceField,
+)
+from baserow.core.jobs.registries import job_type_registry
+from baserow_enterprise.audit_log.job_types import AuditLogExportJobType
 
 from baserow_enterprise.audit_log.models import AuditLogEntry
 
@@ -59,3 +67,8 @@ class AuditLogEventTypeSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return {"id": instance.event_type, "value": instance.get_type_description()}
+
+
+AuditLogExportJobRequestSerializer = job_type_registry.get(
+    AuditLogExportJobType.type
+).get_serializer_class(base_class=serializers.Serializer)

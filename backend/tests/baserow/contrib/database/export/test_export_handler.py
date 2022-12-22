@@ -24,7 +24,7 @@ from baserow.contrib.database.export.exceptions import (
 from baserow.contrib.database.export.handler import ExportHandler
 from baserow.contrib.database.export.models import (
     EXPORT_JOB_CANCELLED_STATUS,
-    EXPORT_JOB_COMPLETED_STATUS,
+    EXPORT_JOB_FINISHED_STATUS,
     EXPORT_JOB_EXPIRED_STATUS,
     EXPORT_JOB_EXPORTING_STATUS,
     EXPORT_JOB_FAILED_STATUS,
@@ -319,7 +319,7 @@ def test_a_complete_export_job_which_has_expired_will_have_its_file_deleted(
     assert first_job.status == EXPORT_JOB_EXPIRED_STATUS
     assert first_job.exported_file_name is None
     second_job.refresh_from_db()
-    assert second_job.status == EXPORT_JOB_COMPLETED_STATUS
+    assert second_job.status == EXPORT_JOB_FINISHED_STATUS
     assert second_job.exported_file_name is not None
 
 

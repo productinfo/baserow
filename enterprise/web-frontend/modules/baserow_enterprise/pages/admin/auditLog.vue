@@ -1,76 +1,47 @@
 <template>
-    <div class="audit-log__table">
-    <CrudTable
-    :columns="columns"
-    :filters="filters"
-    :defaultColumnSorts="[{key: 'timestamp', direction: 'asc'}]"
-    :service="service"
-    :enable-search="false"
-    row-id-key="id"
-  >
-    <template #title>
-      {{ $t('auditLog.title') }}
-    </template>
-    <template #header-right-side>
-      <button class="button button--large" @click.preventDefault="$refs.exportModal.show()">
-        {{ $t('auditLog.exportToCsv') }}
-      </button>
-    </template>
-    <template #header-filters>
-      <div class="audit-log__filters">
-      <FilterWrapper :name="$t('auditLog.filterUserTitle')">
-      <PaginatedDropdown
-          ref="userFilter"
-          :value="null"
-          :fetch-page="fetchUsers"
-          :not-selected-text="$t('auditLog.filterUser')"
-          @input="filterUser"
-        ></PaginatedDropdown>
-      </FilterWrapper>
-      <FilterWrapper :name="$t('auditLog.filterGroupTitle')">
-        <PaginatedDropdown
-          ref="groupFilter"
-          :value="null"
-          :fetch-page="fetchGroups"
-          :not-selected-text="$t('auditLog.filterGroup')"
-          @input="filterGroup"
-        ></PaginatedDropdown>
-      </FilterWrapper>
-      <FilterWrapper :name="$t('auditLog.filterEventTypeTitle')">
-        <PaginatedDropdown
-          ref="typeFilter"
-          :value="null"
-          :fetch-page="fetchEventTypes"
-          :not-selected-text="$t('auditLog.filterEventType')"
-          @input="filterEventType"
-        ></PaginatedDropdown>
-      </FilterWrapper>
-      <FilterWrapper :name="$t('auditLog.filterFromDateTitle')">
-        <DateFilter
-          ref="fromDateFilter"
-          :value="fromDate"
-          :placeholder="$t('auditLog.filterFromDate')"
-          @input="filterFromDate"
-        ></DateFilter>
-      </FilterWrapper>
-      <FilterWrapper :name="$t('auditLog.filterToDateTitle')">
-        <DateFilter
-          ref="toDateFilter"
-          :value="toDate"
-          :placeholder="$t('auditLog.filterToDate')"
-          @input="filterToDate"
-        ></DateFilter>
-      </FilterWrapper>
-      </div>
-    </template>
-    <template #menus="slotProps">
-    </template>
-  </CrudTable>
-  <ExportAuditLogModal ref="exportModal"></ExportAuditLogModal>
-</div>
+  <div class="audit-log__table">
+    <CrudTable :columns="columns" :filters="filters" :defaultColumnSorts="[{ key: 'timestamp', direction: 'asc' }]"
+      :service="service" :enable-search="false" row-id-key="id">
+      <template #title>
+        {{ $t('auditLog.title') }}
+      </template>
+      <template #header-right-side>
+        <button class="button button--large" @click.preventDefault="$refs.exportModal.show()">
+          {{ $t('auditLog.exportToCsv') }}
+        </button>
+      </template>
+      <template #header-filters>
+        <div class="audit-log__filters">
+          <FilterWrapper :name="$t('auditLog.filterUserTitle')">
+            <PaginatedDropdown ref="userFilter" :value="null" :fetch-page="fetchUsers"
+              :not-selected-text="$t('auditLog.filterUser')" @input="filterUser"></PaginatedDropdown>
+          </FilterWrapper>
+          <FilterWrapper :name="$t('auditLog.filterGroupTitle')">
+            <PaginatedDropdown ref="groupFilter" :value="null" :fetch-page="fetchGroups"
+              :not-selected-text="$t('auditLog.filterGroup')" @input="filterGroup"></PaginatedDropdown>
+          </FilterWrapper>
+          <FilterWrapper :name="$t('auditLog.filterEventTypeTitle')">
+            <PaginatedDropdown ref="typeFilter" :value="null" :fetch-page="fetchEventTypes"
+              :not-selected-text="$t('auditLog.filterEventType')" @input="filterEventType"></PaginatedDropdown>
+          </FilterWrapper>
+          <FilterWrapper :name="$t('auditLog.filterFromDateTitle')">
+            <DateFilter ref="fromDateFilter" :value="fromDate" :placeholder="$t('auditLog.filterFromDate')"
+              @input="filterFromDate"></DateFilter>
+          </FilterWrapper>
+          <FilterWrapper :name="$t('auditLog.filterToDateTitle')">
+            <DateFilter ref="toDateFilter" :value="toDate" :placeholder="$t('auditLog.filterToDate')"
+              @input="filterToDate"></DateFilter>
+          </FilterWrapper>
+        </div>
+      </template>
+      <template #menus="slotProps">
+      </template>
+    </CrudTable>
+    <ExportAuditLogModal ref="exportModal" :filters="filters"> </ExportAuditLogModal>
+  </div>
 </template>
-
-
+  
+  
 <script>
 import CrudTable from '@baserow/modules/core/components/crudTable/CrudTable'
 import PaginatedDropdown from '@baserow/modules/core/components/PaginatedDropdown'
@@ -85,7 +56,7 @@ import ExportAuditLogModal from '@baserow_enterprise/components/admin/modals/Exp
 
 export default {
   name: 'AuditLogAdminTable',
-  components: { CrudTable, PaginatedDropdown, DateFilter, FilterWrapper, ExportAuditLogModal},
+  components: { CrudTable, PaginatedDropdown, DateFilter, FilterWrapper, ExportAuditLogModal },
   layout: 'app',
   middleware: 'staff',
   data() {
@@ -120,7 +91,7 @@ export default {
         false,
         {},
         '20',
-        ),
+      ),
       new CrudTableColumn(
         'timestamp',
         () => this.$t('auditLog.timestamp'),
@@ -146,13 +117,13 @@ export default {
   methods: {
     setFilter(key, value) {
       if (value == null) {
-       if(this.filters[key] != undefined) {
-        this.filters = _.pickBy(this.filters, (v, k) => {
-          return key !== k
-        })
-      }
-      } else{
-        this.filters = {...this.filters, [key]: value}
+        if (this.filters[key] != undefined) {
+          this.filters = _.pickBy(this.filters, (v, k) => {
+            return key !== k
+          })
+        }
+      } else {
+        this.filters = { ...this.filters, [key]: value }
       }
     },
     filterUser(user) {

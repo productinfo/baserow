@@ -9,6 +9,15 @@ class BaserowEnterpriseConfig(AppConfig):
     name = "baserow_enterprise"
 
     def ready(self):
+        # register audit log types. This automatically connect all the related signals
+        # to be able to log the actions in the audit log.
+        from baserow_enterprise.audit_log.signals import register_audit_log_types
+        from baserow.core.jobs.registries import job_type_registry
+        from baserow_enterprise.audit_log.job_types import AuditLogExportJobType
+
+        job_type_registry.register(AuditLogExportJobType())
+        register_audit_log_types()
+
         from baserow.api.user.registries import member_data_registry
         from baserow.core.action.registries import (
             action_scope_registry,
@@ -141,12 +150,6 @@ class BaserowEnterpriseConfig(AppConfig):
         # The signals must always be imported last because they use the registries
         # which need to be filled first.
         import baserow_enterprise.ws.signals  # noqa: F
-
-        # register audit log types. This automatically connect all the related signals
-        # to be able to log the actions in the audit log.
-        from baserow_enterprise.audit_log.signals import register_audit_log_types
-
-        register_audit_log_types()
 
 
 @transaction.atomic

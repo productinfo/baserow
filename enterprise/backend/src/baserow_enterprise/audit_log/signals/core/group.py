@@ -7,7 +7,6 @@ from baserow_enterprise.audit_log.handler import AuditLogHandler
 
 # @ TODO: Add receivers for the following signals.
 # group_user_updated = Signal()
-# groups_reordered = Signal()
 
 
 class GroupCreatedAuditLogType(AuditLogType):
@@ -25,9 +24,8 @@ class GroupCreatedAuditLogType(AuditLogType):
         return _("Group created")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _('%(user_email)s created the group "%(group_name)s".') % {
-            "user_email": audit_log_entry.user_email,
-            "group_name": audit_log_entry.group_name,
+        return _('Group "%(group_name)s" created.') % {
+            "group_name": audit_log_entry.group_name
         }
 
 
@@ -48,11 +46,7 @@ class GroupUpdatedAuditLogType(AuditLogType):
         return _("Group updated")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _(
-            '%(user_email)s updated the group\'s name from "%(from_name)s"'
-            ' to "%(to_name)s".'
-        ) % {
-            "user_email": audit_log_entry.user_email,
+        return _('Group\'s name from "%(from_name)s" to "%(to_name)s".') % {
             "from_name": audit_log_entry.data["from"]["name"],
             "to_name": audit_log_entry.data["to"]["name"],
         }
@@ -73,8 +67,7 @@ class GroupDeletedAuditLogType(AuditLogType):
         return _("Group deleted")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _('%(user_email)s deleted the group "%(group_name)s".') % {
-            "user_email": audit_log_entry.user_email,
+        return _('Group "%(group_name)s" deleted.') % {
             "group_name": audit_log_entry.group_name,
         }
 
@@ -94,10 +87,7 @@ class GroupRestoredAuditLogType(AuditLogType):
         return _("Group restored")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _(
-            '%(user_email)s restored the group "%(group_name)s" (%(group_id)s).'
-        ) % {
-            "user_email": audit_log_entry.user_email,
+        return _('Group "%(group_name)s" restored.') % {
             "group_name": audit_log_entry.group_name,
         }
 
@@ -164,7 +154,4 @@ class GroupReorderedAuditLogType(AuditLogType):
         return _("Groups reordered")
 
     def get_event_description(self, audit_log_entry) -> str:
-        return _("%(user_email)s reordered groups with ids order %(group_ids)s.") % {
-            "user_email": audit_log_entry.user_email,
-            "group_ids": audit_log_entry.data["group_ids"],
-        }
+        return _("Groups has been reordered.")

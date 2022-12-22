@@ -1178,6 +1178,7 @@ class CoreHandler:
             application=new_application_clone,
             user=user,
             type_name=application_type.type,
+            duplicate_of=application,
         )
 
         return new_application_clone

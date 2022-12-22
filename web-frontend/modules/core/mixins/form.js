@@ -91,6 +91,7 @@ export default {
       }
 
       if (this.isFormValid()) {
+        console.log('submitted', this.getFormValues())
         this.$emit('submitted', this.getFormValues())
       } else {
         this.$nextTick(() => this.focusOnFirstError())

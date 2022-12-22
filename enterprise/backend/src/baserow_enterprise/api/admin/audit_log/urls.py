@@ -5,6 +5,7 @@ from .views import (
     AdminAuditLogUserFilterView,
     AdminAuditLogGroupFilterView,
     AdminAuditLogEventTypeFilterView,
+    AsyncAuditLogExportView,
 )
 
 app_name = "baserow_enterprise.api.audit_log"
@@ -16,4 +17,5 @@ urlpatterns = [
     re_path(
         r"event-types/$", AdminAuditLogEventTypeFilterView.as_view(), name="event_types"
     ),
+    re_path(r"export/$", AsyncAuditLogExportView.as_view(), name="export"),
 ]
