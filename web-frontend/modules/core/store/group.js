@@ -296,11 +296,6 @@ export const actions = {
     commit('DELETE_ITEM', group.id)
   },
   async fetchPermissions({ commit, getters }, group) {
-    // The permissions only have to be loaded once.
-    if (group._.permissionsLoaded) {
-      return
-    }
-
     commit('SET_ITEM_ADDITIONAL_LOADING', { group, value: true })
 
     try {
