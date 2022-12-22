@@ -4,7 +4,12 @@
  */
 
 export const registerRealtimeEvents = (realtime) => {
-  realtime.registerEvent('permissions_updated', ({ store }) => {
-    store.dispatch('notification/setPermissionsUpdated', true)
-  })
+  realtime.registerEvent(
+    'permissions_updated',
+    ({ store }, { group_id: groupId }) => {
+      if (store.getters['group/selectedId'] === groupId) {
+        store.dispatch('notification/setPermissionsUpdated', true)
+      }
+    }
+  )
 }

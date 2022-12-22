@@ -55,7 +55,9 @@ def notify_users_about_updated_permissions(
     associated_users = subject_type.get_associated_users(subject)
     associated_user_ids = [user.id for user in associated_users]
 
-    broadcast_to_users.delay(associated_user_ids, {"type": "permissions_updated"})
+    broadcast_to_users.delay(
+        associated_user_ids, {"type": "permissions_updated", "group_id": group.id}
+    )
 
 
 def cascade_subject_delete(sender, instance, **kwargs):
