@@ -8,7 +8,9 @@ from baserow_enterprise.teams.handler import TeamHandler
 
 
 @pytest.fixture(autouse=True)
-def enable_enterprise_for_all_tests_here(enable_enterprise):
+def enable_enterprise_and_synced_roles_for_all_tests_here(
+    enable_enterprise, synced_roles
+):
     pass
 
 
