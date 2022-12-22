@@ -11,6 +11,7 @@ export const state = () => ({
   clearing: false,
   // See UNDO_REDO_STATES for all possible values.
   undoRedoState: UNDO_REDO_STATES.HIDDEN,
+  permissionsUpdated: false,
   items: [],
 })
 
@@ -45,6 +46,9 @@ export const mutations = {
   },
   SET_USER_SESSION_EXPIRED(state, value) {
     state.userSessionExpired = value
+  },
+  SET_PERMISSIONS_UPDATED(state, value) {
+    state.permissionsUpdated = value
   },
 }
 
@@ -111,6 +115,9 @@ export const actions = {
   },
   setUserSessionExpired({ commit }, value) {
     commit('SET_USER_SESSION_EXPIRED', value)
+  },
+  setPermissionsUpdated({ commit }, value) {
+    commit('SET_PERMISSIONS_UPDATED', value)
   },
 }
 

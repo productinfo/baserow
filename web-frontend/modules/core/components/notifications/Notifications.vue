@@ -16,6 +16,7 @@
         :key="notification.id"
         :notification="notification"
       ></Notification>
+      <PermissionsUpdatedNotification v-if="permissionsUpdated" />
     </div>
     <div class="bottom-right-notifications">
       <UndoRedoNotification
@@ -48,10 +49,12 @@ import AuthorizationErrorNotification from '@baserow/modules/core/components/not
 import UserSessionExpiredNotification from '@baserow/modules/core/components/notifications/UserSessionExpiredNotification'
 import UndoRedoNotification from '@baserow/modules/core/components/notifications/UndoRedoNotification'
 import { UNDO_REDO_STATES } from '@baserow/modules/core/utils/undoRedoConstants'
+import PermissionsUpdatedNotification from '@baserow/modules/core/components/notifications/PermissionsUpdatedNotification'
 
 export default {
   name: 'Notifications',
   components: {
+    PermissionsUpdatedNotification,
     RestoreNotification,
     Notification,
     ConnectingNotification,
@@ -83,6 +86,7 @@ export default {
       notifications: (state) => state.notification.items,
       undoRedoState: (state) => state.notification.undoRedoState,
       isUserSessionExpired: (state) => state.notification.userSessionExpired,
+      permissionsUpdated: (state) => state.notification.permissionsUpdated,
     }),
   },
 }

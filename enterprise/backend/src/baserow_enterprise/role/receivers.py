@@ -1,8 +1,45 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+from baserow.core.models import GroupUser
+from baserow.core.registries import subject_type_registry
+from baserow.core.signals import group_user_updated, permissions_updated
+from baserow.core.types import Subject
+from baserow.ws.tasks import broadcast_to_users
+from baserow_enterprise.signals import (
+    role_assignment_created,
+    role_assignment_deleted,
+    role_assignment_updated,
+)
 
 User = get_user_model()
+
+
+@receiver(role_assignment_updated)
+@receiver(role_assignment_created)
+@receiver(role_assignment_deleted)
+def send_permissions_updated_when_role_assignment_updated(
+    sender, subject: Subject, **kwargs
+):
+    permissions_updated.send(sender, subject=subject)
+
+
+@receiver(group_user_updated)
+def send_permissions_updated_when_group_user_updated(
+    sender, group_user: GroupUser, **kwargs
+):
+    permissions_updated.send(sender, subject=group_user.user)
+
+
+@receiver(permissions_updated)
+def notify_users_about_updated_permissions(sender, subject: Subject, **kwargs):
+    subject_type = subject_type_registry.get_by_model(subject)
+    associated_users = subject_type.get_associated_users(subject)
+    associated_user_ids = [user.id for user in associated_users]
+
+    broadcast_to_users.delay(associated_user_ids, {"type": "permissions_updated"})
 
 
 def cascade_subject_delete(sender, instance, **kwargs):
