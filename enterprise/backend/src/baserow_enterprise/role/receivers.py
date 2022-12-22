@@ -3,7 +3,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-from baserow.core.models import GroupUser, Group
+from baserow_premium.license.handler import LicenseHandler
+
+from baserow.core.models import Group, GroupUser
 from baserow.core.registries import subject_type_registry
 from baserow.core.signals import group_user_updated, permissions_updated
 from baserow.core.types import Subject
@@ -17,7 +19,6 @@ from baserow_enterprise.signals import (
     team_restored,
 )
 from baserow_enterprise.teams.models import Team
-from baserow_premium.license.handler import LicenseHandler
 
 User = get_user_model()
 
