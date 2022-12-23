@@ -208,7 +208,8 @@
             "members": "members",
             "teams": "teams"
         },
-        "helpTooltip": "Member role assignments override team role assignments."
+        "helpTooltip": "Member role assignments override team role assignments.",
+        "roleSelectorTooltip": "Assigning this role might grant users read access to linked rows in your table."
     },
     "membersRoleField": {
         "noAccessHelpText": "This user requires explicit access to resources.",
