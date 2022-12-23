@@ -120,23 +120,24 @@ ending_number_regex = re.compile(r"(.+) (\d+)$")
 class ViewHandler:
     PUBLIC_VIEW_TOKEN_ALGORITHM = "HS256"  # nosec
 
-    def _apply_view_ownership_filters(self, user: AbstractUser, group: Group, queryset: QuerySet) -> QuerySet:
+    def _check_ownership_type(self, user: AbstractUser, group: Group, ownership_type: str) -> None:
         """
-        Applies basic ownership type filter to a view queryset.
+        Checks whether the provided ownership type is supported for the user.
 
-        :user: The user on whose behalf the views are queried.
-        :group: The group where the views are queried.
-        :queryset: The queryset to which to apply the filter.
-        :return: Queryset with applied ownership type filter.
+        :param user: The user on whose behalf the operation is performed.
+        :param ownership_type: View's ownership type.
+        :raises ViewOwnershipTypeNotSupported: When not allowed.
         """
-        
-        return queryset.filter(ownership_type=OWNERSHIP_TYPE_COLLABORATIVE)
+
+        if ownership_type != OWNERSHIP_TYPE_COLLABORATIVE:
+            raise ViewOwnershipTypeNotSupported()
 
     def list_views(self, user, table, _type, filters, sortings, decorations, limit):
         # TODO: docs, types
 
         views = View.objects.filter(table=table)
-        views = self._apply_view_ownership_filters(user, table.database.group, views)
+
+        views = CoreHandler().filter_queryset(user, "database.table.list_views", views, table.database.group)
         views = views.select_related("content_type", "table")
 
         if _type:
@@ -161,6 +162,7 @@ class ViewHandler:
 
     def get_view(
         self,
+        user: AbstractUser,
         view_id: int,
         view_model: Optional[Type[View]] = None,
         base_queryset: Optional[QuerySet] = None,
@@ -169,6 +171,7 @@ class ViewHandler:
         Selects a view and checks if the user has access to that view.
         If everything is fine the view is returned.
 
+        :param: User on whose behalf to get the view.
         :param view_id: The identifier of the view that must be returned.
         :param view_model: If provided that models objects are used to select the
             view. This can for example be useful when you want to select a GridView or
@@ -177,6 +180,7 @@ class ViewHandler:
             object. This can for example be used to do a `select_related`. Note that
             if this is used the `view_model` parameter doesn't work anymore.
         :raises ViewDoesNotExist: When the view with the provided id does not exist.
+        :raises ViewOwnershipTypeNotSupported: When not allowed.
         :return: the view instance.
         """
 
@@ -190,6 +194,9 @@ class ViewHandler:
             view = base_queryset.select_related("table__database__group").get(
                 pk=view_id
             )
+            CoreHandler().check_permissions(
+                user, ReadViewOperationType.type, group=view.table.database.group, context=view
+            )
         except View.DoesNotExist as exc:
             raise ViewDoesNotExist(
                 f"The view with id {view_id} does not exist."
@@ -202,6 +209,7 @@ class ViewHandler:
 
     def get_view_for_update(
         self,
+        user: AbstractUser,
         view_id: int,
         view_model: Optional[Type[View]] = None,
         base_queryset: Optional[QuerySet] = None,
@@ -210,6 +218,7 @@ class ViewHandler:
         Selects a view for update and checks if the user has access to that view.
         If everything is fine the view is returned.
 
+        :param: User on whose behalf to get the view.
         :param view_id: The identifier of the view that must be returned.
         :param view_model: If provided that models objects are used to select the
             view. This can for example be useful when you want to select a GridView or
@@ -232,19 +241,7 @@ class ViewHandler:
                 tables_to_lock = ("self", "view_ptr_id")
             base_queryset = view_model.objects.select_for_update(of=tables_to_lock)
 
-        return self.get_view(view_id, view_model, base_queryset)
-
-    def _check_ownership_type(self, user: AbstractUser, group: Group, ownership_type: str) -> None:
-        """
-        Checks whether the provided ownership type is supported for the user.
-
-        :param user: The user on whose behalf the operation is performed.
-        :param ownership_type: View's ownership type.
-        :raises ViewOwnershipTypeNotSupported: When not allowed.
-        """
-
-        if ownership_type != OWNERSHIP_TYPE_COLLABORATIVE:
-            raise ViewOwnershipTypeNotSupported()
+        return self.get_view(user, view_id, view_model, base_queryset)
 
     def create_view(
         self, user: AbstractUser, table: Table, type_name: str, **kwargs
@@ -256,6 +253,7 @@ class ViewHandler:
         :param table: The table that the view instance belongs to.
         :param type_name: The type name of the view.
         :param kwargs: The fields that need to be set upon creation.
+        :raises ViewOwnershipTypeNotSupported: When not allowed.
         :return: The created view instance.
         """
 
@@ -263,6 +261,7 @@ class ViewHandler:
         CoreHandler().check_permissions(
             user, CreateViewOperationType.type, group=group, context=table
         )
+        # TODO: can be refactored out?
         self._check_ownership_type(user, group, kwargs.get("ownership_type", OWNERSHIP_TYPE_COLLABORATIVE))
 
         # Figure out which model to use for the given view type.
@@ -298,6 +297,8 @@ class ViewHandler:
         :param proposed_name: The name that is proposed to be used.
         :return: A new unique name to use.
         """
+
+        # TODO: can personal view names collide with collaborative views?
 
         existing_view_names = View.objects.filter(table_id=table_id).values_list(
             "name", flat=True
@@ -367,6 +368,8 @@ class ViewHandler:
         )
 
         return duplicated_view
+
+    # TODO: progress
 
     def update_view(
         self, user: AbstractUser, view: View, **data: Dict[str, Any]
@@ -467,7 +470,7 @@ class ViewHandler:
         :param view_id: The view instance id that needs to be deleted.
         """
 
-        view = self.get_view_for_update(view_id)
+        view = self.get_view_for_update(user, view_id)
         self.delete_view(user, view)
 
     def delete_view(self, user: AbstractUser, view: View):

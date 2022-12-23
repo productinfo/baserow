@@ -202,6 +202,8 @@ class ViewType(
             "type": self.type,
             "name": view.name,
             "order": view.order,
+            "ownership_type": view.ownership_type,
+            "created_by": view.created_by,
         }
 
         if self.can_filter:

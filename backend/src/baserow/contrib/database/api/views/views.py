@@ -415,7 +415,7 @@ class ViewView(APIView):
     def get(self, request, view_id, filters, sortings, decorations):
         """Selects a single view and responds with a serialized version."""
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         CoreHandler().check_permissions(
             request.user,
             ReadViewOperationType.type,
@@ -498,7 +498,7 @@ class ViewView(APIView):
     ) -> Response:
         """Updates the view if the user belongs to the group."""
 
-        view = ViewHandler().get_view_for_update(view_id).specific
+        view = ViewHandler().get_view_for_update(request.user, view_id).specific
         view_type = view_type_registry.get_by_model(view)
         data = validate_data_custom_fields(
             view_type.type,
@@ -557,7 +557,7 @@ class ViewView(APIView):
     def delete(self, request: Request, view_id: int):
         """Deletes an existing view if the user belongs to the group."""
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
 
         action_type_registry.get_by_type(DeleteViewActionType).do(request.user, view)
 
@@ -610,7 +610,7 @@ class DuplicateViewView(APIView):
     def post(self, request, view_id):
         """Duplicates a view."""
 
-        view = ViewHandler().get_view(view_id).specific
+        view = ViewHandler().get_view(request.user, view_id).specific
 
         view_type = view_type_registry.get_by_model(view)
 
@@ -719,7 +719,7 @@ class ViewFiltersView(APIView):
         has access to that group.
         """
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         group = view.table.database.group
         CoreHandler().check_permissions(
             request.user, ListViewFilterOperationType.type, group=group, context=view
@@ -780,7 +780,7 @@ class ViewFiltersView(APIView):
     def post(self, request, data, view_id):
         """Creates a new filter for the provided view."""
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         field = FieldHandler().get_field(data["field"])
 
         view_filter = action_type_registry.get_by_type(CreateViewFilterActionType).do(
@@ -986,7 +986,7 @@ class ViewDecorationsView(APIView):
         if the user has access to that group.
         """
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         CoreHandler().check_permissions(
             request.user,
             ListViewDecorationOperationType.type,
@@ -1047,7 +1047,7 @@ class ViewDecorationsView(APIView):
         """Creates a new decoration for the provided view."""
 
         view_handler = ViewHandler()
-        view = view_handler.get_view(view_id)
+        view = view_handler.get_view(request.user, view_id)
 
         group = view.table.database.group
         CoreHandler().check_permissions(
@@ -1299,7 +1299,7 @@ class ViewSortingsView(APIView):
         has access to that group.
         """
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         CoreHandler().check_permissions(
             request.user,
             ListViewSortOperationType.type,
@@ -1362,7 +1362,7 @@ class ViewSortingsView(APIView):
     def post(self, request, data, view_id):
         """Creates a new sort for the provided view."""
 
-        view = ViewHandler().get_view(view_id)
+        view = ViewHandler().get_view(request.user, view_id)
         field = FieldHandler().get_field(data["field"])
 
         view_sort = action_type_registry.get_by_type(CreateViewSortActionType).do(
@@ -1563,7 +1563,7 @@ class ViewFieldOptionsView(APIView):
     def get(self, request, view_id):
         """Returns the field options of the view."""
 
-        view = ViewHandler().get_view(view_id).specific
+        view = ViewHandler().get_view(request.user, view_id).specific
         group = view.table.database.group
         CoreHandler().check_permissions(
             request.user,
@@ -1627,7 +1627,7 @@ class ViewFieldOptionsView(APIView):
         """Updates the field option of the view."""
 
         handler = ViewHandler()
-        view = handler.get_view(view_id).specific
+        view = handler.get_view(request.user, view_id).specific
         view_type = view_type_registry.get_by_model(view)
         serializer_class = view_type.get_field_options_serializer_class()
         data = validate_data(serializer_class, request.data)
@@ -1691,7 +1691,7 @@ class RotateViewSlugView(APIView):
         """Rotates the slug of a view."""
 
         view = action_type_registry.get_by_type(RotateViewSlugActionType).do(
-            request.user, ViewHandler().get_view_for_update(view_id).specific
+            request.user, ViewHandler().get_view_for_update(request.user, view_id).specific
         )
 
         serializer = view_type_registry.get_serializer(view, ViewSerializer)

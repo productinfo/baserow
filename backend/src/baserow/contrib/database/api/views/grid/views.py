@@ -245,7 +245,7 @@ class GridViewView(APIView):
         exclude_fields = request.GET.get("exclude_fields")
 
         view_handler = ViewHandler()
-        view = view_handler.get_view(view_id, GridView)
+        view = view_handler.get_view(request.user, view_id, GridView)
         view_type = view_type_registry.get_by_model(view)
 
         group = view.table.database.group
@@ -346,7 +346,7 @@ class GridViewView(APIView):
         requested fields.
         """
 
-        view = ViewHandler().get_view(view_id, GridView)
+        view = ViewHandler().get_view(request.user, view_id, GridView)
         CoreHandler().check_permissions(
             request.user,
             ListRowsDatabaseTableOperationType.type,
@@ -439,7 +439,7 @@ class GridViewFieldAggregationsView(APIView):
 
         search = request.GET.get("search")
         view_handler = ViewHandler()
-        view = view_handler.get_view(view_id, GridView)
+        view = view_handler.get_view(request.user, view_id, GridView)
 
         CoreHandler().check_permissions(
             request.user,
@@ -546,7 +546,7 @@ class GridViewFieldAggregationView(APIView):
         """
 
         view_handler = ViewHandler()
-        view = view_handler.get_view(view_id, GridView)
+        view = view_handler.get_view(request.user, view_id, GridView)
 
         field_instance = FieldHandler().get_field(field_id)
         CoreHandler().check_permissions(

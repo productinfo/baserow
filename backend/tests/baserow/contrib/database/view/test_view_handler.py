@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 
 import pytest
 
+from baserow.core.exceptions import PermissionDenied
 from baserow.contrib.database.fields.exceptions import FieldNotInTable
 from baserow.contrib.database.fields.handler import FieldHandler
 from baserow.contrib.database.fields.models import Field
@@ -56,9 +57,9 @@ def test_get_view(data_fixture):
     handler = ViewHandler()
 
     with pytest.raises(ViewDoesNotExist):
-        handler.get_view(view_id=99999)
+        handler.get_view(user, view_id=99999)
 
-    view = handler.get_view(view_id=grid.id)
+    view = handler.get_view(user, view_id=grid.id)
 
     assert view.id == grid.id
     assert view.name == grid.name
@@ -66,7 +67,7 @@ def test_get_view(data_fixture):
     assert not view.filters_disabled
     assert isinstance(view, View)
 
-    view = handler.get_view(view_id=grid.id, view_model=GridView)
+    view = handler.get_view(user, view_id=grid.id, view_model=GridView)
 
     assert view.id == grid.id
     assert view.name == grid.name
@@ -77,17 +78,17 @@ def test_get_view(data_fixture):
     # If the error is raised we know for sure that the query has resolved.
     with pytest.raises(AttributeError):
         handler.get_view(
-            view_id=grid.id, base_queryset=View.objects.prefetch_related("UNKNOWN")
+            user, view_id=grid.id, base_queryset=View.objects.prefetch_related("UNKNOWN")
         )
 
     # If the table is trashed the view should not be available.
     TrashHandler.trash(user, grid.table.database.group, grid.table.database, grid.table)
     with pytest.raises(ViewDoesNotExist):
-        handler.get_view(view_id=grid.id, view_model=GridView)
+        handler.get_view(user, view_id=grid.id, view_model=GridView)
 
     # Restoring the table should restore the view
     TrashHandler.restore_item(user, "table", grid.table.id)
-    view = handler.get_view(view_id=grid.id, view_model=GridView)
+    view = handler.get_view(user, view_id=grid.id, view_model=GridView)
     assert view.id == grid.id
 
 
@@ -1693,13 +1694,13 @@ def test_get_public_views_which_include_rows(data_fixture):
 
     assert checker.get_public_views_where_rows_are_visible([row, row2]) == [
         PublicViewRows(
-            view=ViewHandler().get_view(public_view1.id), allowed_row_ids={1}
+            view=ViewHandler().get_view(user, public_view1.id), allowed_row_ids={1}
         ),
         PublicViewRows(
-            view=ViewHandler().get_view(public_view2.id), allowed_row_ids={2}
+            view=ViewHandler().get_view(user, public_view2.id), allowed_row_ids={2}
         ),
         PublicViewRows(
-            view=ViewHandler().get_view(public_view3.id),
+            view=ViewHandler().get_view(user, public_view3.id),
             allowed_row_ids=PublicViewRows.ALL_ROWS_ALLOWED,
         ),
     ]
@@ -2205,6 +2206,57 @@ def test_can_submit_form_view_handler_with_zero_number_required(data_fixture):
 
 
 @pytest.mark.django_db
+def test_list_views_ownership_type(data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    handler = ViewHandler()
+    view = handler.create_view(
+        user=user,
+        table=table,
+        type_name="grid",
+        name="Test grid",
+        ownership_type=OWNERSHIP_TYPE_COLLABORATIVE,
+    )
+    view2 = handler.create_view(
+        user=user,
+        table=table,
+        type_name="grid",
+        name="Test grid",
+        ownership_type=OWNERSHIP_TYPE_COLLABORATIVE,
+    )
+    view2.ownership_type = "personal"
+    view2.save()
+
+    result = handler.list_views(user, table, "grid", None, None, None, 10)
+    assert len(result) == 1
+
+
+@pytest.mark.django_db
+@patch("baserow.contrib.database.views.signals.view_created.send")
+def test_get_view_ownership_type(send_mock, data_fixture):
+    user = data_fixture.create_user()
+    table = data_fixture.create_database_table(user=user)
+    handler = ViewHandler()
+
+    view = handler.create_view(
+        user=user,
+        table=table,
+        type_name="grid",
+        name="Test grid",
+        ownership_type=OWNERSHIP_TYPE_COLLABORATIVE,
+    )
+
+    grid = handler.get_view(user, view.id)
+    assert grid.ownership_type == OWNERSHIP_TYPE_COLLABORATIVE
+
+    view.ownership_type = "personal"
+    view.save()
+
+    with pytest.raises(PermissionDenied):
+        handler.get_view(user, view.id)
+
+
+@pytest.mark.django_db
 @patch("baserow.contrib.database.views.signals.view_created.send")
 def test_create_view_ownership_type(send_mock, data_fixture):
     """
@@ -2214,8 +2266,6 @@ def test_create_view_ownership_type(send_mock, data_fixture):
     user = data_fixture.create_user()
     table = data_fixture.create_database_table(user=user)
     handler = ViewHandler()
-
-    # OWNERSHIP_TYPE_COLLABORATIVE
 
     view = handler.create_view(
         user=user,
@@ -2228,7 +2278,7 @@ def test_create_view_ownership_type(send_mock, data_fixture):
     grid = GridView.objects.first()
     assert grid.ownership_type == OWNERSHIP_TYPE_COLLABORATIVE
 
-    with pytest.raises(ViewOwnershipTypeNotSupported):
+    with pytest.raises(PermissionDenied):
         handler.create_view(
             user=user,
             table=table,

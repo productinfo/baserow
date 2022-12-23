@@ -204,7 +204,8 @@ class CoreHandler:
         if allow_if_template and group and group.has_template():
             return True
 
-        for permission_manager_name in settings.PERMISSION_MANAGERS:
+        for permission_manager_name in ["view_ownership"]: #settings.PERMISSION_MANAGERS:
+            print(permission_manager_name)
             permission_manager_type = permission_manager_type_registry.get(
                 permission_manager_name
             )

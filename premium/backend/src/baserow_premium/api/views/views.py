@@ -77,7 +77,7 @@ class PremiumViewAttributesView(APIView):
         """
 
         view_handler = ViewHandler()
-        view = view_handler.get_view(view_id).specific
+        view = view_handler.get_view(request.user, view_id).specific
         group = view.table.database.group
 
         if group.has_template():
