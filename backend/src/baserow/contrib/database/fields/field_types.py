@@ -1428,6 +1428,13 @@ class LinkRowFieldType(FieldType):
                 f"as the table {table.id}."
             )
 
+        CoreHandler().check_permissions(
+            user,
+            CreateFieldOperationType.type,
+            table.database.group,
+            context=link_row_table,
+        )
+
         self_referencing_link_row = table.id == link_row_table.id
         create_related_field = field_kwargs.get("has_related_field")
         if self_referencing_link_row and create_related_field:
