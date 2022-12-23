@@ -88,7 +88,7 @@ class ExportJobSerializer(ExportedFileURLSerializerMixin, serializers.ModelSeria
             "table",
             "view",
             "exporter_type",
-            "status",
+            "state",
             "exported_file_name",
             "created_at",
             "progress_percentage",
